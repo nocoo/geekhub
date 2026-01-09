@@ -1,0 +1,3 @@
+[submodule "geekreader-hub"]
+	path = geekreader-hub
+	url = https://github.com/nocoo/geekreader-hub.git
