@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
       .select('id')
       .eq('user_id', user.id)
       .eq('url', url)
-      .single();
+      .maybeSingle(); // 使用 maybeSingle 而不是 single，避免没有记录时报错
 
     if (existingFeed) {
       return NextResponse.json({ error: 'RSS feed already exists' }, { status: 409 });

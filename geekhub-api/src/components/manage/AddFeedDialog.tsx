@@ -33,7 +33,7 @@ export function AddFeedDialog({ open, onOpenChange, categories, onSuccess }: Add
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!url.trim()) return;
+    if (!url.trim() || loading) return;
 
     setLoading(true);
     try {
@@ -56,6 +56,7 @@ export function AddFeedDialog({ open, onOpenChange, categories, onSuccess }: Add
         setCategoryId('');
         setTitle('');
         setDescription('');
+        onOpenChange(false); // 关闭对话框
       } else {
         const { error } = await response.json();
         alert(error);
