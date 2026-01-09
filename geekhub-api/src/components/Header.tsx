@@ -1,6 +1,7 @@
 import { Sun, Moon, Settings, Rss } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
+import { AuthButton } from '@/components/AuthButton';
 import { useEffect, useState } from 'react';
 
 export function Header() {
@@ -47,6 +48,7 @@ export function Header() {
         >
           <Settings className="h-4 w-4" />
         </Button>
+        <AuthButton />
       </div>
     </header>
   );
