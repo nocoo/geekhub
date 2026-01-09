@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { toast } from 'sonner';
 
 interface Category {
   id: string;
@@ -58,11 +59,11 @@ export function EditCategoryDialog({ category, open, onOpenChange, onSuccess }: 
         onSuccess(updatedCategory);
       } else {
         const { error } = await response.json();
-        alert(error);
+        toast.error(error);
       }
     } catch (error) {
       console.error('Failed to update category:', error);
-      alert('Failed to update category');
+      toast.error('Failed to update category');
     } finally {
       setLoading(false);
     }

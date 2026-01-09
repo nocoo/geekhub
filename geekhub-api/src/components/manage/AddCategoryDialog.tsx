@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { toast } from 'sonner';
 
 interface AddCategoryDialogProps {
   open: boolean;
@@ -52,11 +53,11 @@ export function AddCategoryDialog({ open, onOpenChange, onSuccess }: AddCategory
         setIcon(CATEGORY_ICONS[0]);
       } else {
         const { error } = await response.json();
-        alert(error);
+        toast.error(error);
       }
     } catch (error) {
       console.error('Failed to create category:', error);
-      alert('Failed to create category');
+      toast.error('Failed to create category');
     } finally {
       setLoading(false);
     }

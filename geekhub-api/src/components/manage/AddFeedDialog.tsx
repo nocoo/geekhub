@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { toast } from 'sonner';
 
 interface Category {
   id: string;
@@ -56,14 +57,13 @@ export function AddFeedDialog({ open, onOpenChange, categories, onSuccess }: Add
         setCategoryId('');
         setTitle('');
         setDescription('');
-        onOpenChange(false); // 关闭对话框
       } else {
         const { error } = await response.json();
-        alert(error);
+        toast.error(error);
       }
     } catch (error) {
       console.error('Failed to add feed:', error);
-      alert('Failed to add RSS feed');
+      toast.error('Failed to add RSS feed');
     } finally {
       setLoading(false);
     }

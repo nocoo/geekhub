@@ -4,10 +4,12 @@ import { Button } from '@/components/ui/button';
 import { AuthButton } from '@/components/AuthButton';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { ManagePopup } from '@/components/manage/ManagePopup';
 
 export function Header() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const [showManage, setShowManage] = useState(false);
 
   // useEffect only runs on the client, so now we can safely show the UI
   useEffect(() => {
@@ -44,17 +46,18 @@ export function Header() {
             <Moon className="h-4 w-4" />
           )}
         </Button>
-        <Link href="/manage">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-9 w-9 text-muted-foreground hover:text-foreground"
-          >
-            <Settings className="h-4 w-4" />
-          </Button>
-        </Link>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setShowManage(true)}
+          className="h-9 w-9 text-muted-foreground hover:text-foreground"
+        >
+          <Settings className="h-4 w-4" />
+        </Button>
         <AuthButton />
       </div>
+
+      <ManagePopup open={showManage} onOpenChange={setShowManage} />
     </header>
   );
 }

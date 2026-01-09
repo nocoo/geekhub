@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { toast } from 'sonner';
 
 interface Category {
   id: string;
@@ -65,11 +66,11 @@ export function EditFeedDialog({ feed, categories, open, onOpenChange, onSuccess
         onSuccess(updatedFeed);
       } else {
         const { error } = await response.json();
-        alert(error);
+        toast.error(error);
       }
     } catch (error) {
       console.error('Failed to update feed:', error);
-      alert('Failed to update RSS feed');
+      toast.error('Failed to update RSS feed');
     } finally {
       setLoading(false);
     }
