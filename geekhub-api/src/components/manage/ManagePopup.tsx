@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Plus, Rss, Edit, Trash2, FolderPlus, X } from 'lucide-react';
+import { Plus, Rss, Edit, Trash2, FolderPlus } from 'lucide-react';
 import { AddCategoryDialog } from '@/components/manage/AddCategoryDialog';
 import { AddFeedDialog } from '@/components/manage/AddFeedDialog';
 import { EditCategoryDialog } from '@/components/manage/EditCategoryDialog';
@@ -146,21 +146,10 @@ export function ManagePopup({ open, onOpenChange }: ManagePopupProps) {
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <DialogTitle className="text-2xl">RSS Management</DialogTitle>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Manage your RSS feeds and categories
-                </p>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => onOpenChange(false)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
+            <DialogTitle className="text-2xl">RSS Management</DialogTitle>
+            <p className="text-sm text-muted-foreground mt-1">
+              Manage your RSS feeds and categories
+            </p>
           </DialogHeader>
 
           {loading ? (
