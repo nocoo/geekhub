@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { ChevronDown, ChevronRight, Inbox, Star, Clock, MoreVertical, FolderPlus, Plus, Edit, Trash2, Rss, RefreshCw, FileText } from 'lucide-react';
 import { CrawlerTerminal } from './CrawlerTerminal';
 import { cn } from '@/lib/utils';
@@ -26,6 +27,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
+  const queryClient = useQueryClient();
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [showAddFeed, setShowAddFeed] = useState(false);
@@ -57,6 +59,22 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
   };
 
   const getTotalUnread = () => feeds.reduce((acc, f) => acc + (f.unread_count || 0), 0);
+
+  // 处理 feed 选择，同时触发抓取
+  const handleSelectFeed = useCallback(async (feedId: string | null) => {
+    onSelectFeed(feedId);
+
+    // 如果选择了一个 feed，触发后台抓取
+    if (feedId) {
+      const feed = feeds.find(f => f.id === feedId);
+      if (feed) {
+        // 异步触发抓取，不阻塞 UI
+        fetch(`/api/feeds/${feedId}/fetch`, { method: 'POST' }).catch(err => {
+          console.error('Failed to trigger fetch:', err);
+        });
+      }
+    }
+  }, [onSelectFeed, feeds]);
 
   const handleDeleteCategory = async () => {
     if (!deleteConfirm || deleteConfirm.type !== 'category') return;
@@ -254,7 +272,7 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
                         categoryFeeds.map((feed) => (
                           <div key={feed.id} className="flex items-center gap-1 group">
                             <button
-                              onClick={() => onSelectFeed(feed.id)}
+                              onClick={() => handleSelectFeed(feed.id)}
                               className={cn(
                                 "flex-1 flex items-center gap-2 px-3 py-1.5 rounded-md text-xs transition-colors",
                                 selectedFeed === feed.id
@@ -447,9 +465,14 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
         open={showAddFeed}
         onOpenChange={setShowAddFeed}
         categories={categories}
-        onSuccess={() => {
+        onSuccess={(feed) => {
           setShowAddFeed(false);
-          toast.success('订阅源添加成功');
+          // 刷新 feeds 列表
+          queryClient.invalidateQueries({ queryKey: ['feeds'] });
+        }}
+        onFetchTriggered={() => {
+          // 刷新 feeds 列表以显示最新的抓取状态
+          queryClient.invalidateQueries({ queryKey: ['feeds'] });
         }}
       />
 

@@ -39,12 +39,17 @@ const parser = new Parser({
 async function validateRssUrl(url: string) {
   try {
     const feed = await parser.parseURL(url);
+    const itemCount = feed.items?.length || 0;
+    const latestItem = feed.items?.[0];
+
     return {
       valid: true,
       title: feed.title || 'Untitled Feed',
       description: feed.description || '',
       siteUrl: feed.link || '',
       faviconUrl: feed.image?.url || null,
+      itemCount,
+      latestItemDate: latestItem?.pubDate || latestItem?.isoDate || null,
     };
   } catch (error) {
     return {
@@ -94,7 +99,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { url, category_id, title: customTitle, description: customDescription } = body;
+    const { url, category_id, title: customTitle, description: customDescription, validate_only } = body;
 
     if (!url) {
       return NextResponse.json({ error: 'RSS URL is required' }, { status: 400 });
@@ -104,6 +109,18 @@ export async function POST(request: NextRequest) {
     const validation = await validateRssUrl(url);
     if (!validation.valid) {
       return NextResponse.json({ error: validation.error }, { status: 400 });
+    }
+
+    // 如果只是验证，返回验证结果
+    if (validate_only) {
+      return NextResponse.json({
+        feed: {
+          title: validation.title,
+          description: validation.description,
+          itemCount: validation.itemCount,
+          latestItemDate: validation.latestItemDate,
+        }
+      });
     }
 
     // 检查 URL 是否已存在

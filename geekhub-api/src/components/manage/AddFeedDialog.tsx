@@ -22,9 +22,10 @@ interface AddFeedDialogProps {
   onOpenChange: (open: boolean) => void;
   categories: Category[];
   onSuccess: (feed: any) => void;
+  onFetchTriggered?: () => void;
 }
 
-export function AddFeedDialog({ open, onOpenChange, categories, onSuccess }: AddFeedDialogProps) {
+export function AddFeedDialog({ open, onOpenChange, categories, onSuccess, onFetchTriggered }: AddFeedDialogProps) {
   const [url, setUrl] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [title, setTitle] = useState('');
@@ -52,6 +53,17 @@ export function AddFeedDialog({ open, onOpenChange, categories, onSuccess }: Add
       if (response.ok) {
         const { feed } = await response.json();
         onSuccess(feed);
+
+        // 立即触发一次抓取
+        try {
+          await fetch(`/api/feeds/${feed.id}/fetch`, { method: 'POST' });
+          toast.success(`订阅源添加成功，正在抓取「${feed.title}」...`);
+          onFetchTriggered?.();
+        } catch (fetchError) {
+          console.error('Failed to trigger fetch:', fetchError);
+          // 即使抓取失败也不影响添加成功
+        }
+
         // 重置表单
         setUrl('');
         setCategoryId('');
@@ -84,9 +96,20 @@ export function AddFeedDialog({ open, onOpenChange, categories, onSuccess }: Add
         const { feed } = await response.json();
         setTitle(feed.title || '');
         setDescription(feed.description || '');
+
+        // 显示验证成功信息
+        let message = `✓ 找到 RSS 源「${feed.title}」`;
+        if (feed.itemCount) {
+          message += ` - ${feed.itemCount} 篇文章`;
+        }
+        toast.success(message);
+      } else {
+        const { error } = await response.json();
+        toast.error(error || 'RSS 验证失败');
       }
     } catch (error) {
       console.error('Validation failed:', error);
+      toast.error('RSS 验证失败，请检查 URL 是否正确');
     } finally {
       setValidating(false);
     }
