@@ -1,4 +1,5 @@
 import { formatDistanceToNow, format } from 'date-fns';
+import parse from 'html-react-parser';
 import { ExternalLink, Bookmark, Share2, MoreHorizontal } from 'lucide-react';
 import { Article } from '@/lib/mockData';
 import { Button } from '@/components/ui/button';
@@ -26,22 +27,6 @@ export function ReaderView({ article }: ReaderViewProps) {
       </div>
     );
   }
-
-  // Simplified content rendering - just display as formatted text
-  const renderContent = (content: string | undefined) => {
-    if (!content) {
-      return <p className="text-muted-foreground italic">No content available</p>;
-    }
-    return (
-      <div className="prose-geek">
-        {content.split('\n\n').map((paragraph, i) => (
-          <p key={i} className="my-4 leading-relaxed text-foreground/90">
-            {paragraph}
-          </p>
-        ))}
-      </div>
-    );
-  };
 
   return (
     <div className="flex-1 h-[calc(100vh-3.5rem)] overflow-y-auto hover-scrollbar bg-background">
@@ -107,9 +92,9 @@ export function ReaderView({ article }: ReaderViewProps) {
           </figure>
         )}
 
-        {/* Content */}
-        <div className="font-serif text-lg leading-relaxed">
-          {renderContent(article.content)}
+        {/* Content - Parse HTML */}
+        <div className="prose prose-geek max-w-none font-serif text-lg leading-relaxed">
+          {article.content ? parse(article.content) : <p className="text-muted-foreground italic">No content available</p>}
         </div>
 
         {/* Footer */}
