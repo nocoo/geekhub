@@ -5,6 +5,7 @@ import Parser from 'rss-parser';
 import crypto from 'crypto';
 import { setGlobalDispatcher, ProxyAgent } from 'undici';
 import net from 'net';
+import { parseRssHubUrl } from '@/lib/rsshub';
 
 /**
  * Auto-detect proxy server by checking common Clash ports
@@ -147,10 +148,18 @@ function generateUrlHash(url: string): string {
 }
 
 // 验证和解析 RSS URL
-async function validateRssUrl(url: string) {
+async function validateRssUrl(url: string, rsshubConfig?: RssHubConfig) {
   try {
+    // Resolve RssHub URL if needed
+    let fetchUrl = url;
+    const rsshubResult = parseRssHubUrl(url, rsshubConfig?.enabled ? { instanceUrl: rsshubConfig.url } : undefined);
+    if (rsshubResult.isValid && rsshubResult.feedUrl) {
+      fetchUrl = rsshubResult.feedUrl;
+      console.log(`[Validate] Resolved ${url} -> ${fetchUrl}`);
+    }
+
     // Fetch content with proxy support
-    const xml = await fetchWithProxy(url);
+    const xml = await fetchWithProxy(fetchUrl);
     // Parse the XML content
     const feed = await parser.parseString(xml);
     const itemCount = feed.items?.length || 0;
@@ -166,6 +175,7 @@ async function validateRssUrl(url: string) {
       latestItemDate: latestItem?.pubDate || latestItem?.isoDate || null,
     };
   } catch (error) {
+    console.error('[Validate] Error:', error);
     return {
       valid: false,
       error: error instanceof Error ? error.message : 'Invalid RSS URL',
@@ -202,6 +212,27 @@ export async function GET() {
   }
 }
 
+interface ProxyConfig {
+  enabled: boolean;
+  autoDetect: boolean;
+  host: string;
+  port: string;
+}
+
+interface RssHubConfig {
+  enabled: boolean;
+  url: string;
+}
+
+interface FetchRequestBody {
+  url: string;
+  category_id?: string | null;
+  title?: string;
+  description?: string;
+  validate_only?: boolean;
+  rsshub?: RssHubConfig;
+}
+
 // POST /api/feeds - 添加新的 RSS 源
 export async function POST(request: NextRequest) {
   try {
@@ -212,15 +243,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await request.json();
-    const { url, category_id, title: customTitle, description: customDescription, validate_only } = body;
+    const body: FetchRequestBody = await request.json();
+    const { url, category_id, title: customTitle, description: customDescription, validate_only, rsshub } = body;
 
     if (!url) {
       return NextResponse.json({ error: 'RSS URL is required' }, { status: 400 });
     }
 
     // 验证 RSS URL
-    const validation = await validateRssUrl(url);
+    const validation = await validateRssUrl(url, rsshub);
     if (!validation.valid) {
       return NextResponse.json({ error: validation.error }, { status: 400 });
     }

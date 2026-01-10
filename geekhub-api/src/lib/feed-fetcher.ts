@@ -5,6 +5,7 @@ import crypto from 'crypto';
 import { FeedLogger } from './logger';
 import { setGlobalDispatcher, ProxyAgent } from 'undici';
 import net from 'net';
+import { parseRssHubUrl } from './rsshub';
 
 /**
  * Auto-detect proxy server by checking common Clash ports
@@ -64,6 +65,18 @@ function checkPort(hostname: string, port: number): Promise<boolean> {
   });
 }
 
+export interface ProxyConfig {
+  enabled: boolean;
+  autoDetect: boolean;
+  host: string;
+  port: string;
+}
+
+export interface RssHubConfig {
+  enabled: boolean;
+  url: string;
+}
+
 export interface FeedInfo {
   id: string;
   url: string;
@@ -108,15 +121,40 @@ export interface ArticleData {
 // Configure proxy with auto-detection
 let proxyAgent: ProxyAgent | undefined = undefined;
 let proxyInitialized = false;
+let customProxyConfig: ProxyConfig | undefined = undefined;
+let customRssHubConfig: RssHubConfig | undefined = undefined;
+
+export function setProxyConfig(config?: ProxyConfig) {
+  customProxyConfig = config;
+  proxyInitialized = false; // Force re-initialization
+  proxyAgent = undefined;
+}
+
+export function setRssHubConfig(config?: RssHubConfig) {
+  customRssHubConfig = config;
+}
 
 async function initProxy() {
   if (proxyInitialized) return;
 
-  const detectedProxy = await detectProxy();
-  if (detectedProxy) {
-    proxyAgent = new ProxyAgent(detectedProxy);
+  let proxyUrl: string | null = null;
+
+  // Use custom proxy config if provided and enabled
+  if (customProxyConfig?.enabled) {
+    if (customProxyConfig.autoDetect) {
+      proxyUrl = await detectProxy();
+    } else {
+      proxyUrl = `http://${customProxyConfig.host}:${customProxyConfig.port}`;
+    }
+  } else {
+    // Fall back to environment variable detection
+    proxyUrl = await detectProxy();
+  }
+
+  if (proxyUrl) {
+    proxyAgent = new ProxyAgent(proxyUrl);
     setGlobalDispatcher(proxyAgent);
-    console.log(`[Proxy] Using proxy: ${detectedProxy}`);
+    console.log(`[Proxy] Using proxy: ${proxyUrl}`);
   } else {
     console.log('[Proxy] No proxy detected, using direct connection');
   }
@@ -144,7 +182,16 @@ const parser = createParser();
 async function fetchWithProxy(url: string): Promise<string> {
   await initProxy();  // Ensure proxy is initialized
 
-  const response = await fetch(url, {
+  // Resolve RssHub URL if needed
+  let fetchUrl = url;
+  const rsshubConfig = customRssHubConfig?.enabled ? customRssHubConfig : undefined;
+  const rsshubResult = parseRssHubUrl(url, rsshubConfig ? { instanceUrl: rsshubConfig.url } : undefined);
+  if (rsshubResult.isValid && rsshubResult.feedUrl) {
+    fetchUrl = rsshubResult.feedUrl;
+    console.log(`[RssHub] Resolved ${url} -> ${fetchUrl}`);
+  }
+
+  const response = await fetch(fetchUrl, {
     dispatcher: proxyAgent,
     headers: {
       'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36',
@@ -169,13 +216,19 @@ export class FeedFetcher {
 
   constructor(
     private feed: FeedInfo,
-    private dataDir: string = path.join(process.cwd(), 'data')
+    private dataDir: string = path.join(process.cwd(), 'data'),
+    proxyConfig?: ProxyConfig,
+    rsshubConfig?: RssHubConfig
   ) {
     this.feedDir = path.join(this.dataDir, 'feeds', this.feed.url_hash);
     this.articlesDir = path.join(this.feedDir, 'articles');
     this.indexFile = path.join(this.feedDir, 'index.json');
     this.cacheFile = path.join(this.feedDir, 'cache.json');
     this.logger = new FeedLogger(this.feed.url_hash, this.dataDir);
+
+    // Set proxy and RssHub config for this fetcher
+    setProxyConfig(proxyConfig);
+    setRssHubConfig(rsshubConfig);
   }
 
   private generateArticleHash(article: Parser.Item): string {

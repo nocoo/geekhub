@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { useFormatTime } from '@/lib/format-time';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/sonner';
+import { fetchFeedWithSettings } from '@/lib/fetch-with-settings';
 
 interface ArticleListProps {
   articles: Article[];
@@ -62,7 +63,7 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
 
     setFetching(true);
     try {
-      const response = await fetch(`/api/feeds/${feedId}/fetch`, { method: 'POST' });
+      const response = await fetchFeedWithSettings(feedId);
       if (response.ok) {
         toast.success('正在抓取最新文章...');
         // Fetching state will be reset when fetch-complete event is received

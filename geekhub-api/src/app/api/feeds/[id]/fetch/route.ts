@@ -27,13 +27,31 @@ async function createSupabaseClient() {
   );
 }
 
+interface ProxyConfig {
+  enabled: boolean;
+  autoDetect: boolean;
+  host: string;
+  port: string;
+}
+
+interface RssHubConfig {
+  enabled: boolean;
+  url: string;
+}
+
+interface FetchRequestBody {
+  proxy?: ProxyConfig;
+  rsshub?: RssHubConfig;
+}
+
 // POST /api/feeds/[id]/fetch - 手动触发RSS抓取
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
+    const body: FetchRequestBody = await request.json().catch(() => ({}));
     const supabase = await createSupabaseClient();
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -65,8 +83,9 @@ export async function POST(
       fetch_interval_minutes: feed.fetch_interval_minutes || undefined,
     };
 
-    // 创建 fetcher 并执行抓取
-    const fetcher = new FeedFetcher(feedInfo);
+    // 创建 fetcher 并执行抓取（传递代理和 RssHub 配置）
+    // 不传递 dataDir 参数，使用默认值 path.join(process.cwd(), 'data')
+    const fetcher = new FeedFetcher(feedInfo, undefined, body.proxy, body.rsshub);
 
     // 异步执行抓取任务
     (async () => {

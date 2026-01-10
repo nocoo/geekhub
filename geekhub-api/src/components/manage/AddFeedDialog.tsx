@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -9,6 +9,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import { parseRssHubUrl, isRssHubUrl } from '@/lib/rsshub';
+import { useSettings } from '@/lib/settings';
+import { Rss, AlertTriangle } from 'lucide-react';
 
 interface Category {
   id: string;
@@ -26,12 +29,29 @@ interface AddFeedDialogProps {
 }
 
 export function AddFeedDialog({ open, onOpenChange, categories, onSuccess, defaultCategoryId }: AddFeedDialogProps) {
+  const { settings } = useSettings();
   const [url, setUrl] = useState('');
   const [categoryId, setCategoryId] = useState(defaultCategoryId || '');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
   const [validating, setValidating] = useState(false);
+
+  // Parse RssHub URL
+  const rsshubConfig = useMemo(() => ({
+    instanceUrl: settings.rsshub?.enabled ? settings.rsshub.url : undefined
+  }), [settings.rsshub]);
+
+  const rsshubInfo = useMemo(() => {
+    const result = parseRssHubUrl(url, rsshubConfig);
+    console.log('[RssHub] Parse result:', { input: url, result, config: rsshubConfig });
+    return result;
+  }, [url, rsshubConfig]);
+
+  const isRssHub = isRssHubUrl(url, rsshubConfig);
+  const actualFeedUrl = rsshubInfo.feedUrl || url;
+
+  console.log('[RssHub] State:', { url, isRssHub, actualFeedUrl });
 
   // Update categoryId when defaultCategoryId changes or dialog opens
   useEffect(() => {
@@ -44,17 +64,42 @@ export function AddFeedDialog({ open, onOpenChange, categories, onSuccess, defau
     e.preventDefault();
     if (!url.trim() || loading) return;
 
+    // Check if RssHub URL but RssHub not enabled in settings
+    if (url.startsWith('rsshub://') && !settings.rsshub?.enabled) {
+      toast.error('请先在设置中启用并配置 RssHub 地址', {
+        description: '点击右上角设置按钮 → RssHub 标签页 → 启用 RssHub',
+        duration: 5000,
+        action: {
+          label: '去设置',
+          onClick: () => {
+            // Trigger settings dialog open (you can emit event or use callback)
+            toast.info('请在设置中启用 RssHub');
+          },
+        },
+      });
+      return;
+    }
+
     setLoading(true);
     try {
+      const payload: any = {
+        url: url.trim(),  // Always send original URL
+        category_id: categoryId || null,
+        title: title.trim() || undefined,
+        description: description.trim() || undefined,
+      };
+
+      // Send RssHub settings if enabled
+      if (settings.rsshub?.enabled) {
+        payload.rsshub = settings.rsshub;
+      }
+
+      console.log('[AddFeed] Sending request:', payload);
+
       const response = await fetch('/api/feeds', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          url: url.trim(),
-          category_id: categoryId || null,
-          title: title.trim() || undefined,
-          description: description.trim() || undefined,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
@@ -69,6 +114,7 @@ export function AddFeedDialog({ open, onOpenChange, categories, onSuccess, defau
         setDescription('');
       } else {
         const { error } = await response.json();
+        console.error('[AddFeed] Server error:', error);
         toast.error(error);
       }
     } catch (error) {
@@ -82,12 +128,28 @@ export function AddFeedDialog({ open, onOpenChange, categories, onSuccess, defau
   const validateUrl = async () => {
     if (!url.trim()) return;
 
+    // Check if RssHub URL but RssHub not enabled in settings
+    if (url.startsWith('rsshub://') && !settings.rsshub?.enabled) {
+      toast.error('请先在设置中启用并配置 RssHub 地址', {
+        description: '点击右上角设置按钮 → RssHub 标签页 → 启用 RssHub',
+        duration: 5000,
+      });
+      return;
+    }
+
     setValidating(true);
     try {
+      const payload: any = { url: url.trim(), validate_only: true };
+
+      // Send RssHub settings if enabled
+      if (settings.rsshub?.enabled) {
+        payload.rsshub = settings.rsshub;
+      }
+
       const response = await fetch('/api/feeds', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: url.trim(), validate_only: true }),
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
@@ -97,8 +159,11 @@ export function AddFeedDialog({ open, onOpenChange, categories, onSuccess, defau
 
         // 显示验证成功信息
         let message = `✓ 找到 RSS 源「${feed.title}」`;
+        if (isRssHub) {
+          message = `✓ RssHub 源「${feed.title}」`;
+        }
         if (feed.itemCount) {
-          message += ` - ${feed.itemCount} 篇文章`;
+          message += ` - ${feed.itemCount} 篇章`;
         }
         toast.success(message);
       } else {
@@ -127,15 +192,22 @@ export function AddFeedDialog({ open, onOpenChange, categories, onSuccess, defau
               RSS URL *
             </label>
             <div className="flex gap-2">
-              <input
-                type="url"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                onBlur={() => setUrl(url.trim())}
-                placeholder="https://example.com/rss.xml"
-                className="flex-1 px-3 py-2 border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                required
-              />
+              <div className="relative flex-1">
+                {isRssHub && (
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-primary">
+                    <Rss className="w-4 h-4" />
+                  </div>
+                )}
+                <input
+                  type="url"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  onBlur={() => setUrl(url.trim())}
+                  placeholder="https://example.com/rss.xml or rsshub://sspai/index"
+                  className={`flex-1 px-3 py-2 border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary ${isRssHub ? 'pl-10' : ''}`}
+                  required
+                />
+              </div>
               <Button
                 type="button"
                 variant="outline"
@@ -145,6 +217,31 @@ export function AddFeedDialog({ open, onOpenChange, categories, onSuccess, defau
                 {validating ? 'Checking...' : 'Validate'}
               </Button>
             </div>
+
+            {/* RssHub URL preview */}
+            {isRssHub && rsshubInfo.feedUrl && rsshubInfo.feedUrl !== url && (
+              <>
+                <div className="mt-2 p-2 rounded-md bg-primary/10 border border-primary/20">
+                  <p className="text-xs text-muted-foreground mb-1">RssHub Feed URL:</p>
+                  <p className="text-xs font-mono text-foreground break-all">{rsshubInfo.feedUrl}</p>
+                </div>
+
+                {/* Warning if RssHub not enabled */}
+                {!settings.rsshub?.enabled && (
+                  <div className="mt-2 p-3 rounded-md bg-destructive/10 border border-destructive/20 flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-xs font-medium text-destructive mb-1">
+                        RssHub 未启用
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        请先在设置中启用 RssHub 并配置实例地址
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </div>
 
           {/* 分类选择 */}

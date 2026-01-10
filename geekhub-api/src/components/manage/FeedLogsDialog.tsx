@@ -10,6 +10,9 @@ import {
 } from '@/components/ui/dialog';
 import { RefreshCw, FileText, Calendar, Clock, HardDrive } from 'lucide-react';
 import { toast } from 'sonner';
+import { fetchFeedWithSettings } from '@/lib/fetch-with-settings';
+import { formatFeedUrlForDisplay } from '@/lib/rsshub-display';
+import { useSettings } from '@/lib/settings';
 
 interface Article {
   path: string;
@@ -56,10 +59,16 @@ function formatDate(dateStr: string): string {
 }
 
 export function FeedLogsDialog({ feedId, feedTitle, open, onOpenChange }: FeedLogsDialogProps) {
+  const { settings } = useSettings();
   const [data, setData] = useState<LogsData | null>(null);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'logs' | 'articles'>('logs');
   const [fetching, setFetching] = useState(false);
+
+  // Format URL for display (convert RssHub URLs back to rsshub:// format)
+  const displayUrl = data?.feed.url
+    ? formatFeedUrlForDisplay(data.feed.url, settings.rsshub?.enabled ? settings.rsshub.url : undefined)
+    : '';
 
   const loadData = async () => {
     setLoading(true);
@@ -83,9 +92,7 @@ export function FeedLogsDialog({ feedId, feedTitle, open, onOpenChange }: FeedLo
   const handleFetch = async () => {
     setFetching(true);
     try {
-      const response = await fetch(`/api/feeds/${feedId}/fetch`, {
-        method: 'POST',
-      });
+      const response = await fetchFeedWithSettings(feedId);
       if (response.ok) {
         toast.success('Fetch task started');
         // Reload logs after a delay
@@ -115,8 +122,8 @@ export function FeedLogsDialog({ feedId, feedTitle, open, onOpenChange }: FeedLo
           <div className="flex items-center justify-between">
             <div>
               <DialogTitle className="text-xl">{feedTitle}</DialogTitle>
-              <p className="text-sm text-muted-foreground mt-1">
-                {data?.feed.url}
+              <p className="text-sm text-muted-foreground mt-1 font-mono">
+                {displayUrl}
               </p>
             </div>
             <Button

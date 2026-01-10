@@ -16,6 +16,7 @@ import { EditFeedDialog } from '@/components/manage/EditFeedDialog';
 import { FeedLogsDialog } from '@/components/manage/FeedLogsDialog';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { toast } from '@/components/ui/sonner';
+import { fetchFeedWithSettings } from '@/lib/fetch-with-settings';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -133,9 +134,7 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
   const handleFetchFeed = async (feedId: string, feedTitle: string) => {
     setFetchingFeeds(prev => new Set(prev).add(feedId));
     try {
-      const response = await fetch(`/api/feeds/${feedId}/fetch`, {
-        method: 'POST',
-      });
+      const response = await fetchFeedWithSettings(feedId);
 
       if (response.ok) {
         toast.success(`开始抓取「${feedTitle}」`);

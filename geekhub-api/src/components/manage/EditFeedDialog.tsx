@@ -9,6 +9,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import { formatFeedUrlForDisplay } from '@/lib/rsshub-display';
+import { useSettings } from '@/lib/settings';
 
 interface Category {
   id: string;
@@ -36,12 +38,19 @@ interface EditFeedDialogProps {
 }
 
 export function EditFeedDialog({ feed, categories, open, onOpenChange, onSuccess }: EditFeedDialogProps) {
+  const { settings } = useSettings();
   const [title, setTitle] = useState(feed.title);
   const [description, setDescription] = useState(feed.description || '');
   const [categoryId, setCategoryId] = useState(feed.category?.id || '');
   const [isActive, setIsActive] = useState(feed.is_active);
   const [fetchInterval, setFetchInterval] = useState(feed.fetch_interval_minutes || 60);
   const [loading, setLoading] = useState(false);
+
+  // Format URL for display (convert RssHub URLs back to rsshub:// format)
+  const displayUrl = formatFeedUrlForDisplay(
+    feed.url,
+    settings.rsshub?.enabled ? settings.rsshub.url : undefined
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,9 +100,9 @@ export function EditFeedDialog({ feed, categories, open, onOpenChange, onSuccess
             </label>
             <input
               type="url"
-              value={feed.url}
+              value={displayUrl}
               readOnly
-              className="w-full px-3 py-2 border border-border rounded-lg bg-muted text-muted-foreground"
+              className="w-full px-3 py-2 border border-border rounded-lg bg-muted text-muted-foreground font-mono"
             />
             <p className="text-xs text-muted-foreground mt-1">
               URL cannot be changed. Delete and re-add the feed to change URL.
