@@ -1,19 +1,23 @@
 import { useEffect, useCallback } from 'react';
-import { formatDistanceToNow } from 'date-fns';
-import { Article } from '@/lib/mockData';
+import { Rss } from 'lucide-react';
+import { Article } from '@/hooks/useDatabase';
 import { cn } from '@/lib/utils';
+import { useFormatTime } from '@/lib/format-time';
 
 interface ArticleListProps {
   articles: Article[];
   selectedArticle: Article | null;
   onSelectArticle: (article: Article) => void;
+  isLoading?: boolean;
 }
 
-export function ArticleList({ articles, selectedArticle, onSelectArticle }: ArticleListProps) {
+export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoading }: ArticleListProps) {
+  const formatTime = useFormatTime();
+
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (!articles.length) return;
-    
-    const currentIndex = selectedArticle 
+
+    const currentIndex = selectedArticle
       ? articles.findIndex(a => a.id === selectedArticle.id)
       : -1;
 
@@ -33,12 +37,20 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle }: Arti
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
 
+  if (isLoading) {
+    return (
+      <div className="w-96 flex-shrink-0 border-r border-subtle h-[calc(100vh-3.5rem)] flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   if (articles.length === 0) {
     return (
       <div className="w-96 flex-shrink-0 border-r border-subtle h-[calc(100vh-3.5rem)] flex items-center justify-center">
         <div className="text-center text-muted-foreground">
-          <p className="text-sm">No articles found</p>
-          <p className="text-xs mt-1">Select a feed to get started</p>
+          <p className="text-sm">没有找到文章</p>
+          <p className="text-xs mt-1">选择一个订阅源开始阅读</p>
         </div>
       </div>
     );
@@ -49,10 +61,10 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle }: Arti
       <div className="p-3 border-b border-subtle sticky top-0 bg-card/95 backdrop-blur-sm z-10">
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-foreground">
-            {articles.length} articles
+            {articles.length} 篇文章
           </span>
           <span className="text-xs text-muted-foreground font-mono">
-            ↑↓ to navigate
+            ↑↓ 导航
           </span>
         </div>
       </div>
@@ -96,27 +108,22 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle }: Arti
 
                 {/* Metadata */}
                 <div className="flex items-center gap-2 mt-2">
-                  <span className="text-sm">{article.feedIcon}</span>
-                  <span className="text-xs text-muted-foreground truncate">
-                    {article.author}
-                  </span>
-                  <span className="text-xs text-muted-foreground">·</span>
-                  <span className="text-xs text-muted-foreground font-mono">
-                    {formatDistanceToNow(article.publishedAt, { addSuffix: true })}
-                  </span>
+                  <Rss className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                  {article.author && (
+                    <>
+                      <span className="text-xs text-muted-foreground truncate">
+                        {article.author}
+                      </span>
+                      <span className="text-xs text-muted-foreground">·</span>
+                    </>
+                  )}
+                  {article.publishedAt && (
+                    <span className="text-xs text-muted-foreground font-mono">
+                      {formatTime(article.publishedAt)}
+                    </span>
+                  )}
                 </div>
               </div>
-
-              {/* Thumbnail */}
-              {article.thumbnail && (
-                <div className="flex-shrink-0">
-                  <img
-                    src={article.thumbnail}
-                    alt=""
-                    className="w-16 h-16 object-cover rounded-md bg-muted"
-                  />
-                </div>
-              )}
             </div>
           </button>
         ))}

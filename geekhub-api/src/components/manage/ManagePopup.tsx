@@ -3,11 +3,12 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Plus, Rss, Edit, Trash2, FolderPlus } from 'lucide-react';
+import { Plus, Rss, Edit, Trash2, FolderPlus, RefreshCw, FileText, Activity } from 'lucide-react';
 import { AddCategoryDialog } from '@/components/manage/AddCategoryDialog';
 import { AddFeedDialog } from '@/components/manage/AddFeedDialog';
 import { EditCategoryDialog } from '@/components/manage/EditCategoryDialog';
 import { EditFeedDialog } from '@/components/manage/EditFeedDialog';
+import { FeedLogsDialog } from '@/components/manage/FeedLogsDialog';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { toast } from '@/components/ui/sonner';
 import {
@@ -54,6 +55,8 @@ export function ManagePopup({ open, onOpenChange }: ManagePopupProps) {
   const [showAddFeed, setShowAddFeed] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [editingFeed, setEditingFeed] = useState<Feed | null>(null);
+  const [viewingLogsFeed, setViewingLogsFeed] = useState<{ id: string; title: string } | null>(null);
+  const [fetchingFeeds, setFetchingFeeds] = useState<Set<string>>(new Set());
   const [deleteConfirm, setDeleteConfirm] = useState<{
     type: 'category' | 'feed' | null;
     id: string;
@@ -138,6 +141,34 @@ export function ManagePopup({ open, onOpenChange }: ManagePopupProps) {
       toast.error('Failed to delete feed');
     } finally {
       setDeleteConfirm(null);
+    }
+  };
+
+  // 手动触发抓取
+  const handleFetchFeed = async (feedId: string, feedTitle: string) => {
+    setFetchingFeeds(prev => new Set(prev).add(feedId));
+    try {
+      const response = await fetch(`/api/feeds/${feedId}/fetch`, {
+        method: 'POST',
+      });
+
+      if (response.ok) {
+        toast.success(`Started fetching "${feedTitle}"`);
+        // 刷新数据以更新最后抓取时间
+        setTimeout(() => loadData(), 2000);
+      } else {
+        const { error } = await response.json();
+        toast.error(error || 'Failed to start fetch');
+      }
+    } catch (error) {
+      console.error('Failed to fetch feed:', error);
+      toast.error('Failed to start fetch');
+    } finally {
+      setFetchingFeeds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(feedId);
+        return newSet;
+      });
     }
   };
 
@@ -279,7 +310,27 @@ export function ManagePopup({ open, onOpenChange }: ManagePopupProps) {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8"
+                          onClick={() => setViewingLogsFeed({ id: feed.id, title: feed.title })}
+                          title="View logs & files"
+                        >
+                          <FileText className="w-3 h-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => handleFetchFeed(feed.id, feed.title)}
+                          disabled={fetchingFeeds.has(feed.id)}
+                          title="Fetch now"
+                        >
+                          <RefreshCw className={`w-3 h-3 ${fetchingFeeds.has(feed.id) ? 'animate-spin' : ''}`} />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
                           onClick={() => setEditingFeed(feed)}
+                          title="Edit feed"
                         >
                           <Edit className="w-3 h-3" />
                         </Button>
@@ -292,6 +343,7 @@ export function ManagePopup({ open, onOpenChange }: ManagePopupProps) {
                             id: feed.id,
                             name: feed.title,
                           })}
+                          title="Delete feed"
                         >
                           <Trash2 className="w-3 h-3" />
                         </Button>
@@ -379,6 +431,16 @@ export function ManagePopup({ open, onOpenChange }: ManagePopupProps) {
         variant="destructive"
         onConfirm={deleteConfirm?.type === 'category' ? handleDeleteCategory : handleDeleteFeed}
       />
+
+      {/* 日志和文件查看对话框 */}
+      {viewingLogsFeed && (
+        <FeedLogsDialog
+          feedId={viewingLogsFeed.id}
+          feedTitle={viewingLogsFeed.title}
+          open={!!viewingLogsFeed}
+          onOpenChange={(open) => !open && setViewingLogsFeed(null)}
+        />
+      )}
     </>
   );
 }

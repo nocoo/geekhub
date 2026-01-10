@@ -1,37 +1,63 @@
-import { useEffect, useState } from 'react';
-import { crawlerLogs } from '@/lib/mockData';
+import { useEffect, useState, useRef } from 'react';
 
 interface LogLine {
-  status: number;
+  timestamp: string;
+  level: string;
+  status?: number;
   action: string;
   url: string;
-  time: string;
+  duration?: string;
+  message?: string;
+  feedTitle?: string;
+}
+
+interface FetchLogsResponse {
+  logs: LogLine[];
 }
 
 export function CrawlerTerminal() {
   const [logs, setLogs] = useState<LogLine[]>([]);
   const [cursorVisible, setCursorVisible] = useState(true);
+  const [isOnline, setIsOnline] = useState(true);
+  const [lastSync, setLastSync] = useState<string>('');
+  const containerRef = useRef<HTMLDivElement>(null);
 
+  // Auto-scroll to bottom when new logs arrive
   useEffect(() => {
-    // Simulate logs appearing one by one
-    let index = 0;
-    const interval = setInterval(() => {
-      if (index < crawlerLogs.length) {
-        const log = crawlerLogs[index];
-        if (log) {
-          setLogs(prev => [...prev, log]);
-        }
-        index++;
-      } else {
-        // Reset and start again after a pause
-        setLogs([]);
-        index = 0;
-      }
-    }, 1500);
+    if (containerRef.current) {
+      containerRef.current.scrollTop = containerRef.current.scrollHeight;
+    }
+  }, [logs]);
 
+  // Fetch logs periodically
+  useEffect(() => {
+    const fetchLogs = async () => {
+      try {
+        const response = await fetch('/api/logs');
+        if (response.ok) {
+          const data: FetchLogsResponse = await response.json();
+          setLogs(data.logs || []);
+
+          // Update last sync time
+          setLastSync('刚刚');
+          setIsOnline(true);
+        } else {
+          setIsOnline(false);
+        }
+      } catch {
+        setIsOnline(false);
+      }
+    };
+
+    // Initial fetch
+    fetchLogs();
+
+    // Poll for new logs every 5 seconds
+    const interval = setInterval(fetchLogs, 5000);
     return () => clearInterval(interval);
   }, []);
 
+  // Cursor blinking
   useEffect(() => {
     const cursorInterval = setInterval(() => {
       setCursorVisible(prev => !prev);
@@ -39,10 +65,26 @@ export function CrawlerTerminal() {
     return () => clearInterval(cursorInterval);
   }, []);
 
-  const getStatusColor = (status: number) => {
+  const getStatusColor = (status?: number) => {
+    if (!status) return 'text-muted-foreground';
     if (status >= 200 && status < 300) return 'text-emerald-400';
     if (status >= 300 && status < 400) return 'text-yellow-400';
     return 'text-red-400';
+  };
+
+  const getLevelColor = (level: string) => {
+    switch (level) {
+      case 'SUCCESS': return 'text-emerald-400';
+      case 'ERROR': return 'text-red-400';
+      case 'WARNING': return 'text-yellow-400';
+      case 'INFO': return 'text-blue-400';
+      default: return 'text-muted-foreground';
+    }
+  };
+
+  const formatTime = (timestamp: string) => {
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
   };
 
   return (
@@ -57,25 +99,36 @@ export function CrawlerTerminal() {
           crawler.log
         </span>
       </div>
-      
-      <div className="bg-terminal p-3 h-32 overflow-hidden">
+
+      <div ref={containerRef} className="bg-terminal p-3 h-32 overflow-y-auto">
         <div className="space-y-1 font-mono text-[11px]">
-          {logs.map((log, i) => (
-            <div 
-              key={i} 
-              className="flex items-center gap-2 animate-slide-in"
-            >
-              <span className="text-muted-foreground">{'>'}</span>
-              <span className={`${getStatusColor(log.status)} font-medium`}>
-                [{log.status}]
-              </span>
-              <span className="text-primary/80">{log.action}</span>
-              <span className="text-muted-foreground truncate flex-1">
-                {log.url}
-              </span>
-              <span className="text-emerald-400/70">{log.time}</span>
-            </div>
-          ))}
+          {logs.length === 0 ? (
+            <div className="text-muted-foreground">暂无日志</div>
+          ) : (
+            logs.map((log, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-2 animate-slide-in"
+              >
+                <span className="text-muted-foreground">{'>'}</span>
+                {log.status && (
+                  <span className={`${getStatusColor(log.status)} font-medium`}>
+                    [{log.status}]
+                  </span>
+                )}
+                <span className={`${getLevelColor(log.level)} font-medium`}>
+                  {log.action}
+                </span>
+                <span className="text-muted-foreground truncate flex-1" title={log.url}>
+                  {log.url.length > 30 ? log.url.slice(0, 30) + '...' : log.url}
+                </span>
+                {log.duration && (
+                  <span className="text-blue-400/70">{log.duration}</span>
+                )}
+                <span className="text-emerald-400/70">{formatTime(log.timestamp)}</span>
+              </div>
+            ))
+          )}
           <div className="flex items-center gap-2 text-muted-foreground">
             <span>{'>'}</span>
             <span className={cursorVisible ? 'opacity-100' : 'opacity-0'}>▌</span>
@@ -84,15 +137,15 @@ export function CrawlerTerminal() {
       </div>
 
       <div className="flex items-center gap-2 px-3 py-1.5 bg-terminal/50 border-t border-border/20">
-        <div className="relative w-2 h-2">
-          <div className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-75" />
+        <div className={`relative w-2 h-2 ${isOnline ? '' : 'opacity-30'}`}>
+          <div className={`absolute inset-0 rounded-full bg-emerald-500 ${isOnline ? 'animate-ping opacity-75' : ''}`} />
           <div className="relative w-2 h-2 rounded-full bg-emerald-500" />
         </div>
-        <span className="text-[10px] font-mono text-emerald-400">
-          Status: Online
+        <span className={`text-[10px] font-mono ${isOnline ? 'text-emerald-400' : 'text-red-400'}`}>
+          状态: {isOnline ? '在线' : '离线'}
         </span>
         <span className="text-[10px] font-mono text-muted-foreground ml-auto">
-          Last sync: 2m ago
+          刷新: {lastSync}
         </span>
       </div>
     </div>

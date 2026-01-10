@@ -1,14 +1,13 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { Header } from "@/components/Header";
 import { Sidebar } from "@/components/Sidebar";
 import { ArticleList } from "@/components/ArticleList";
 import { ReaderView } from "@/components/ReaderView";
-import { articles as mockArticles, Article } from "@/lib/mockData";
-import { useEffect } from "react";
+import { useArticles, useArticleContent, Article } from "@/hooks/useDatabase";
 
 export default function Home() {
   const { user, loading } = useAuth();
@@ -16,21 +15,20 @@ export default function Home() {
   const [selectedFeed, setSelectedFeed] = useState<string | null>(null);
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
 
+  // 获取文章列表
+  const { data: articles = [], isLoading: articlesLoading } = useArticles(selectedFeed);
+
+  // 获取选中文章的完整内容
+  const { data: articleContent } = useArticleContent(selectedArticle?.hash || '');
+
   useEffect(() => {
     if (!loading && !user) {
       router.push('/login');
     }
   }, [user, loading, router]);
 
-  const filteredArticles = useMemo(() => {
-    if (!selectedFeed) return mockArticles;
-    return mockArticles.filter((article) => article.feedId === selectedFeed);
-  }, [selectedFeed]);
-
   const handleSelectArticle = (article: Article) => {
     setSelectedArticle(article);
-    // Mark as read (in real app, this would persist)
-    article.isRead = true;
   };
 
   if (loading) {
@@ -45,17 +43,24 @@ export default function Home() {
     return null; // Will redirect to login
   }
 
+  // 合并文章内容和文章元数据
+  const articleWithContent = selectedArticle && articleContent ? {
+    ...selectedArticle,
+    content: articleContent.content || selectedArticle.description || '',
+  } : selectedArticle;
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
       <div className="flex">
         <Sidebar selectedFeed={selectedFeed} onSelectFeed={setSelectedFeed} />
         <ArticleList
-          articles={filteredArticles}
+          articles={articles}
           selectedArticle={selectedArticle}
           onSelectArticle={handleSelectArticle}
+          isLoading={articlesLoading}
         />
-        <ReaderView article={selectedArticle} />
+        <ReaderView article={articleWithContent} />
       </div>
     </div>
   );

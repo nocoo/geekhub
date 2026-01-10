@@ -37,16 +37,17 @@ export interface Feed {
 
 export interface Article {
   id: string;
-  feed_id: string;
+  feedId: string;
   title: string;
-  content: string | null;
   url: string;
-  author: string | null;
-  published_at: string;
-  is_read: boolean;
-  is_bookmarked: boolean;
-  created_at: string;
-  feed?: Feed;
+  description: string;
+  content?: string;
+  author?: string;
+  publishedAt?: Date | null;
+  feedName: string;
+  feedIcon: string;
+  isRead: boolean;
+  hash?: string;
 }
 
 // Categories hooks
@@ -157,7 +158,7 @@ export function useCreateFeed() {
 }
 
 // Articles hooks
-export function useArticles(feedId?: string) {
+export function useArticles(feedId?: string | null) {
   const { user } = useAuth();
 
   return useQuery({
@@ -165,24 +166,37 @@ export function useArticles(feedId?: string) {
     queryFn: async () => {
       if (!user) return [];
 
-      let query = supabase
-        .from('articles')
-        .select(`
-          *,
-          feed:feeds(*)
-        `)
-        .order('published_at', { ascending: false });
-
-      if (feedId) {
-        query = query.eq('feed_id', feedId);
+      if (!feedId) {
+        // 如果没有选择 feed，返回空数组或所有文章
+        return [];
       }
 
-      const { data, error } = await query;
+      const response = await fetch(`/api/feeds/${feedId}/articles`);
+      if (!response.ok) {
+        throw new Error('Failed to load articles');
+      }
 
-      if (error) throw error;
-      return data as Article[];
+      const data = await response.json();
+      return data.articles as Article[];
     },
-    enabled: !!user,
+    enabled: !!user && !!feedId,
+  });
+}
+
+export function useArticleContent(articleHash: string) {
+  return useQuery({
+    queryKey: ['article', articleHash],
+    queryFn: async () => {
+      const response = await fetch(`/api/articles/${articleHash}`);
+      if (!response.ok) {
+        throw new Error('Failed to load article content');
+      }
+
+      const data = await response.json();
+      return data;
+    },
+    enabled: !!articleHash,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { FeedFetcher, FeedInfo } from '@/lib/feed-fetcher';
 
 async function createSupabaseClient() {
   const cookieStore = await cookies();
@@ -28,7 +29,7 @@ async function createSupabaseClient() {
 
 // POST /api/feeds/[id]/fetch - 手动触发RSS抓取
 export async function POST(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -52,22 +53,58 @@ export async function POST(
       return NextResponse.json({ error: 'Feed not found' }, { status: 404 });
     }
 
-    // TODO: 实际触发RSS抓取任务
-    // 这里应该：
-    // 1. 调用RSS parser获取新文章
-    // 2. 保存文章到 data/feeds/{url_hash}/articles/ 目录
-    // 3. 更新数据库中的统计信息
+    // 构造 FeedInfo
+    const feedInfo: FeedInfo = {
+      id: feed.id,
+      url: feed.url,
+      url_hash: feed.url_hash,
+      title: feed.title,
+      description: feed.description || undefined,
+      site_url: feed.site_url || undefined,
+      favicon_url: feed.favicon_url || undefined,
+      fetch_interval_minutes: feed.fetch_interval_minutes || undefined,
+    };
 
-    // 模拟异步任务启动
-    const taskId = `fetch_${id}_${Date.now()}`;
+    // 创建 fetcher 并执行抓取
+    const fetcher = new FeedFetcher(feedInfo);
+
+    // 异步执行抓取任务
+    (async () => {
+      try {
+        const result = await fetcher.fetch();
+
+        // 更新数据库统计信息
+        await supabase
+          .from('feeds')
+          .update({
+            last_fetched_at: new Date().toISOString(),
+            last_success_at: result.success ? new Date().toISOString() : feed.last_success_at,
+            total_articles: (feed.total_articles || 0) + result.articlesNew,
+            fetch_error: result.error || null,
+          })
+          .eq('id', id);
+      } catch (error) {
+        console.error('Fetch error:', error);
+        await supabase
+          .from('feeds')
+          .update({
+            last_fetched_at: new Date().toISOString(),
+            fetch_error: error instanceof Error ? error.message : String(error),
+          })
+          .eq('id', id);
+      }
+    })();
 
     return NextResponse.json({
       success: true,
       message: 'Fetch task started',
-      taskId,
       feedId: id,
+      feedTitle: feed.title,
     });
   } catch (error) {
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Internal server error', details: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    );
   }
 }
