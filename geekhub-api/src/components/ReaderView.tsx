@@ -7,6 +7,8 @@ import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { toast } from '@/components/ui/sonner';
 import { getProxyImageUrl, getRefererFromUrl } from '@/lib/image-proxy';
 import { useFormatTime } from '@/lib/format-time';
+import { useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ReaderViewProps {
   article: Article | null;
@@ -36,6 +38,8 @@ function getFirstChar(str: string): string {
 
 export function ReaderView({ article }: ReaderViewProps) {
   const formatTime = useFormatTime();
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [fullWidth, setFullWidth] = useState(false);
   const [showImages, setShowImages] = useState(true);
   const [enhancedContent, setEnhancedContent] = useState<string | null>(null);
@@ -54,53 +58,125 @@ export function ReaderView({ article }: ReaderViewProps) {
   const saveForLater = useSaveForLater();
   const removeFromLater = useRemoveFromLater();
 
+  // Update bookmark and read later status when article changes or cache updates
+  useEffect(() => {
+    if (!article?.hash || !user) {
+      setIsBookmarked(false);
+      setIsReadLater(false);
+      return;
+    }
+
+    const updateStatus = () => {
+      // Check if article is bookmarked by looking at starred articles cache
+      const starredArticles = queryClient.getQueryData<Article[]>(['articles', user.id, 'starred']);
+      const isCurrentlyBookmarked = starredArticles?.some(a => a.hash === article.hash) || false;
+      setIsBookmarked(isCurrentlyBookmarked);
+
+      // Check if article is in read later by looking at later articles cache
+      const laterArticles = queryClient.getQueryData<Article[]>(['articles', user.id, 'later']);
+      const isCurrentlyReadLater = laterArticles?.some(a => a.hash === article.hash) || false;
+      setIsReadLater(isCurrentlyReadLater);
+    };
+
+    // Initial update
+    updateStatus();
+
+    // Subscribe to cache changes
+    const unsubscribeStarred = queryClient.getQueryCache().subscribe((event) => {
+      if (event.query.queryKey[0] === 'articles' &&
+          event.query.queryKey[1] === user.id &&
+          event.query.queryKey[2] === 'starred') {
+        updateStatus();
+      }
+    });
+
+    const unsubscribeLater = queryClient.getQueryCache().subscribe((event) => {
+      if (event.query.queryKey[0] === 'articles' &&
+          event.query.queryKey[1] === user.id &&
+          event.query.queryKey[2] === 'later') {
+        updateStatus();
+      }
+    });
+
+    return () => {
+      unsubscribeStarred();
+      unsubscribeLater();
+    };
+  }, [article?.hash, user?.id, queryClient]);
+
   // Handle bookmark toggle
-  const handleBookmark = useCallback(async () => {
+  const handleBookmark = useCallback(() => {
     if (!article) return;
 
-    try {
-      if (isBookmarked) {
-        await unbookmarkArticle.mutateAsync(article.hash || '');
-        setIsBookmarked(false);
-        toast.success('已取消收藏');
-      } else {
-        await bookmarkArticle.mutateAsync({
-          articleHash: article.hash || '',
-          feedId: article.feedId,
-          articleTitle: article.title,
-          articleUrl: article.url,
-        });
-        setIsBookmarked(true);
-        toast.success('已收藏');
-      }
-    } catch (error) {
-      console.error('Failed to toggle bookmark:', error);
-      toast.error('操作失败');
+    if (isBookmarked) {
+      // Optimistically update UI
+      setIsBookmarked(false);
+      toast.success('已取消收藏');
+
+      unbookmarkArticle.mutate(article.hash || '', {
+        onError: (error) => {
+          // Rollback on error
+          setIsBookmarked(true);
+          console.error('Failed to toggle bookmark:', error);
+          toast.error('操作失败，已回滚');
+        }
+      });
+    } else {
+      // Optimistically update UI
+      setIsBookmarked(true);
+      toast.success('已收藏');
+
+      bookmarkArticle.mutate({
+        articleHash: article.hash || '',
+        feedId: article.feedId,
+        articleTitle: article.title,
+        articleUrl: article.url,
+      }, {
+        onError: (error) => {
+          // Rollback on error
+          setIsBookmarked(false);
+          console.error('Failed to toggle bookmark:', error);
+          toast.error('操作失败，已回滚');
+        }
+      });
     }
   }, [article, isBookmarked, bookmarkArticle, unbookmarkArticle]);
 
   // Handle read later toggle
-  const handleReadLater = useCallback(async () => {
+  const handleReadLater = useCallback(() => {
     if (!article) return;
 
-    try {
-      if (isReadLater) {
-        await removeFromLater.mutateAsync(article.hash || '');
-        setIsReadLater(false);
-        toast.success('已从稍后阅读移除');
-      } else {
-        await saveForLater.mutateAsync({
-          articleHash: article.hash || '',
-          feedId: article.feedId,
-          articleTitle: article.title,
-          articleUrl: article.url,
-        });
-        setIsReadLater(true);
-        toast.success('已添加到稍后阅读');
-      }
-    } catch (error) {
-      console.error('Failed to toggle read later:', error);
-      toast.error('操作失败');
+    if (isReadLater) {
+      // Optimistically update UI
+      setIsReadLater(false);
+      toast.success('已从稍后阅读移除');
+
+      removeFromLater.mutate(article.hash || '', {
+        onError: (error) => {
+          // Rollback on error
+          setIsReadLater(true);
+          console.error('Failed to toggle read later:', error);
+          toast.error('操作失败，已回滚');
+        }
+      });
+    } else {
+      // Optimistically update UI
+      setIsReadLater(true);
+      toast.success('已添加到稍后阅读');
+
+      saveForLater.mutate({
+        articleHash: article.hash || '',
+        feedId: article.feedId,
+        articleTitle: article.title,
+        articleUrl: article.url,
+      }, {
+        onError: (error) => {
+          // Rollback on error
+          setIsReadLater(false);
+          console.error('Failed to toggle read later:', error);
+          toast.error('操作失败，已回滚');
+        }
+      });
     }
   }, [article, isReadLater, saveForLater, removeFromLater]);
 

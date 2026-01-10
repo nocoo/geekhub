@@ -27,6 +27,7 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
   const markAsRead = useMarkAsRead();
   const [showRead, setShowRead] = useState(false);
   const [fetching, setFetching] = useState(false);
+  const [, forceUpdate] = useState({});
 
   // Track articles read in current feed session (cleared when switching feeds)
   const sessionReadHashesRef = useRef<Set<string>>(new Set());
@@ -70,6 +71,11 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
       setTimeout(scrollToSelectedArticle, 50);
     }
   }, [selectedArticle, scrollToSelectedArticle]);
+
+  // Check if article should be displayed as read (including session read)
+  const isArticleRead = useCallback((article: Article) => {
+    return article.isRead || (article.hash && sessionReadHashesRef.current.has(article.hash));
+  }, [forceUpdate]); // Add forceUpdate as dependency to trigger re-render
 
   // Filter articles: show if unread OR was just read in this session
   const filteredArticles = useMemo(() => {
@@ -134,16 +140,38 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
     }, [feedId, queryClient, user?.id]),
   });
 
-  // Count unread from current articles
+  // Count unread from current articles (excluding session read)
   const unreadCount = useMemo(() =>
-    articles.filter(a => !a.isRead).length,
-    [articles]
+    articles.filter(a => !isArticleRead(a)).length,
+    [articles, isArticleRead]
   );
   const hasUnread = unreadCount > 0;
 
   const handleMarkAllAsRead = () => {
     if (feedId && hasUnread) {
-      markAllAsRead.mutate(feedId);
+      // Get all unread articles
+      const unreadArticles = articles.filter(a => !a.isRead && a.hash);
+
+      // Optimistically add to session read hashes for immediate UI update
+      unreadArticles.forEach(article => {
+        if (article.hash) {
+          sessionReadHashesRef.current.add(article.hash);
+        }
+      });
+
+      // Force re-render to update the UI immediately
+      forceUpdate({});
+
+      // Show toast notification
+      toast.success(`已将 ${unreadArticles.length} 篇文章标记为已读`);
+
+      // Call the real API in the background (fire and forget)
+      markAllAsRead.mutate(feedId, {
+        onError: (error) => {
+          // Silently log error, don't show to user since it's fire-and-forget
+          console.error('Background mark all as read failed:', error);
+        }
+      });
     }
   };
 
@@ -235,9 +263,9 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
               variant="ghost"
               size="icon"
               onClick={handleMarkAllAsRead}
-              disabled={!feedId || !hasUnread || markAllAsRead.isPending}
+              disabled={!feedId || !hasUnread}
               className="h-7 w-7"
-              title="全部标记为已读"
+              title="标记全部已读"
             >
               <CheckCheck className="w-3.5 h-3.5" />
             </Button>
@@ -256,7 +284,7 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
               selectedArticle?.id === article.id
                 ? "bg-accent"
                 : "hover:bg-accent/50",
-              !article.isRead && "bg-primary/5"
+              !isArticleRead(article) && "bg-primary/5"
             )}
           >
             {/* Selection indicator */}
@@ -268,12 +296,12 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
               <div className="flex-1 min-w-0">
                 {/* Unread indicator */}
                 <div className="flex items-start gap-2">
-                  {!article.isRead && (
+                  {!isArticleRead(article) && (
                     <div className="w-1.5 h-1.5 rounded-full bg-primary mt-2 flex-shrink-0" />
                   )}
                   <h3 className={cn(
                     "text-sm leading-snug line-clamp-2",
-                    !article.isRead ? "font-semibold text-foreground" : "font-medium text-foreground/90"
+                    !isArticleRead(article) ? "font-semibold text-foreground" : "font-medium text-foreground/90"
                   )}>
                     {article.title}
                   </h3>

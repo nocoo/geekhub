@@ -57,7 +57,7 @@ export function AddCategoryDialog({ open, onOpenChange, onSuccess }: AddCategory
       }
     } catch (error) {
       console.error('Failed to create category:', error);
-      toast.error('Failed to create category');
+      toast.error('创建分类失败');
     } finally {
       setLoading(false);
     }
@@ -67,20 +67,20 @@ export function AddCategoryDialog({ open, onOpenChange, onSuccess }: AddCategory
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Add New Category</DialogTitle>
+          <DialogTitle>添加新分类</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* 名称输入 */}
           <div>
             <label className="block text-sm font-medium text-foreground mb-2">
-              Category Name
+              分类名称
             </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Enter category name"
+              placeholder="请输入分类名称"
               className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               required
             />
@@ -89,7 +89,7 @@ export function AddCategoryDialog({ open, onOpenChange, onSuccess }: AddCategory
           {/* 图标选择 */}
           <div>
             <label className="block text-sm font-medium text-foreground mb-2">
-              Icon
+              图标
             </label>
             <div className="grid grid-cols-8 gap-2">
               {CATEGORY_ICONS.map((iconOption) => (
@@ -112,7 +112,7 @@ export function AddCategoryDialog({ open, onOpenChange, onSuccess }: AddCategory
           {/* 颜色选择 */}
           <div>
             <label className="block text-sm font-medium text-foreground mb-2">
-              Color
+              颜色
             </label>
             <div className="grid grid-cols-6 gap-2">
               {CATEGORY_COLORS.map((colorOption) => (
@@ -135,7 +135,7 @@ export function AddCategoryDialog({ open, onOpenChange, onSuccess }: AddCategory
           <div className="p-3 rounded-lg border border-border bg-muted/30">
             <div className="flex items-center gap-3">
               <span className="text-lg">{icon}</span>
-              <span className="font-medium text-foreground">{name || 'Category Name'}</span>
+              <span className="font-medium text-foreground">{name || '分类名称'}</span>
               <div
                 className="w-3 h-3 rounded-full border border-border ml-auto"
                 style={{ backgroundColor: color }}
@@ -151,14 +151,14 @@ export function AddCategoryDialog({ open, onOpenChange, onSuccess }: AddCategory
               onClick={() => onOpenChange(false)}
               className="flex-1"
             >
-              Cancel
+              取消
             </Button>
             <Button
               type="submit"
               disabled={!name.trim() || loading}
               className="flex-1"
             >
-              {loading ? 'Creating...' : 'Create Category'}
+              {loading ? '创建中...' : '创建分类'}
             </Button>
           </div>
         </form>

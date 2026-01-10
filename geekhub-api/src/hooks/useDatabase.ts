@@ -457,10 +457,34 @@ export function useBookmarkArticle() {
 
       return await response.json();
     },
+    onMutate: async ({ articleHash }) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['bookmarks', user?.id] });
+      await queryClient.cancelQueries({ queryKey: ['starred-count', user?.id] });
+      await queryClient.cancelQueries({ queryKey: ['articles', user?.id, 'starred'] });
+
+      // Snapshot previous values
+      const previousBookmarks = queryClient.getQueryData(['bookmarks', user?.id]);
+      const previousStarredCount = queryClient.getQueryData(['starred-count', user?.id]);
+      const previousStarredArticles = queryClient.getQueryData(['articles', user?.id, 'starred']);
+
+      // Optimistically update starred count
+      queryClient.setQueryData(['starred-count', user?.id], (old: number = 0) => old + 1);
+
+      // Return context for rollback
+      return { previousBookmarks, previousStarredCount, previousStarredArticles };
+    },
+    onError: (err, variables, context) => {
+      // Rollback optimistic updates
+      if (context) {
+        queryClient.setQueryData(['bookmarks', user?.id], context.previousBookmarks);
+        queryClient.setQueryData(['starred-count', user?.id], context.previousStarredCount);
+        queryClient.setQueryData(['articles', user?.id, 'starred'], context.previousStarredArticles);
+      }
+    },
     onSuccess: () => {
-      // Invalidate bookmarks queries
+      // Invalidate queries to get fresh data
       queryClient.invalidateQueries({ queryKey: ['bookmarks', user?.id] });
-      // Invalidate starred count and articles
       queryClient.invalidateQueries({ queryKey: ['starred-count', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['articles', user?.id, 'starred'] });
     },
@@ -484,9 +508,34 @@ export function useUnbookmarkArticle() {
 
       return await response.json();
     },
+    onMutate: async (articleHash) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['bookmarks', user?.id] });
+      await queryClient.cancelQueries({ queryKey: ['starred-count', user?.id] });
+      await queryClient.cancelQueries({ queryKey: ['articles', user?.id, 'starred'] });
+
+      // Snapshot previous values
+      const previousBookmarks = queryClient.getQueryData(['bookmarks', user?.id]);
+      const previousStarredCount = queryClient.getQueryData(['starred-count', user?.id]);
+      const previousStarredArticles = queryClient.getQueryData(['articles', user?.id, 'starred']);
+
+      // Optimistically update starred count
+      queryClient.setQueryData(['starred-count', user?.id], (old: number = 0) => Math.max(0, old - 1));
+
+      // Return context for rollback
+      return { previousBookmarks, previousStarredCount, previousStarredArticles };
+    },
+    onError: (err, variables, context) => {
+      // Rollback optimistic updates
+      if (context) {
+        queryClient.setQueryData(['bookmarks', user?.id], context.previousBookmarks);
+        queryClient.setQueryData(['starred-count', user?.id], context.previousStarredCount);
+        queryClient.setQueryData(['articles', user?.id, 'starred'], context.previousStarredArticles);
+      }
+    },
     onSuccess: () => {
+      // Invalidate queries to get fresh data
       queryClient.invalidateQueries({ queryKey: ['bookmarks', user?.id] });
-      // Invalidate starred count and articles
       queryClient.invalidateQueries({ queryKey: ['starred-count', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['articles', user?.id, 'starred'] });
     },
@@ -518,9 +567,34 @@ export function useSaveForLater() {
 
       return await response.json();
     },
+    onMutate: async ({ articleHash }) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['read-later', user?.id] });
+      await queryClient.cancelQueries({ queryKey: ['later-count', user?.id] });
+      await queryClient.cancelQueries({ queryKey: ['articles', user?.id, 'later'] });
+
+      // Snapshot previous values
+      const previousReadLater = queryClient.getQueryData(['read-later', user?.id]);
+      const previousLaterCount = queryClient.getQueryData(['later-count', user?.id]);
+      const previousLaterArticles = queryClient.getQueryData(['articles', user?.id, 'later']);
+
+      // Optimistically update later count
+      queryClient.setQueryData(['later-count', user?.id], (old: number = 0) => old + 1);
+
+      // Return context for rollback
+      return { previousReadLater, previousLaterCount, previousLaterArticles };
+    },
+    onError: (err, variables, context) => {
+      // Rollback optimistic updates
+      if (context) {
+        queryClient.setQueryData(['read-later', user?.id], context.previousReadLater);
+        queryClient.setQueryData(['later-count', user?.id], context.previousLaterCount);
+        queryClient.setQueryData(['articles', user?.id, 'later'], context.previousLaterArticles);
+      }
+    },
     onSuccess: () => {
+      // Invalidate queries to get fresh data
       queryClient.invalidateQueries({ queryKey: ['read-later', user?.id] });
-      // Invalidate later count and articles
       queryClient.invalidateQueries({ queryKey: ['later-count', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['articles', user?.id, 'later'] });
     },
@@ -544,9 +618,34 @@ export function useRemoveFromLater() {
 
       return await response.json();
     },
+    onMutate: async (articleHash) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['read-later', user?.id] });
+      await queryClient.cancelQueries({ queryKey: ['later-count', user?.id] });
+      await queryClient.cancelQueries({ queryKey: ['articles', user?.id, 'later'] });
+
+      // Snapshot previous values
+      const previousReadLater = queryClient.getQueryData(['read-later', user?.id]);
+      const previousLaterCount = queryClient.getQueryData(['later-count', user?.id]);
+      const previousLaterArticles = queryClient.getQueryData(['articles', user?.id, 'later']);
+
+      // Optimistically update later count
+      queryClient.setQueryData(['later-count', user?.id], (old: number = 0) => Math.max(0, old - 1));
+
+      // Return context for rollback
+      return { previousReadLater, previousLaterCount, previousLaterArticles };
+    },
+    onError: (err, variables, context) => {
+      // Rollback optimistic updates
+      if (context) {
+        queryClient.setQueryData(['read-later', user?.id], context.previousReadLater);
+        queryClient.setQueryData(['later-count', user?.id], context.previousLaterCount);
+        queryClient.setQueryData(['articles', user?.id, 'later'], context.previousLaterArticles);
+      }
+    },
     onSuccess: () => {
+      // Invalidate queries to get fresh data
       queryClient.invalidateQueries({ queryKey: ['read-later', user?.id] });
-      // Invalidate later count and articles
       queryClient.invalidateQueries({ queryKey: ['later-count', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['articles', user?.id, 'later'] });
     },
