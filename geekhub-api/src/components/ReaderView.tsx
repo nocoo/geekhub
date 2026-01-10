@@ -237,6 +237,11 @@ export function ReaderView({ article }: ReaderViewProps) {
                   delete domNode.attribs.fetchpriority;
                 }
 
+                // Remove empty href attributes to avoid console warnings
+                if (domNode.name === 'a' && domNode.attribs?.href === '') {
+                  delete domNode.attribs.href;
+                }
+
                 // Use proxy for images to bypass anti-hotlinking
                 if (domNode.name === 'img') {
                   // Remove images with empty src to avoid console errors
