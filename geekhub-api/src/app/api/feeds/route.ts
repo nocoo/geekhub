@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import Parser from 'rss-parser';
+import crypto from 'crypto';
 
 async function createSupabaseClient() {
   const cookieStore = await cookies();
@@ -34,6 +35,11 @@ const parser = new Parser({
     'User-Agent': 'GeekHub RSS Reader/1.0',
   },
 });
+
+// Generate URL hash (first 12 chars of MD5)
+function generateUrlHash(url: string): string {
+  return crypto.createHash('md5').update(url).digest('hex').slice(0, 12);
+}
 
 // 验证和解析 RSS URL
 async function validateRssUrl(url: string) {
@@ -136,6 +142,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 创建新的 RSS 源
+    const urlHash = generateUrlHash(url);
     const { data: feed, error } = await supabase
       .from('feeds')
       .insert({
@@ -143,6 +150,7 @@ export async function POST(request: NextRequest) {
         category_id: category_id || null,
         title: customTitle || validation.title,
         url,
+        url_hash: urlHash,
         description: customDescription || validation.description,
         site_url: validation.siteUrl,
         favicon_url: validation.faviconUrl,
