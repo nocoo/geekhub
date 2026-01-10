@@ -5,6 +5,7 @@ import { Article } from '@/hooks/useDatabase';
 import { Button } from '@/components/ui/button';
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { toast } from '@/components/ui/sonner';
+import { getProxyImageUrl, getRefererFromUrl } from '@/lib/image-proxy';
 
 interface ReaderViewProps {
   article: Article | null;
@@ -236,13 +237,16 @@ export function ReaderView({ article }: ReaderViewProps) {
                   delete domNode.attribs.fetchpriority;
                 }
 
-                // Add referrerPolicy to images to bypass anti-hotlinking
+                // Use proxy for images to bypass anti-hotlinking
                 if (domNode.name === 'img') {
                   // Remove images with empty src to avoid console errors
                   if (!domNode.attribs.src || domNode.attribs.src === '') {
                     return null;
                   }
-                  domNode.attribs.referrerPolicy = 'no-referrer';
+                  // Convert image URL to proxy URL with referer
+                  const originalSrc = domNode.attribs.src;
+                  const referer = article?.url ? getRefererFromUrl(article.url) : undefined;
+                  domNode.attribs.src = getProxyImageUrl(originalSrc, referer);
                   // Add loading="lazy" for better performance
                   domNode.attribs.loading = 'lazy';
                 }

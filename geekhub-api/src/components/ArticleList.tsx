@@ -9,6 +9,7 @@ import { useFormatTime } from '@/lib/format-time';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/sonner';
 import { fetchFeedWithSettings } from '@/lib/fetch-with-settings';
+import { getProxyImageUrl, getRefererFromUrl } from '@/lib/image-proxy';
 
 interface ArticleListProps {
   articles: Article[];
@@ -261,11 +262,10 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
               {article.image && (
                 <div className="w-20 h-20 flex-shrink-0 relative">
                   <img
-                    src={article.image}
+                    src={getProxyImageUrl(article.image, article.url ? getRefererFromUrl(article.url) : undefined)}
                     alt={article.title}
                     className="w-full h-full object-cover rounded-md"
                     loading="lazy"
-                    referrerPolicy="no-referrer"
                     onError={(e) => {
                       e.currentTarget.style.display = 'none';
                     }}
