@@ -29,7 +29,10 @@ export function ReaderView({ article }: ReaderViewProps) {
   }
 
   // Simplified content rendering - just display as formatted text
-  const renderContent = (content: string) => {
+  const renderContent = (content: string | undefined) => {
+    if (!content) {
+      return <p className="text-muted-foreground italic">No content available</p>;
+    }
     return (
       <div className="prose-geek">
         {content.split('\n\n').map((paragraph, i) => (
