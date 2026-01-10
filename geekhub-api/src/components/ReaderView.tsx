@@ -1,7 +1,7 @@
 import { formatDistanceToNow, format } from 'date-fns';
 import parse from 'html-react-parser';
-import { ExternalLink, Bookmark, Share2, Expand, Minimize2, Image, ImageOff, Bug, Download } from 'lucide-react';
-import { Article } from '@/hooks/useDatabase';
+import { ExternalLink, Bookmark, Share2, Expand, Minimize2, Image, ImageOff, Bug, Download, Clock } from 'lucide-react';
+import { Article, useBookmarkArticle, useUnbookmarkArticle, useSaveForLater, useRemoveFromLater } from '@/hooks/useDatabase';
 import { Button } from '@/components/ui/button';
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { toast } from '@/components/ui/sonner';
@@ -38,9 +38,66 @@ export function ReaderView({ article }: ReaderViewProps) {
   const [showImages, setShowImages] = useState(true);
   const [enhancedContent, setEnhancedContent] = useState<string | null>(null);
   const [isLoadingFull, setIsLoadingFull] = useState(false);
+  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [isReadLater, setIsReadLater] = useState(false);
 
   const toggleWidth = useCallback(() => setFullWidth(prev => !prev), []);
   const toggleImages = useCallback(() => setShowImages(prev => !prev), []);
+
+  const bookmarkArticle = useBookmarkArticle();
+  const unbookmarkArticle = useUnbookmarkArticle();
+  const saveForLater = useSaveForLater();
+  const removeFromLater = useRemoveFromLater();
+
+  // Handle bookmark toggle
+  const handleBookmark = useCallback(async () => {
+    if (!article) return;
+
+    try {
+      if (isBookmarked) {
+        await unbookmarkArticle.mutateAsync(article.hash || '');
+        setIsBookmarked(false);
+        toast.success('已取消收藏');
+      } else {
+        await bookmarkArticle.mutateAsync({
+          articleHash: article.hash || '',
+          feedId: article.feedId,
+          articleTitle: article.title,
+          articleUrl: article.url,
+        });
+        setIsBookmarked(true);
+        toast.success('已收藏');
+      }
+    } catch (error) {
+      console.error('Failed to toggle bookmark:', error);
+      toast.error('操作失败');
+    }
+  }, [article, isBookmarked, bookmarkArticle, unbookmarkArticle]);
+
+  // Handle read later toggle
+  const handleReadLater = useCallback(async () => {
+    if (!article) return;
+
+    try {
+      if (isReadLater) {
+        await removeFromLater.mutateAsync(article.hash || '');
+        setIsReadLater(false);
+        toast.success('已从稍后阅读移除');
+      } else {
+        await saveForLater.mutateAsync({
+          articleHash: article.hash || '',
+          feedId: article.feedId,
+          articleTitle: article.title,
+          articleUrl: article.url,
+        });
+        setIsReadLater(true);
+        toast.success('已添加到稍后阅读');
+      }
+    } catch (error) {
+      console.error('Failed to toggle read later:', error);
+      toast.error('操作失败');
+    }
+  }, [article, isReadLater, saveForLater, removeFromLater]);
 
   // Check if content is short (likely a summary only)
   const isShortContent = useMemo(() => {
@@ -188,8 +245,23 @@ export function ReaderView({ article }: ReaderViewProps) {
               <Button variant="ghost" size="icon" className="h-8 w-8" title="Debug info" onClick={handleDebug}>
                 <Bug className="w-4 h-4" />
               </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8" title="Save">
-                <Bookmark className="w-4 h-4" />
+              <Button
+                variant="ghost"
+                size="icon"
+                className={`h-8 w-8 ${isBookmarked ? 'text-yellow-500' : ''}`}
+                title={isBookmarked ? '取消收藏' : '收藏'}
+                onClick={handleBookmark}
+              >
+                <Bookmark className={`w-4 h-4 ${isBookmarked ? 'fill-current' : ''}`} />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={`h-8 w-8 ${isReadLater ? 'text-blue-500' : ''}`}
+                title={isReadLater ? '从稍后阅读移除' : '稍后阅读'}
+                onClick={handleReadLater}
+              >
+                <Clock className={`w-4 h-4 ${isReadLater ? 'fill-current' : ''}`} />
               </Button>
               <Button variant="ghost" size="icon" className="h-8 w-8" title="Share">
                 <Share2 className="w-4 h-4" />

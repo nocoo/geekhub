@@ -44,14 +44,10 @@ export function AddFeedDialog({ open, onOpenChange, categories, onSuccess, defau
 
   const rsshubInfo = useMemo(() => {
     const result = parseRssHubUrl(url, rsshubConfig);
-    console.log('[RssHub] Parse result:', { input: url, result, config: rsshubConfig });
     return result;
   }, [url, rsshubConfig]);
 
   const isRssHub = isRssHubUrl(url, rsshubConfig);
-  const actualFeedUrl = rsshubInfo.feedUrl || url;
-
-  console.log('[RssHub] State:', { url, isRssHub, actualFeedUrl });
 
   // Update categoryId when defaultCategoryId changes or dialog opens
   useEffect(() => {

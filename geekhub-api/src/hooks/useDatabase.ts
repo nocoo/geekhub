@@ -422,3 +422,111 @@ export function useDeleteFeed() {
     },
   });
 }
+// Bookmark hooks
+export function useBookmarkArticle() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({ articleHash, feedId, articleTitle, articleUrl }: {
+      articleHash: string;
+      feedId: string;
+      articleTitle: string;
+      articleUrl: string;
+    }) => {
+      const response = await fetch(`/api/articles/${articleHash}/bookmark`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ feedId, articleTitle, articleUrl }),
+      });
+
+      if (!response.ok) {
+        const { error } = await response.json();
+        throw new Error(error || 'Failed to bookmark article');
+      }
+
+      return await response.json();
+    },
+    onSuccess: () => {
+      // Invalidate bookmarks queries
+      queryClient.invalidateQueries({ queryKey: ['bookmarks', user?.id] });
+    },
+  });
+}
+
+export function useUnbookmarkArticle() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (articleHash: string) => {
+      const response = await fetch(`/api/articles/${articleHash}/bookmark`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const { error } = await response.json();
+        throw new Error(error || 'Failed to remove bookmark');
+      }
+
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bookmarks', user?.id] });
+    },
+  });
+}
+
+// Read Later hooks
+export function useSaveForLater() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({ articleHash, feedId, articleTitle, articleUrl }: {
+      articleHash: string;
+      feedId: string;
+      articleTitle: string;
+      articleUrl: string;
+    }) => {
+      const response = await fetch(`/api/articles/${articleHash}/read-later`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ feedId, articleTitle, articleUrl }),
+      });
+
+      if (!response.ok) {
+        const { error } = await response.json();
+        throw new Error(error || 'Failed to save article');
+      }
+
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['read-later', user?.id] });
+    },
+  });
+}
+
+export function useRemoveFromLater() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (articleHash: string) => {
+      const response = await fetch(`/api/articles/${articleHash}/read-later`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const { error } = await response.json();
+        throw new Error(error || 'Failed to remove article');
+      }
+
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['read-later', user?.id] });
+    },
+  });
+}
