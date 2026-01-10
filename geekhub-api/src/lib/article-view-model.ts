@@ -17,6 +17,7 @@ export interface ArticleViewModel {
   isRead: boolean;
   hash: string;
   image: string | null;
+  content?: string;        // full HTML content - now included in list
 }
 
 /**
@@ -78,27 +79,30 @@ export class ArticleViewModelService {
     const readHashes = await readStatusService.getReadHashes(feedId);
 
     // 3. Load article content and extract images
-    const articlesWithImages = await Promise.all(
+    const articlesWithContent = await Promise.all(
       index.articles.map(async (article) => {
         let firstImage: string | null = null;
+        let content: string | undefined = undefined;
         try {
           const fullArticle = await this.repo.getArticle(feedUrlHash, article.hash);
           if (fullArticle?.content) {
             firstImage = this.extractFirstImage(fullArticle.content);
+            content = fullArticle.content;  // 保存完整内容
           }
         } catch {
-          // Ignore errors, image will be null
+          // Ignore errors, image and content will be null/undefined
         }
 
         return {
           ...article,
           firstImage,
+          content,
         };
       })
     );
 
     // 4. Combine into view model
-    const articles: ArticleViewModel[] = articlesWithImages.map((article) => ({
+    const articles: ArticleViewModel[] = articlesWithContent.map((article) => ({
       id: article.hash,
       feedId: feedId,
       title: article.title,
@@ -111,6 +115,7 @@ export class ArticleViewModelService {
       isRead: readHashes.has(article.hash),
       hash: article.hash,
       image: article.firstImage,
+      content: article.content,  // 包含完整内容
     }));
 
     return {

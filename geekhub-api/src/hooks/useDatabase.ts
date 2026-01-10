@@ -184,23 +184,6 @@ export function useArticles(feedId?: string | null) {
   });
 }
 
-export function useArticleContent(articleHash: string) {
-  return useQuery({
-    queryKey: ['article', articleHash],
-    queryFn: async () => {
-      const response = await fetch(`/api/articles/${articleHash}`);
-      if (!response.ok) {
-        throw new Error('Failed to load article content');
-      }
-
-      const data = await response.json();
-      return data;
-    },
-    enabled: !!articleHash,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
-}
-
 export function useMarkAsRead() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
