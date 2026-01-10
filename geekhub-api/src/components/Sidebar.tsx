@@ -46,6 +46,8 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
   const [editingFeed, setEditingFeed] = useState<Feed | null>(null);
   const [viewingLogsFeed, setViewingLogsFeed] = useState<{ id: string; title: string } | null>(null);
   const [fetchingFeeds, setFetchingFeeds] = useState<Set<string>>(new Set());
+  const [batchFetching, setBatchFetching] = useState(false);
+  const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
   const [deleteConfirm, setDeleteConfirm] = useState<{
     type: 'category' | 'feed' | null;
     id: string;
@@ -170,6 +172,55 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
     return feeds.filter(f => !f.category_id);
   };
 
+  // 串行抓取所有feed
+  const handleFetchAllFeeds = async () => {
+    if (batchFetching || feeds.length === 0) return;
+
+    setBatchFetching(true);
+    setBatchProgress({ current: 0, total: feeds.length });
+
+    let successCount = 0;
+    let failCount = 0;
+
+    try {
+      for (let i = 0; i < feeds.length; i++) {
+        const feed = feeds[i];
+        setBatchProgress({ current: i + 1, total: feeds.length });
+
+        try {
+          const response = await fetchFeedWithSettings(feed.id);
+          if (response.ok) {
+            successCount++;
+          } else {
+            failCount++;
+            console.error(`Failed to fetch feed ${feed.title}:`, response.statusText);
+          }
+        } catch (error) {
+          failCount++;
+          console.error(`Error fetching feed ${feed.title}:`, error);
+        }
+
+        // 添加延迟避免过于频繁的请求
+        if (i < feeds.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+
+      // 显示结果
+      if (failCount === 0) {
+        toast.success(`✅ 所有 ${successCount} 个订阅源抓取完成`);
+      } else {
+        toast.success(`📊 抓取完成：成功 ${successCount} 个，失败 ${failCount} 个`);
+      }
+    } catch (error) {
+      console.error('Batch fetch error:', error);
+      toast.error('批量抓取过程中发生错误');
+    } finally {
+      setBatchFetching(false);
+      setBatchProgress({ current: 0, total: 0 });
+    }
+  };
+
   const isLoading = categoriesLoading || feedsLoading;
 
   return (
@@ -219,33 +270,63 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
 
         {/* Feeds Section */}
         <div className="flex-1 overflow-y-auto hover-scrollbar p-2 space-y-1">
-          {/* Section Header with Add Button */}
+          {/* Section Header with Fetch All and Add Button */}
           <div className="flex items-center justify-between px-2 py-1">
             <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               订阅源
             </span>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-5 w-5 text-muted-foreground hover:text-foreground hover:bg-accent/50"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40">
-                <DropdownMenuItem onClick={() => handleAddFeedToCategory(undefined)}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  添加订阅
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setShowAddCategory(true)}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  添加分类
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <div className="flex items-center gap-1">
+              {/* Fetch All Button */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleFetchAllFeeds}
+                disabled={batchFetching || feeds.length === 0}
+                className="h-5 w-5 text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                title={batchFetching ? `抓取中 ${batchProgress.current}/${batchProgress.total}` : "抓取所有订阅源"}
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${batchFetching ? 'animate-spin' : ''}`} />
+              </Button>
+
+              {/* Add Menu */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-5 w-5 text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-40">
+                  <DropdownMenuItem onClick={() => handleAddFeedToCategory(undefined)}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    添加订阅
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShowAddCategory(true)}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    添加分类
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
+
+          {/* Batch Fetch Progress */}
+          {batchFetching && (
+            <div className="px-2 py-1">
+              <div className="text-xs text-muted-foreground mb-1">
+                抓取进度: {batchProgress.current}/{batchProgress.total}
+              </div>
+              <div className="w-full bg-muted rounded-full h-1.5">
+                <div
+                  className="bg-primary h-1.5 rounded-full transition-all duration-300"
+                  style={{ width: `${(batchProgress.current / batchProgress.total) * 100}%` }}
+                />
+              </div>
+            </div>
+          )}
 
           {isLoading ? (
             <div className="flex items-center justify-center h-32">
