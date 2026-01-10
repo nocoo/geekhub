@@ -46,9 +46,9 @@
     --sidebar-ring: 152 76% 46%;
 
     /* GeekHub custom tokens */
-    --terminal-bg: 150 20% 8%;
-    --terminal-text: 142 71% 45%;
-    --terminal-muted: 150 16% 47%;
+    --terminal-bg: 150 10% 94%;
+    --terminal-text: 152 20% 20%;
+    --terminal-muted: 152 15% 40%;
     --glow: 152 76% 46%;
   }
 
