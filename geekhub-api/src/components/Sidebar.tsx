@@ -303,12 +303,14 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
                               ) : (
                                 <Rss className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                               )}
-                              <span className="truncate">{feed.title}</span>
-                              {feed.unread_count && feed.unread_count > 0 && (
-                                <span className="ml-auto text-[10px] font-mono bg-primary/10 text-primary px-1 rounded">
-                                  {feed.unread_count}
-                                </span>
-                              )}
+                              <span className="truncate flex-1">
+                                {feed.title}
+                                {((feed.unread_count || 0) > 0 || (feed.total_articles || 0) > 0) && (
+                                  <span className="text-muted-foreground ml-1">
+                                    ({feed.unread_count || 0}/{feed.total_articles || 0})
+                                  </span>
+                                )}
+                              </span>
                             </button>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
