@@ -3,7 +3,7 @@ import parse from 'html-react-parser';
 import { ExternalLink, Bookmark, Share2, Expand, Minimize2, Image, ImageOff, Bug, Download, Clock } from 'lucide-react';
 import { Article, useBookmarkArticle, useUnbookmarkArticle, useSaveForLater, useRemoveFromLater } from '@/hooks/useDatabase';
 import { Button } from '@/components/ui/button';
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { toast } from '@/components/ui/sonner';
 import { getProxyImageUrl, getRefererFromUrl } from '@/lib/image-proxy';
 
@@ -40,6 +40,9 @@ export function ReaderView({ article }: ReaderViewProps) {
   const [isLoadingFull, setIsLoadingFull] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [isReadLater, setIsReadLater] = useState(false);
+
+  // Ref for the scrollable container
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const toggleWidth = useCallback(() => setFullWidth(prev => !prev), []);
   const toggleImages = useCallback(() => setShowImages(prev => !prev), []);
@@ -109,6 +112,16 @@ export function ReaderView({ article }: ReaderViewProps) {
   // Reset enhanced content when article changes
   useEffect(() => {
     setEnhancedContent(null);
+  }, [article?.id]);
+
+  // Scroll to top when article changes
+  useEffect(() => {
+    if (article && scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    }
   }, [article?.id]);
 
   // Use enhanced content if available, otherwise use original content
@@ -200,7 +213,10 @@ export function ReaderView({ article }: ReaderViewProps) {
     : displayContent?.replace(/<img[^>]*>/gi, '');
 
   return (
-    <div className="flex-1 h-[calc(100vh-3.5rem)] overflow-y-auto hover-scrollbar bg-background">
+    <div
+      ref={scrollContainerRef}
+      className="flex-1 h-[calc(100vh-3.5rem)] overflow-y-auto hover-scrollbar bg-background"
+    >
       <article className={fullWidth ? "w-full px-6 py-8" : "max-w-3xl mx-auto px-6 py-8"}>
         {/* Article header */}
         <header className="mb-8">
