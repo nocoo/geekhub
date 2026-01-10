@@ -246,9 +246,24 @@ export function AddFeedDialog({ open, onOpenChange, categories, onSuccess, defau
 
           {/* 分类选择 */}
           <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
-              Category
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-foreground">
+                Category
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  // Close add feed dialog and open add category dialog
+                  onOpenChange(false);
+                  setTimeout(() => {
+                    window.dispatchEvent(new CustomEvent('open-add-category'));
+                  }, 100);
+                }}
+                className="text-xs text-primary hover:underline"
+              >
+                + 创建分类
+              </button>
+            </div>
             <select
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
