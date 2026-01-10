@@ -11,15 +11,10 @@ interface LogLine {
   feedTitle?: string;
 }
 
-interface FetchLogsResponse {
-  logs: LogLine[];
-}
-
 export function CrawlerTerminal() {
   const [logs, setLogs] = useState<LogLine[]>([]);
   const [cursorVisible, setCursorVisible] = useState(true);
   const [isOnline, setIsOnline] = useState(true);
-  const [lastSync, setLastSync] = useState<string>('');
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom when new logs arrive
@@ -29,32 +24,42 @@ export function CrawlerTerminal() {
     }
   }, [logs]);
 
-  // Fetch logs periodically
+  // Set up SSE connection
   useEffect(() => {
-    const fetchLogs = async () => {
-      try {
-        const response = await fetch('/api/logs');
-        if (response.ok) {
-          const data: FetchLogsResponse = await response.json();
-          setLogs(data.logs || []);
+    const eventSource = new EventSource('/api/logs/stream');
 
-          // Update last sync time
-          setLastSync('刚刚');
-          setIsOnline(true);
-        } else {
-          setIsOnline(false);
-        }
-      } catch {
-        setIsOnline(false);
-      }
+    eventSource.addEventListener('init', (e) => {
+      const data = JSON.parse(e.data);
+      setLogs(data.logs || []);
+      setIsOnline(true);
+    });
+
+    eventSource.addEventListener('update', (e) => {
+      const data = JSON.parse(e.data);
+      setLogs((prev) => {
+        // Merge new logs, avoiding duplicates
+        const newLogs = data.logs || [];
+        const existingHashes = new Set(prev.map(log => `${log.timestamp}-${log.action}-${log.url}`));
+        const uniqueNewLogs = newLogs.filter((log: LogLine) =>
+          !existingHashes.has(`${log.timestamp}-${log.action}-${log.url}`)
+        );
+        return [...prev, ...uniqueNewLogs];
+      });
+      setIsOnline(true);
+    });
+
+    eventSource.addEventListener('system', (e) => {
+      const data = JSON.parse(e.data);
+      console.log('System:', data.message);
+    });
+
+    eventSource.onerror = () => {
+      setIsOnline(false);
     };
 
-    // Initial fetch
-    fetchLogs();
-
-    // Poll for new logs every 5 seconds
-    const interval = setInterval(fetchLogs, 5000);
-    return () => clearInterval(interval);
+    return () => {
+      eventSource.close();
+    };
   }, []);
 
   // Cursor blinking
@@ -98,6 +103,9 @@ export function CrawlerTerminal() {
         <span className="text-[10px] font-mono text-muted-foreground ml-2">
           crawler.log
         </span>
+        <span className="text-[10px] font-mono text-muted-foreground ml-auto">
+          {logs.length} entries
+        </span>
       </div>
 
       <div ref={containerRef} className="bg-terminal p-3 h-32 overflow-y-auto">
@@ -108,7 +116,7 @@ export function CrawlerTerminal() {
             logs.map((log, i) => (
               <div
                 key={i}
-                className="flex items-center gap-2 animate-slide-in"
+                className="flex items-center gap-2"
               >
                 <span className="text-muted-foreground">{'>'}</span>
                 {log.status && (
@@ -142,10 +150,7 @@ export function CrawlerTerminal() {
           <div className="relative w-2 h-2 rounded-full bg-emerald-500" />
         </div>
         <span className={`text-[10px] font-mono ${isOnline ? 'text-emerald-400' : 'text-red-400'}`}>
-          状态: {isOnline ? '在线' : '离线'}
-        </span>
-        <span className="text-[10px] font-mono text-muted-foreground ml-auto">
-          刷新: {lastSync}
+          状态: {isOnline ? '实时' : '离线'}
         </span>
       </div>
     </div>
