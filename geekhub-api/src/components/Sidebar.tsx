@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { ChevronDown, ChevronRight, Inbox, Star, Clock, MoreVertical, FolderPlus, Plus, Edit, Trash2, Rss, RefreshCw, FileText } from 'lucide-react';
 import { CrawlerTerminal } from './CrawlerTerminal';
@@ -28,7 +28,7 @@ interface SidebarProps {
 
 export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
   const queryClient = useQueryClient();
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['uncategorized']));
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [showAddFeed, setShowAddFeed] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -43,6 +43,17 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
 
   const { data: categories = [], isLoading: categoriesLoading } = useCategories();
   const { data: feeds = [], isLoading: feedsLoading } = useFeeds();
+
+  // Auto-expand all categories when loaded
+  useEffect(() => {
+    if (categories.length > 0) {
+      setExpandedCategories(prev => {
+        const next = new Set(prev);
+        categories.forEach(cat => next.add(cat.id));
+        return next;
+      });
+    }
+  }, [categories]);
   const deleteCategory = useDeleteCategory();
   const deleteFeed = useDeleteFeed();
 
@@ -139,7 +150,7 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
 
   return (
     <>
-      <aside className="w-96 flex-shrink-0 border-r border-subtle h-[calc(100vh-3.5rem)] flex flex-col bg-sidebar">
+      <aside className="w-72 flex-shrink-0 border-r border-subtle h-[calc(100vh-3.5rem)] flex flex-col bg-sidebar">
         {/* Quick Actions */}
         <div className="p-3 space-y-1">
           <button
