@@ -84,12 +84,8 @@ export class FeedFetcher {
   }
 
   private async getArticlePath(hash: string): Promise<string> {
-    const now = new Date();
-    const year = now.getFullYear().toString();
-    const month = (now.getMonth() + 1).toString().padStart(2, '0');
-    const monthDir = path.join(this.articlesDir, year, month);
-    await fs.mkdir(monthDir, { recursive: true });
-    return path.join(monthDir, `${hash}.json`);
+    await fs.mkdir(this.articlesDir, { recursive: true });
+    return path.join(this.articlesDir, `${hash}.json`);
   }
 
   private articleExists(hash: string): Promise<boolean> {
@@ -174,7 +170,7 @@ export class FeedFetcher {
       await this.logger.success(200, 'PARSE', `${items.length} items`, '0ms', `Parsed RSS feed`);
 
       let articlesNew = 0;
-      let articlesUpdated = 0;
+      const articlesUpdated = 0;
       const newArticlesData: ArticleData[] = [];
 
       for (const item of items) {

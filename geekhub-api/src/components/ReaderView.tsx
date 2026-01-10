@@ -1,8 +1,9 @@
 import { formatDistanceToNow, format } from 'date-fns';
 import parse from 'html-react-parser';
-import { ExternalLink, Bookmark, Share2, MoreHorizontal } from 'lucide-react';
+import { ExternalLink, Bookmark, Share2, Expand, Minimize2, Image, ImageOff } from 'lucide-react';
 import { Article } from '@/hooks/useDatabase';
 import { Button } from '@/components/ui/button';
+import { useState, useCallback } from 'react';
 
 interface ReaderViewProps {
   article: Article | null;
@@ -31,6 +32,12 @@ function getFirstChar(str: string): string {
 }
 
 export function ReaderView({ article }: ReaderViewProps) {
+  const [fullWidth, setFullWidth] = useState(false);
+  const [showImages, setShowImages] = useState(true);
+
+  const toggleWidth = useCallback(() => setFullWidth(prev => !prev), []);
+  const toggleImages = useCallback(() => setShowImages(prev => !prev), []);
+
   if (!article) {
     return (
       <div className="flex-1 h-[calc(100vh-3.5rem)] flex items-center justify-center bg-background">
@@ -53,9 +60,14 @@ export function ReaderView({ article }: ReaderViewProps) {
   const avatarColor = stringToColor(article.feedName);
   const avatarChar = getFirstChar(article.feedName);
 
+  // Process content to hide images if needed
+  const processedContent = showImages
+    ? article.content
+    : article.content?.replace(/<img[^>]*>/gi, '');
+
   return (
     <div className="flex-1 h-[calc(100vh-3.5rem)] overflow-y-auto hover-scrollbar bg-background">
-      <article className="max-w-3xl mx-auto px-6 py-8">
+      <article className={fullWidth ? "w-full px-6 py-8" : "max-w-3xl mx-auto px-6 py-8"}>
         {/* Article header */}
         <header className="mb-8">
           {/* Title */}
@@ -63,62 +75,58 @@ export function ReaderView({ article }: ReaderViewProps) {
             {article.title}
           </h1>
 
-          {/* Author & Date */}
-          <div className="flex items-center gap-4 mb-6">
-            <div className={`w-10 h-10 rounded-full ${avatarColor} flex items-center justify-center text-white font-medium text-sm`}>
-              {avatarChar}
-            </div>
-            <div>
-              <div className="font-medium text-foreground">{article.feedName}</div>
-              <div className="text-sm text-muted-foreground">
-                {article.publishedAt ? (
-                  <>
-                    {format(article.publishedAt, 'MMMM d, yyyy')} · {formatDistanceToNow(article.publishedAt, { addSuffix: true })}
-                  </>
-                ) : (
-                  'No date available'
-                )}
+          {/* Site info row with action buttons */}
+          <div className="flex items-center justify-between mb-4 pb-6 border-b border-subtle">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <div className={`w-5 h-5 rounded-full ${avatarColor} flex items-center justify-center text-white font-medium text-[10px]`}>
+                {avatarChar}
               </div>
+              <span>{article.feedName}</span>
+              <span>·</span>
+              <span>
+                {article.publishedAt ? formatDistanceToNow(article.publishedAt, { addSuffix: true }) : 'No date'}
+              </span>
             </div>
-          </div>
 
-          {/* Actions */}
-          <div className="flex items-center gap-2 pb-6 border-b border-subtle">
-            <Button variant="outline" size="sm" className="gap-2">
-              <Bookmark className="w-4 h-4" />
-              Save
-            </Button>
-            <Button variant="outline" size="sm" className="gap-2">
-              <Share2 className="w-4 h-4" />
-              Share
-            </Button>
-            <Button variant="outline" size="sm" className="gap-2">
-              <ExternalLink className="w-4 h-4" />
-              Original
-            </Button>
-            <Button variant="ghost" size="icon" className="ml-auto h-8 w-8">
-              <MoreHorizontal className="w-4 h-4" />
-            </Button>
+            {/* Action buttons */}
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="icon" className="h-8 w-8" title="Toggle width" onClick={toggleWidth}>
+                {fullWidth ? <Minimize2 className="w-4 h-4" /> : <Expand className="w-4 h-4" />}
+              </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8" title="Toggle images" onClick={toggleImages}>
+                {showImages ? <Image className="w-4 h-4" /> : <ImageOff className="w-4 h-4" />}
+              </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8" title="Save">
+                <Bookmark className="w-4 h-4" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8" title="Share">
+                <Share2 className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                title="View original"
+                onClick={() => article.url && window.open(article.url, '_blank')}
+              >
+                <ExternalLink className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
         </header>
 
         {/* Content - Parse HTML */}
         <div className="prose prose-geek max-w-none font-serif text-lg leading-relaxed m-0">
-          {article.content ? parse(article.content) : <p className="text-muted-foreground italic">No content available</p>}
+          {processedContent ? parse(processedContent, {
+            replace: (domNode: any) => {
+              if (domNode.type === 'tag' && domNode.attribs?.fetchpriority) {
+                domNode.attribs.fetchPriority = domNode.attribs.fetchpriority;
+                delete domNode.attribs.fetchpriority;
+              }
+              return domNode;
+            }
+          }) : <p className="text-muted-foreground italic">No content available</p>}
         </div>
-
-        {/* Footer */}
-        <footer className="mt-12 pt-6 border-t border-subtle">
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-muted-foreground">
-              Read from <span className="font-medium text-foreground">{article.feedName}</span>
-            </div>
-            <Button variant="outline" size="sm" className="gap-2">
-              <ExternalLink className="w-4 h-4" />
-              View Original
-            </Button>
-          </div>
-        </footer>
       </article>
     </div>
   );

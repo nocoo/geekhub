@@ -1,60 +1,88 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { readFile } from 'fs/promises';
-import { join } from 'path';
-import { readdir } from 'fs/promises';
+import { ArticleViewModelService } from '@/lib/article-view-model';
+import { ReadStatusService } from '@/lib/read-status-service';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
+
+async function createSupabaseClient() {
+  const cookieStore = await cookies();
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          } catch {
+            // Ignore if called from Server Component
+          }
+        },
+      },
+    }
+  );
+}
 
 // GET /api/articles/[hash] - 获取单篇文章的完整内容
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ hash: string }> }
 ) {
   try {
     const { hash } = await params;
+    const supabase = await createSupabaseClient();
 
-    // 在 data/feeds 目录中搜索文章
-    const feedsDir = join(process.cwd(), 'data', 'feeds');
-    const feeds = await readdir(feedsDir);
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-    for (const urlHash of feeds) {
-      const articlesDir = join(feedsDir, urlHash, 'articles');
+    // Find feed that contains this article
+    const { data: feeds } = await supabase
+      .from('feeds')
+      .select('id, title, url_hash, favicon_url')
+      .eq('user_id', user.id);
 
+    if (!feeds || feeds.length === 0) {
+      return NextResponse.json({ error: 'No feeds found' }, { status: 404 });
+    }
+
+    // Search for article in feeds
+    const viewModel = new ArticleViewModelService();
+
+    for (const feed of feeds) {
       try {
-        // 搜索年月目录
-        const years = await readdir(articlesDir);
+        const readStatusService = new ReadStatusService(user.id);
+        const article = await viewModel.getArticle(
+          feed.url_hash,
+          hash,
+          feed.id,
+          feed.title,
+          feed.favicon_url || '',
+          readStatusService
+        );
 
-        for (const year of years) {
-          const yearPath = join(articlesDir, year);
-          const months = await readdir(yearPath);
+        if (article) {
+          // Get full article content
+          const { ArticleRepository } = await import('@/lib/article-repository');
+          const repo = new ArticleRepository();
+          const rawArticle = await repo.getArticle(feed.url_hash, hash);
 
-          for (const month of months) {
-            const monthPath = join(yearPath, month);
-            const files = await readdir(monthPath);
-
-            if (files.includes(`${hash}.json`)) {
-              const articlePath = join(monthPath, `${hash}.json`);
-              const content = await readFile(articlePath, 'utf-8');
-              const article = JSON.parse(content);
-
-              return NextResponse.json({
-                hash: article.hash,
-                title: article.title,
-                url: article.url,
-                link: article.link,
-                author: article.author,
-                publishedAt: article.published_at,
-                content: article.content,
-                contentText: article.content_text,
-                summary: article.summary,
-                tags: article.tags || [],
-                categories: article.categories || [],
-                enclosures: article.enclosures || [],
-                fetchedAt: article.fetched_at,
-              });
-            }
-          }
+          return NextResponse.json({
+            ...article,
+            content: rawArticle?.content,
+            contentText: rawArticle?.content_text,
+            tags: rawArticle?.tags || [],
+            categories: rawArticle?.categories || [],
+            enclosures: rawArticle?.enclosures || [],
+          });
         }
       } catch {
-        // 继续搜索下一个 feed
         continue;
       }
     }

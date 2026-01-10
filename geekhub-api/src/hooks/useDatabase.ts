@@ -22,6 +22,7 @@ export interface Feed {
   user_id: string;
   title: string;
   url: string;
+  url_hash?: string;
   category_id: string | null;
   favicon_url: string | null;
   description: string | null;
@@ -48,6 +49,7 @@ export interface Article {
   feedIcon: string;
   isRead: boolean;
   hash?: string;
+  image?: string | null;
 }
 
 // Categories hooks
@@ -103,24 +105,23 @@ export function useCreateCategory() {
 export function useFeeds() {
   const { user } = useAuth();
 
-  return useQuery({
+  const result = useQuery({
     queryKey: ['feeds', user?.id],
     queryFn: async () => {
       if (!user) return [];
 
-      const { data, error } = await supabase
-        .from('feeds')
-        .select(`
-          *,
-          category:categories(*)
-        `)
-        .order('title');
+      const response = await fetch('/api/feeds/list');
+      if (!response.ok) {
+        throw new Error('Failed to load feeds');
+      }
 
-      if (error) throw error;
-      return data as Feed[];
+      const { feeds } = await response.json();
+      return feeds as Feed[];
     },
     enabled: !!user,
   });
+
+  return result;
 }
 
 export function useCreateFeed() {
@@ -218,10 +219,103 @@ export function useMarkAsRead() {
 
       return await response.json();
     },
-    onSuccess: () => {
-      // 刷新文章列表以更新 isRead 状态
-      queryClient.invalidateQueries({ queryKey: ['articles', user?.id] });
-      // 刷新 feeds 列表以更新未读数
+    onMutate: async ({ articleHash, feedId }) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['articles', user?.id] });
+      await queryClient.cancelQueries({ queryKey: ['feeds', user?.id] });
+
+      // Snapshot previous values
+      const previousArticles = queryClient.getQueryData<Article[]>(['articles', user?.id, feedId]);
+      const previousFeeds = queryClient.getQueryData<Feed[]>(['feeds', user?.id]);
+
+      // Optimistically update articles
+      queryClient.setQueryData<Article[]>(['articles', user?.id, feedId], (old = []) =>
+        old.map(article =>
+          article.hash === articleHash ? { ...article, isRead: true } : article
+        )
+      );
+
+      // Optimistically update feed unread count
+      queryClient.setQueryData<Feed[]>(['feeds', user?.id], (old = []) =>
+        old.map(feed =>
+          feed.id === feedId
+            ? { ...feed, unread_count: Math.max(0, (feed.unread_count || 0) - 1) }
+            : feed
+        )
+      );
+
+      // Return context for rollback
+      return { previousArticles, previousFeeds, feedId };
+    },
+    onError: (_error, _variables, context) => {
+      // Rollback on error
+      if (context?.previousArticles) {
+        queryClient.setQueryData(['articles', user?.id, context.feedId], context.previousArticles);
+      }
+      if (context?.previousFeeds) {
+        queryClient.setQueryData(['feeds', user?.id], context.previousFeeds);
+      }
+    },
+    onSettled: (_data, _error, { feedId }) => {
+      // Refetch to ensure server state
+      queryClient.invalidateQueries({ queryKey: ['articles', user?.id, feedId] });
+      queryClient.invalidateQueries({ queryKey: ['feeds', user?.id] });
+    },
+  });
+}
+
+export function useMarkAllAsRead() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (feedId: string) => {
+      const response = await fetch(`/api/feeds/${feedId}/mark-all-read`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to mark all as read');
+      }
+
+      return await response.json();
+    },
+    onMutate: async (feedId) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['articles', user?.id] });
+      await queryClient.cancelQueries({ queryKey: ['feeds', user?.id] });
+
+      // Snapshot previous values
+      const previousArticles = queryClient.getQueryData<Article[]>(['articles', user?.id, feedId]);
+      const previousFeeds = queryClient.getQueryData<Feed[]>(['feeds', user?.id]);
+
+      // Optimistically update all articles as read
+      queryClient.setQueryData<Article[]>(['articles', user?.id, feedId], (old = []) =>
+        old.map(article => ({ ...article, isRead: true }))
+      );
+
+      // Optimistically update feed unread count to 0
+      queryClient.setQueryData<Feed[]>(['feeds', user?.id], (old = []) =>
+        old.map(feed =>
+          feed.id === feedId ? { ...feed, unread_count: 0 } : feed
+        )
+      );
+
+      // Return context for rollback
+      return { previousArticles, previousFeeds };
+    },
+    onError: (_error, feedId, context) => {
+      // Rollback on error
+      if (context?.previousArticles) {
+        queryClient.setQueryData(['articles', user?.id, feedId], context.previousArticles);
+      }
+      if (context?.previousFeeds) {
+        queryClient.setQueryData(['feeds', user?.id], context.previousFeeds);
+      }
+    },
+    onSettled: (_data, _error, feedId) => {
+      // Refetch to ensure server state
+      queryClient.invalidateQueries({ queryKey: ['articles', user?.id, feedId] });
       queryClient.invalidateQueries({ queryKey: ['feeds', user?.id] });
     },
   });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -22,16 +22,23 @@ interface AddFeedDialogProps {
   onOpenChange: (open: boolean) => void;
   categories: Category[];
   onSuccess: (feed: any) => void;
-  onFetchTriggered?: () => void;
+  defaultCategoryId?: string;
 }
 
-export function AddFeedDialog({ open, onOpenChange, categories, onSuccess, onFetchTriggered }: AddFeedDialogProps) {
+export function AddFeedDialog({ open, onOpenChange, categories, onSuccess, defaultCategoryId }: AddFeedDialogProps) {
   const [url, setUrl] = useState('');
-  const [categoryId, setCategoryId] = useState('');
+  const [categoryId, setCategoryId] = useState(defaultCategoryId || '');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
   const [validating, setValidating] = useState(false);
+
+  // Update categoryId when defaultCategoryId changes or dialog opens
+  useEffect(() => {
+    if (open) {
+      setCategoryId(defaultCategoryId || '');
+    }
+  }, [open, defaultCategoryId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,16 +60,7 @@ export function AddFeedDialog({ open, onOpenChange, categories, onSuccess, onFet
       if (response.ok) {
         const { feed } = await response.json();
         onSuccess(feed);
-
-        // 立即触发一次抓取
-        try {
-          await fetch(`/api/feeds/${feed.id}/fetch`, { method: 'POST' });
-          toast.success(`订阅源添加成功，正在抓取「${feed.title}」...`);
-          onFetchTriggered?.();
-        } catch (fetchError) {
-          console.error('Failed to trigger fetch:', fetchError);
-          // 即使抓取失败也不影响添加成功
-        }
+        toast.success(`订阅源「${feed.title}」添加成功`);
 
         // 重置表单
         setUrl('');
@@ -133,6 +131,7 @@ export function AddFeedDialog({ open, onOpenChange, categories, onSuccess, onFet
                 type="url"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
+                onBlur={() => setUrl(url.trim())}
                 placeholder="https://example.com/rss.xml"
                 className="flex-1 px-3 py-2 border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                 required

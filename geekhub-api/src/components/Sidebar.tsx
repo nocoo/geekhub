@@ -7,6 +7,7 @@ import { CrawlerTerminal } from './CrawlerTerminal';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useCategories, useFeeds, useDeleteCategory, useDeleteFeed, Category, Feed } from '@/hooks/useDatabase';
+import { useAuth } from '@/contexts/AuthContext';
 import { AddCategoryDialog } from '@/components/manage/AddCategoryDialog';
 import { AddFeedDialog } from '@/components/manage/AddFeedDialog';
 import { EditCategoryDialog } from '@/components/manage/EditCategoryDialog';
@@ -27,10 +28,12 @@ interface SidebarProps {
 }
 
 export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['uncategorized']));
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [showAddFeed, setShowAddFeed] = useState(false);
+  const [defaultCategoryId, setDefaultCategoryId] = useState<string | undefined>(undefined);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [editingFeed, setEditingFeed] = useState<Feed | null>(null);
   const [viewingLogsFeed, setViewingLogsFeed] = useState<{ id: string; title: string } | null>(null);
@@ -71,21 +74,16 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
 
   const getTotalUnread = () => feeds.reduce((acc, f) => acc + (f.unread_count || 0), 0);
 
-  // 处理 feed 选择，同时触发抓取
-  const handleSelectFeed = useCallback(async (feedId: string | null) => {
+  // 处理 feed 选择
+  const handleSelectFeed = useCallback((feedId: string | null) => {
     onSelectFeed(feedId);
+  }, [onSelectFeed]);
 
-    // 如果选择了一个 feed，触发后台抓取
-    if (feedId) {
-      const feed = feeds.find(f => f.id === feedId);
-      if (feed) {
-        // 异步触发抓取，不阻塞 UI
-        fetch(`/api/feeds/${feedId}/fetch`, { method: 'POST' }).catch(err => {
-          console.error('Failed to trigger fetch:', err);
-        });
-      }
-    }
-  }, [onSelectFeed, feeds]);
+  // 处理在分类下添加订阅
+  const handleAddFeedToCategory = useCallback((categoryId?: string) => {
+    setDefaultCategoryId(categoryId);
+    setShowAddFeed(true);
+  }, []);
 
   const handleDeleteCategory = async () => {
     if (!deleteConfirm || deleteConfirm.type !== 'category') return;
@@ -192,7 +190,7 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
             添加分类
           </Button>
           <Button
-            onClick={() => setShowAddFeed(true)}
+            onClick={() => handleAddFeedToCategory(undefined)}
             size="sm"
             variant="outline"
             className="flex-1 gap-1.5 h-8 text-xs"
@@ -254,6 +252,10 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleAddFeedToCategory(category.id)}>
+                          <Plus className="w-4 h-4 mr-2" />
+                          添加订阅
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setEditingCategory(category)}>
                           <Edit className="w-4 h-4 mr-2" />
                           编辑
@@ -285,7 +287,7 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
                             <button
                               onClick={() => handleSelectFeed(feed.id)}
                               className={cn(
-                                "flex-1 flex items-center gap-2 px-3 py-1.5 rounded-md text-xs transition-colors",
+                                "flex-1 flex items-center gap-2 px-3 py-1.5 rounded-md text-xs transition-colors min-w-0",
                                 selectedFeed === feed.id
                                   ? "bg-accent text-accent-foreground"
                                   : "text-sidebar-foreground/80 hover:bg-accent/50"
@@ -303,13 +305,12 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
                               ) : (
                                 <Rss className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                               )}
-                              <span className="truncate flex-1">
+                              <span className="truncate max-w-[120px] relative">
                                 {feed.title}
-                                {((feed.unread_count || 0) > 0 || (feed.total_articles || 0) > 0) && (
-                                  <span className="text-muted-foreground ml-1">
-                                    ({feed.unread_count || 0}/{feed.total_articles || 0})
-                                  </span>
-                                )}
+                                <span className="absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-[inherit] to-transparent pointer-events-none" />
+                              </span>
+                              <span className="ml-auto text-[10px] font-mono text-muted-foreground flex-shrink-0">
+                                {feed.unread_count || 0}/{feed.total_articles || 0}
                               </span>
                             </button>
                             <DropdownMenu>
@@ -384,9 +385,9 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
                   {getUncategorizedFeeds().map((feed) => (
                     <div key={feed.id} className="flex items-center gap-1 group">
                       <button
-                        onClick={() => onSelectFeed(feed.id)}
+                        onClick={() => handleSelectFeed(feed.id)}
                         className={cn(
-                          "flex-1 flex items-center gap-2 px-3 py-1.5 rounded-md text-xs transition-colors",
+                          "flex-1 flex items-center gap-2 px-3 py-1.5 rounded-md text-xs transition-colors min-w-0",
                           selectedFeed === feed.id
                             ? "bg-accent text-accent-foreground"
                             : "text-sidebar-foreground/80 hover:bg-accent/50"
@@ -404,12 +405,13 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
                         ) : (
                           <Rss className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                         )}
-                        <span className="truncate">{feed.title}</span>
-                        {feed.unread_count && feed.unread_count > 0 && (
-                          <span className="ml-auto text-[10px] font-mono bg-primary/10 text-primary px-1 rounded">
-                            {feed.unread_count}
-                          </span>
-                        )}
+                        <span className="truncate max-w-[120px] relative">
+                          {feed.title}
+                          <span className="absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-[inherit] to-transparent pointer-events-none" />
+                        </span>
+                        <span className="ml-auto text-[10px] font-mono text-muted-foreground flex-shrink-0">
+                          {feed.unread_count || 0}/{feed.total_articles || 0}
+                        </span>
                       </button>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -471,6 +473,8 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
         onSuccess={() => {
           setShowAddCategory(false);
           toast.success('分类添加成功');
+          // 刷新 categories 列表
+          queryClient.invalidateQueries({ queryKey: ['categories', user?.id] });
         }}
       />
 
@@ -478,13 +482,11 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
         open={showAddFeed}
         onOpenChange={setShowAddFeed}
         categories={categories}
+        defaultCategoryId={defaultCategoryId}
         onSuccess={(feed) => {
           setShowAddFeed(false);
+          setDefaultCategoryId(undefined);
           // 刷新 feeds 列表
-          queryClient.invalidateQueries({ queryKey: ['feeds'] });
-        }}
-        onFetchTriggered={() => {
-          // 刷新 feeds 列表以显示最新的抓取状态
           queryClient.invalidateQueries({ queryKey: ['feeds'] });
         }}
       />
@@ -503,6 +505,9 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
           onSuccess={() => {
             setEditingCategory(null);
             toast.success('分类更新成功');
+            // 刷新 categories 和 feeds 列表
+            queryClient.invalidateQueries({ queryKey: ['categories', user?.id] });
+            queryClient.invalidateQueries({ queryKey: ['feeds', user?.id] });
           }}
         />
       )}

@@ -70,6 +70,7 @@ export default function Home() {
           selectedArticle={selectedArticle}
           onSelectArticle={handleSelectArticle}
           isLoading={articlesLoading}
+          feedId={selectedFeed}
         />
         <ReaderView article={articleWithContent} />
       </div>
