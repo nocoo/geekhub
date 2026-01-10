@@ -172,13 +172,13 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
 
   return (
     <>
-      <aside className="w-56 flex-shrink-0 border-r border-subtle h-[calc(100vh-3.5rem)] flex flex-col bg-sidebar">
+      <aside className="w-64 flex-shrink-0 border-r border-subtle h-[calc(100vh-3.5rem)] flex flex-col bg-sidebar">
         {/* Special Categories - 已收藏 & 稍后阅读 */}
         <div className="p-2 space-y-0.5 border-b border-border/40">
           <button
             onClick={() => onSelectFeed('starred')}
             className={cn(
-              "w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition-colors",
+              "w-full flex items-center justify-start gap-2 px-2 py-1.5 rounded-md text-xs transition-colors text-left",
               selectedFeed === 'starred'
                 ? "bg-accent text-accent-foreground"
                 : "text-sidebar-foreground hover:bg-accent/50"
@@ -190,7 +190,7 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
           <button
             onClick={() => onSelectFeed('later')}
             className={cn(
-              "w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition-colors",
+              "w-full flex items-center justify-start gap-2 px-2 py-1.5 rounded-md text-xs transition-colors text-left",
               selectedFeed === 'later'
                 ? "bg-accent text-accent-foreground"
                 : "text-sidebar-foreground hover:bg-accent/50"
@@ -252,7 +252,7 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
                     <div className="flex items-center gap-0.5">
                       <button
                         onClick={() => toggleCategory(category.id)}
-                        className="flex-1 flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-sidebar-foreground hover:bg-accent/50 transition-colors min-w-0"
+                        className="flex-1 flex items-center justify-start gap-1.5 px-2 py-1 rounded-md text-xs text-sidebar-foreground hover:bg-accent/50 transition-colors min-w-0 text-left"
                       >
                         {isExpanded ? (
                           <ChevronDown className="w-3 h-3 text-muted-foreground flex-shrink-0" />
@@ -313,7 +313,7 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
                               <button
                                 onClick={() => handleSelectFeed(feed.id)}
                                 className={cn(
-                                  "flex-1 flex items-center gap-1.5 px-2 py-1 rounded-md text-xs transition-colors min-w-0",
+                                  "flex-1 flex items-center justify-start gap-1.5 px-2 py-1 rounded-md text-xs transition-colors min-w-0 text-left",
                                   selectedFeed === feed.id
                                     ? "bg-accent text-accent-foreground"
                                     : "text-sidebar-foreground/80 hover:bg-accent/50"
@@ -387,7 +387,7 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
                   <div className="flex items-center gap-0.5">
                     <button
                       onClick={() => toggleCategory('uncategorized')}
-                      className="flex-1 flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-sidebar-foreground hover:bg-accent/50 transition-colors"
+                      className="flex-1 flex items-center justify-start gap-1.5 px-2 py-1 rounded-md text-xs text-sidebar-foreground hover:bg-accent/50 transition-colors text-left"
                     >
                       {expandedCategories.has('uncategorized') ? (
                         <ChevronDown className="w-3 h-3 text-muted-foreground flex-shrink-0" />
