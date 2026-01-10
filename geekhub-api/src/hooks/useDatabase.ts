@@ -1,14 +1,18 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase-browser';
 import { useAuth } from '@/contexts/AuthContext';
+
+const supabase = createClient();
 
 export interface Category {
   id: string;
   user_id: string;
   name: string;
   color: string;
+  icon: string;
+  sort_order: number;
   created_at: string;
   updated_at: string;
 }
@@ -21,6 +25,10 @@ export interface Feed {
   category_id: string | null;
   favicon_url: string | null;
   description: string | null;
+  is_active: boolean;
+  fetch_interval_minutes: number;
+  unread_count?: number;
+  total_articles?: number;
   last_fetched_at: string | null;
   created_at: string;
   updated_at: string;
@@ -67,7 +75,7 @@ export function useCreateCategory() {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async (category: { name: string; color?: string }) => {
+    mutationFn: async (category: { name: string; color?: string; icon?: string }) => {
       if (!user) throw new Error('User not authenticated');
 
       const { data, error } = await supabase
@@ -76,6 +84,7 @@ export function useCreateCategory() {
           user_id: user.id,
           name: category.name,
           color: category.color || '#10b981',
+          icon: category.icon || '📁',
         })
         .select()
         .single();
@@ -201,6 +210,97 @@ export function useUpdateArticle() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['articles', user?.id] });
+    },
+  });
+}
+
+// Category mutations
+export function useUpdateCategory() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: { name?: string; color?: string; icon?: string } }) => {
+      const { data, error } = await supabase
+        .from('categories')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data as Category;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['categories', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['feeds', user?.id] });
+    },
+  });
+}
+
+export function useDeleteCategory() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('categories')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      return id;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['categories', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['feeds', user?.id] });
+    },
+  });
+}
+
+// Feed mutations
+export function useUpdateFeed() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({ id, updates }: {
+      id: string;
+      updates: { title?: string; description?: string; category_id?: string | null; is_active?: boolean; fetch_interval_minutes?: number }
+    }) => {
+      const { data, error } = await supabase
+        .from('feeds')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data as Feed;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['feeds', user?.id] });
+    },
+  });
+}
+
+export function useDeleteFeed() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('feeds')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      return id;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['feeds', user?.id] });
     },
   });
 }

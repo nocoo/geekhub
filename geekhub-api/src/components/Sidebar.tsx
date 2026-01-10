@@ -1,8 +1,23 @@
+"use client";
+
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, Inbox, Star, Clock } from 'lucide-react';
-import { feeds } from '@/lib/mockData';
+import { ChevronDown, ChevronRight, Inbox, Star, Clock, MoreVertical, FolderPlus, Plus, Edit, Trash2, Rss } from 'lucide-react';
 import { CrawlerTerminal } from './CrawlerTerminal';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { useCategories, useFeeds, useDeleteCategory, useDeleteFeed, Category, Feed } from '@/hooks/useDatabase';
+import { AddCategoryDialog } from '@/components/manage/AddCategoryDialog';
+import { AddFeedDialog } from '@/components/manage/AddFeedDialog';
+import { EditCategoryDialog } from '@/components/manage/EditCategoryDialog';
+import { EditFeedDialog } from '@/components/manage/EditFeedDialog';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { toast } from '@/components/ui/sonner';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface SidebarProps {
   selectedFeed: string | null;
@@ -10,117 +25,453 @@ interface SidebarProps {
 }
 
 export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
-  const [expandedCategories, setExpandedCategories] = useState<string[]>(['Tech', 'Dev', 'Design']);
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const [showAddCategory, setShowAddCategory] = useState(false);
+  const [showAddFeed, setShowAddFeed] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [editingFeed, setEditingFeed] = useState<Feed | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    type: 'category' | 'feed' | null;
+    id: string;
+    name: string;
+  } | null>(null);
 
-  const categories = [...new Set(feeds.map(f => f.category))];
+  const { data: categories = [], isLoading: categoriesLoading } = useCategories();
+  const { data: feeds = [], isLoading: feedsLoading } = useFeeds();
+  const deleteCategory = useDeleteCategory();
+  const deleteFeed = useDeleteFeed();
 
-  const toggleCategory = (category: string) => {
-    setExpandedCategories(prev =>
-      prev.includes(category)
-        ? prev.filter(c => c !== category)
-        : [...prev, category]
-    );
+  const toggleCategory = (categoryId: string) => {
+    setExpandedCategories(prev => {
+      const next = new Set(prev);
+      if (next.has(categoryId)) {
+        next.delete(categoryId);
+      } else {
+        next.add(categoryId);
+      }
+      return next;
+    });
   };
 
-  const getTotalUnread = () => feeds.reduce((acc, f) => acc + f.unreadCount, 0);
+  const getTotalUnread = () => feeds.reduce((acc, f) => acc + (f.unread_count || 0), 0);
+
+  const handleDeleteCategory = async () => {
+    if (!deleteConfirm || deleteConfirm.type !== 'category') return;
+
+    try {
+      await deleteCategory.mutateAsync(deleteConfirm.id);
+      toast.success('Category deleted successfully');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to delete category');
+    } finally {
+      setDeleteConfirm(null);
+    }
+  };
+
+  const handleDeleteFeed = async () => {
+    if (!deleteConfirm || deleteConfirm.type !== 'feed') return;
+
+    try {
+      await deleteFeed.mutateAsync(deleteConfirm.id);
+      toast.success('RSS feed deleted successfully');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to delete feed');
+    } finally {
+      setDeleteConfirm(null);
+    }
+  };
+
+  const getCategoryFeeds = (categoryId: string) => {
+    return feeds.filter(f => f.category_id === categoryId);
+  };
+
+  const getUncategorizedFeeds = () => {
+    return feeds.filter(f => !f.category_id);
+  };
+
+  const isLoading = categoriesLoading || feedsLoading;
 
   return (
-    <aside className="w-64 flex-shrink-0 border-r border-subtle h-[calc(100vh-3.5rem)] flex flex-col bg-sidebar">
-      {/* Quick Access */}
-      <div className="p-3 space-y-1">
-        <button
-          onClick={() => onSelectFeed(null)}
-          className={cn(
-            "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
-            selectedFeed === null
-              ? "bg-accent text-accent-foreground"
-              : "text-sidebar-foreground hover:bg-accent/50"
-          )}
-        >
-          <Inbox className="w-4 h-4 text-primary" />
-          <span className="font-medium">All Articles</span>
-          <span className="ml-auto text-xs font-mono bg-primary/10 text-primary px-1.5 py-0.5 rounded">
-            {getTotalUnread()}
+    <>
+      <aside className="w-64 flex-shrink-0 border-r border-subtle h-[calc(100vh-3.5rem)] flex flex-col bg-sidebar">
+        {/* Quick Actions */}
+        <div className="p-3 space-y-1">
+          <button
+            onClick={() => onSelectFeed(null)}
+            className={cn(
+              "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
+              selectedFeed === null
+                ? "bg-accent text-accent-foreground"
+                : "text-sidebar-foreground hover:bg-accent/50"
+            )}
+          >
+            <Inbox className="w-4 h-4 text-primary" />
+            <span className="font-medium">All Articles</span>
+            <span className="ml-auto text-xs font-mono bg-primary/10 text-primary px-1.5 py-0.5 rounded">
+              {getTotalUnread()}
+            </span>
+          </button>
+          <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-sidebar-foreground hover:bg-accent/50 transition-colors">
+            <Star className="w-4 h-4 text-yellow-500" />
+            <span>Starred</span>
+          </button>
+          <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-sidebar-foreground hover:bg-accent/50 transition-colors">
+            <Clock className="w-4 h-4 text-muted-foreground" />
+            <span>Read Later</span>
+          </button>
+        </div>
+
+        <div className="h-px bg-border/40 mx-3" />
+
+        {/* Action Buttons */}
+        <div className="px-3 py-2 flex gap-2">
+          <Button
+            onClick={() => setShowAddCategory(true)}
+            size="sm"
+            variant="outline"
+            className="flex-1 gap-1.5 h-8 text-xs"
+          >
+            <FolderPlus className="w-3.5 h-3.5" />
+            Add Category
+          </Button>
+          <Button
+            onClick={() => setShowAddFeed(true)}
+            size="sm"
+            variant="outline"
+            className="flex-1 gap-1.5 h-8 text-xs"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Add Feed
+          </Button>
+        </div>
+
+        {/* Feeds by Category */}
+        <div className="flex-1 overflow-y-auto hover-scrollbar p-3 space-y-2">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-3">
+            Feeds
           </span>
-        </button>
-        <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-sidebar-foreground hover:bg-accent/50 transition-colors">
-          <Star className="w-4 h-4 text-yellow-500" />
-          <span>Starred</span>
-        </button>
-        <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-sidebar-foreground hover:bg-accent/50 transition-colors">
-          <Clock className="w-4 h-4 text-muted-foreground" />
-          <span>Read Later</span>
-        </button>
-      </div>
 
-      <div className="h-px bg-border/40 mx-3" />
+          {isLoading ? (
+            <div className="flex items-center justify-center h-32">
+              <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : categories.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground text-sm px-3">
+              <p>No categories yet.</p>
+              <p className="text-xs mt-1">Create your first category to get started!</p>
+            </div>
+          ) : (
+            categories.map((category) => {
+              const categoryFeeds = getCategoryFeeds(category.id);
+              const isExpanded = expandedCategories.has(category.id);
+              const categoryUnread = categoryFeeds.reduce((acc, f) => acc + (f.unread_count || 0), 0);
 
-      {/* Feeds by Category */}
-      <div className="flex-1 overflow-y-auto hover-scrollbar p-3 space-y-2">
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-3">
-          Feeds
-        </span>
-        
-        {categories.map(category => {
-          const categoryFeeds = feeds.filter(f => f.category === category);
-          const isExpanded = expandedCategories.includes(category);
-          const categoryUnread = categoryFeeds.reduce((acc, f) => acc + f.unreadCount, 0);
-
-          return (
-            <div key={category}>
-              <button
-                onClick={() => toggleCategory(category)}
-                className="w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-sm text-sidebar-foreground hover:bg-accent/50 transition-colors"
-              >
-                {isExpanded ? (
-                  <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
-                ) : (
-                  <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
-                )}
-                <span className="font-medium">{category}</span>
-                {categoryUnread > 0 && (
-                  <span className="ml-auto text-[10px] font-mono text-muted-foreground">
-                    {categoryUnread}
-                  </span>
-                )}
-              </button>
-
-              {isExpanded && (
-                <div className="ml-4 mt-1 space-y-0.5">
-                  {categoryFeeds.map(feed => (
+              return (
+                <div key={category.id}>
+                  <div className="flex items-center gap-1">
                     <button
-                      key={feed.id}
-                      onClick={() => onSelectFeed(feed.id)}
-                      className={cn(
-                        "w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors",
-                        selectedFeed === feed.id
-                          ? "bg-accent text-accent-foreground"
-                          : "text-sidebar-foreground/80 hover:bg-accent/50"
-                      )}
+                      onClick={() => toggleCategory(category.id)}
+                      className="flex-1 flex items-center gap-2 px-3 py-1.5 rounded-md text-sm text-sidebar-foreground hover:bg-accent/50 transition-colors"
                     >
-                      <span className="text-sm">{feed.icon}</span>
-                      <span className="truncate">{feed.name}</span>
-                      {feed.unreadCount > 0 && (
-                        <span className="ml-auto text-[10px] font-mono bg-primary/10 text-primary px-1 rounded">
-                          {feed.unreadCount}
+                      {isExpanded ? (
+                        <ChevronDown className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                      ) : (
+                        <ChevronRight className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                      )}
+                      <span className="text-base">{category.icon}</span>
+                      <span className="font-medium truncate">{category.name}</span>
+                      {categoryUnread > 0 && (
+                        <span className="ml-auto text-[10px] font-mono text-muted-foreground">
+                          {categoryUnread}
                         </span>
                       )}
                     </button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 flex-shrink-0 text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                        >
+                          <MoreVertical className="w-3.5 h-3.5" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setEditingCategory(category)}>
+                          <Edit className="w-4 h-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-destructive focus:text-destructive"
+                          onClick={() => setDeleteConfirm({
+                            type: 'category',
+                            id: category.id,
+                            name: category.name,
+                          })}
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+
+                  {isExpanded && (
+                    <div className="ml-6 mt-1 space-y-0.5">
+                      {categoryFeeds.length === 0 ? (
+                        <div className="px-3 py-2 text-xs text-muted-foreground">
+                          No feeds in this category
+                        </div>
+                      ) : (
+                        categoryFeeds.map((feed) => (
+                          <div key={feed.id} className="flex items-center gap-1 group">
+                            <button
+                              onClick={() => onSelectFeed(feed.id)}
+                              className={cn(
+                                "flex-1 flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors",
+                                selectedFeed === feed.id
+                                  ? "bg-accent text-accent-foreground"
+                                  : "text-sidebar-foreground/80 hover:bg-accent/50"
+                              )}
+                            >
+                              {feed.favicon_url ? (
+                                <img
+                                  src={feed.favicon_url}
+                                  alt=""
+                                  className="w-4 h-4 rounded flex-shrink-0"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                  }}
+                                />
+                              ) : (
+                                <Rss className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                              )}
+                              <span className="truncate">{feed.title}</span>
+                              {feed.unread_count && feed.unread_count > 0 && (
+                                <span className="ml-auto text-[10px] font-mono bg-primary/10 text-primary px-1 rounded">
+                                  {feed.unread_count}
+                                </span>
+                              )}
+                            </button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 flex-shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-foreground hover:bg-accent/50 transition-all"
+                                >
+                                  <MoreVertical className="w-3.5 h-3.5" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => setEditingFeed(feed)}>
+                                  <Edit className="w-4 h-4 mr-2" />
+                                  Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="text-destructive focus:text-destructive"
+                                  onClick={() => setDeleteConfirm({
+                                    type: 'feed',
+                                    id: feed.id,
+                                    name: feed.title,
+                                  })}
+                                >
+                                  <Trash2 className="w-4 h-4 mr-2" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+
+          {/* Uncategorized Feeds */}
+          {isLoading === false && getUncategorizedFeeds().length > 0 && (
+            <div className="mt-2">
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => toggleCategory('uncategorized')}
+                  className="flex-1 flex items-center gap-2 px-3 py-1.5 rounded-md text-sm text-sidebar-foreground hover:bg-accent/50 transition-colors"
+                >
+                  {expandedCategories.has('uncategorized') ? (
+                    <ChevronDown className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                  ) : (
+                    <ChevronRight className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                  )}
+                  <span className="text-base">📁</span>
+                  <span className="font-medium truncate">Uncategorized</span>
+                  <span className="ml-auto text-[10px] font-mono text-muted-foreground">
+                    {getUncategorizedFeeds().length}
+                  </span>
+                </button>
+              </div>
+
+              {expandedCategories.has('uncategorized') && (
+                <div className="ml-6 mt-1 space-y-0.5">
+                  {getUncategorizedFeeds().map((feed) => (
+                    <div key={feed.id} className="flex items-center gap-1 group">
+                      <button
+                        onClick={() => onSelectFeed(feed.id)}
+                        className={cn(
+                          "flex-1 flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors",
+                          selectedFeed === feed.id
+                            ? "bg-accent text-accent-foreground"
+                            : "text-sidebar-foreground/80 hover:bg-accent/50"
+                        )}
+                      >
+                        {feed.favicon_url ? (
+                          <img
+                            src={feed.favicon_url}
+                            alt=""
+                            className="w-4 h-4 rounded flex-shrink-0"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <Rss className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                        )}
+                        <span className="truncate">{feed.title}</span>
+                        {feed.unread_count && feed.unread_count > 0 && (
+                          <span className="ml-auto text-[10px] font-mono bg-primary/10 text-primary px-1 rounded">
+                            {feed.unread_count}
+                          </span>
+                        )}
+                      </button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 flex-shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-foreground hover:bg-accent/50 transition-all"
+                          >
+                            <MoreVertical className="w-3.5 h-3.5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => setEditingFeed(feed)}>
+                            <Edit className="w-4 h-4 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={() => setDeleteConfirm({
+                              type: 'feed',
+                              id: feed.id,
+                              name: feed.title,
+                            })}
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   ))}
                 </div>
               )}
             </div>
-          );
-        })}
-      </div>
+          )}
+        </div>
 
-      {/* Crawler Terminal */}
-      <div className="p-3 border-t border-subtle">
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-1 mb-2 block">
-          The Crawler
-        </span>
-        <CrawlerTerminal />
-      </div>
-    </aside>
+        {/* Crawler Terminal */}
+        <div className="p-3 border-t border-subtle">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-1 mb-2 block">
+            The Crawler
+          </span>
+          <CrawlerTerminal />
+        </div>
+      </aside>
+
+      {/* Dialogs */}
+      <AddCategoryDialog
+        open={showAddCategory}
+        onOpenChange={setShowAddCategory}
+        onSuccess={() => {
+          setShowAddCategory(false);
+          toast.success('Category added successfully');
+        }}
+      />
+
+      <AddFeedDialog
+        open={showAddFeed}
+        onOpenChange={setShowAddFeed}
+        categories={categories}
+        onSuccess={() => {
+          setShowAddFeed(false);
+          toast.success('RSS feed added successfully');
+        }}
+      />
+
+      {editingCategory && (
+        <EditCategoryDialog
+          category={{
+            id: editingCategory.id,
+            name: editingCategory.name,
+            color: editingCategory.color,
+            icon: editingCategory.icon,
+            sort_order: editingCategory.sort_order,
+          }}
+          open={!!editingCategory}
+          onOpenChange={(open) => !open && setEditingCategory(null)}
+          onSuccess={() => {
+            setEditingCategory(null);
+            toast.success('Category updated successfully');
+          }}
+        />
+      )}
+
+      {editingFeed && (
+        <EditFeedDialog
+          feed={{
+            id: editingFeed.id,
+            title: editingFeed.title,
+            url: editingFeed.url,
+            description: editingFeed.description || '',
+            is_active: editingFeed.is_active,
+            fetch_interval_minutes: editingFeed.fetch_interval_minutes,
+            category: editingFeed.category ? {
+              id: editingFeed.category.id,
+              name: editingFeed.category.name,
+              color: editingFeed.category.color,
+              icon: editingFeed.category.icon,
+            } : null,
+          }}
+          categories={categories.map(c => ({
+            id: c.id,
+            name: c.name,
+            color: c.color,
+            icon: c.icon,
+          }))}
+          open={!!editingFeed}
+          onOpenChange={(open) => !open && setEditingFeed(null)}
+          onSuccess={() => {
+            setEditingFeed(null);
+            toast.success('RSS feed updated successfully');
+          }}
+        />
+      )}
+
+      {/* Delete Confirmation */}
+      <ConfirmDialog
+        open={!!deleteConfirm}
+        onOpenChange={(open) => !open && setDeleteConfirm(null)}
+        title={deleteConfirm?.type === 'category' ? 'Delete Category' : 'Delete RSS Feed'}
+        description={
+          deleteConfirm?.type === 'category'
+            ? `Are you sure you want to delete "${deleteConfirm?.name}"? This action cannot be undone.`
+            : `Are you sure you want to delete "${deleteConfirm?.name}"? This action cannot be undone.`
+        }
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={deleteConfirm?.type === 'category' ? handleDeleteCategory : handleDeleteFeed}
+      />
+    </>
   );
 }
