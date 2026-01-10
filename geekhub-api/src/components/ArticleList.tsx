@@ -1,8 +1,9 @@
-import { useEffect, useCallback, useState, useMemo } from 'react';
+import { useEffect, useCallback, useState, useMemo, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Rss, CheckCheck, Eye, EyeOff, RefreshCw } from 'lucide-react';
-import { Article, useMarkAllAsRead } from '@/hooks/useDatabase';
+import { Article, useMarkAllAsRead, useMarkAsRead } from '@/hooks/useDatabase';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFeedFetchEvents } from '@/contexts/SSEContext';
 import { cn } from '@/lib/utils';
 import { useFormatTime } from '@/lib/format-time';
 import { Button } from '@/components/ui/button';
@@ -21,24 +22,39 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
   const queryClient = useQueryClient();
   const formatTime = useFormatTime();
   const markAllAsRead = useMarkAllAsRead();
+  const markAsRead = useMarkAsRead();
   const [showRead, setShowRead] = useState(false);
   const [fetching, setFetching] = useState(false);
 
-  // Filter articles in memory based on showRead setting
-  const filteredArticles = useMemo(() => {
-    const unreadArticles = articles.filter(a => !a.isRead);
+  // Track articles read in current feed session (cleared when switching feeds)
+  const sessionReadHashesRef = useRef<Set<string>>(new Set());
 
+  // Clear session read hashes when feed changes
+  useEffect(() => {
+    sessionReadHashesRef.current.clear();
+  }, [feedId]);
+
+  // Filter articles: show if unread OR was just read in this session
+  const filteredArticles = useMemo(() => {
     if (showRead) {
       // Show all articles
       return articles;
-    } else if (unreadArticles.length === 0 && articles.length > 0) {
-      // No unread articles but have articles, show all instead of empty list
-      return articles;
-    } else {
-      // Show only unread articles
-      return unreadArticles;
     }
+
+    // Show articles that are unread OR were read in this session
+    return articles.filter(a => !a.isRead || (a.hash && sessionReadHashesRef.current.has(a.hash)));
   }, [articles, showRead]);
+
+  // Handle article selection - mark as read and track in session
+  const handleSelectArticle = useCallback((article: Article) => {
+    if (!article.isRead && article.hash && feedId) {
+      // Add to session read hashes to keep it visible
+      sessionReadHashesRef.current.add(article.hash);
+      // Mark as read in database
+      markAsRead.mutate({ articleHash: article.hash, feedId });
+    }
+    onSelectArticle(article);
+  }, [feedId, markAsRead, onSelectArticle]);
 
   // Handle refresh
   const handleRefresh = async () => {
@@ -49,15 +65,7 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
       const response = await fetch(`/api/feeds/${feedId}/fetch`, { method: 'POST' });
       if (response.ok) {
         toast.success('正在抓取最新文章...');
-
-        // Wait for fetch to complete, then refetch
-        setTimeout(async () => {
-          // Refetch articles and feeds
-          await queryClient.invalidateQueries({ queryKey: ['articles', user?.id, feedId] });
-          await queryClient.invalidateQueries({ queryKey: ['feeds', user?.id] });
-          setFetching(false);
-          toast.success('抓取完成');
-        }, 3000);
+        // Fetching state will be reset when fetch-complete event is received
       } else {
         const { error } = await response.json();
         toast.error(error || '抓取失败');
@@ -69,6 +77,20 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
       setFetching(false);
     }
   };
+
+  // Listen for feed fetch completion events
+  useFeedFetchEvents({
+    onFetchComplete: useCallback((event: { feedId: string }) => {
+      // Only handle events for the current feed
+      if (event.feedId === feedId) {
+        setFetching(false);
+        // Refresh articles and feeds
+        queryClient.invalidateQueries({ queryKey: ['articles', user?.id, feedId] });
+        queryClient.invalidateQueries({ queryKey: ['feeds', user?.id] });
+        toast.success('抓取完成');
+      }
+    }, [feedId, queryClient, user?.id]),
+  });
 
   // Count unread from current articles
   const unreadCount = useMemo(() =>
@@ -93,13 +115,13 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
     if (e.key === 'ArrowDown' || e.key === 'j') {
       e.preventDefault();
       const nextIndex = currentIndex < filteredArticles.length - 1 ? currentIndex + 1 : 0;
-      onSelectArticle(filteredArticles[nextIndex]);
+      handleSelectArticle(filteredArticles[nextIndex]);
     } else if (e.key === 'ArrowUp' || e.key === 'k') {
       e.preventDefault();
       const prevIndex = currentIndex > 0 ? currentIndex - 1 : filteredArticles.length - 1;
-      onSelectArticle(filteredArticles[prevIndex]);
+      handleSelectArticle(filteredArticles[prevIndex]);
     }
-  }, [filteredArticles, selectedArticle, onSelectArticle]);
+  }, [filteredArticles, selectedArticle, handleSelectArticle]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
@@ -120,6 +142,18 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
         <div className="text-center text-muted-foreground">
           <p className="text-sm">没有找到文章</p>
           <p className="text-xs mt-1">{showRead ? '该订阅源暂无文章' : '选择一个订阅源开始阅读'}</p>
+          {feedId && (
+            <Button
+              onClick={handleRefresh}
+              disabled={fetching}
+              variant="outline"
+              size="sm"
+              className="mt-4 gap-2"
+            >
+              <RefreshCw className={`w-4 h-4 ${fetching ? 'animate-spin' : ''}`} />
+              {fetching ? '正在抓取...' : '立即抓取'}
+            </Button>
+          )}
         </div>
       </div>
     );
@@ -170,7 +204,7 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
         {filteredArticles.map(article => (
           <button
             key={article.id}
-            onClick={() => onSelectArticle(article)}
+            onClick={() => handleSelectArticle(article)}
             className={cn(
               "w-full text-left p-4 transition-all duration-150 relative group",
               selectedArticle?.id === article.id
@@ -230,6 +264,7 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
                     alt={article.title}
                     className="w-full h-full object-cover rounded-md"
                     loading="lazy"
+                    referrerPolicy="no-referrer"
                     onError={(e) => {
                       e.currentTarget.style.display = 'none';
                     }}

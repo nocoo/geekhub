@@ -3,6 +3,66 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import Parser from 'rss-parser';
 import crypto from 'crypto';
+import { setGlobalDispatcher, ProxyAgent } from 'undici';
+import net from 'net';
+
+/**
+ * Auto-detect proxy server by checking common Clash ports
+ */
+async function detectProxy(): Promise<string | null> {
+  // Check environment variables first
+  const envProxy = process.env.HTTP_PROXY || process.env.HTTPS_PROXY;
+  if (envProxy) {
+    try {
+      const url = new URL(envProxy);
+      const isReachable = await checkPort(url.hostname, parseInt(url.port) || 80);
+      if (isReachable) return envProxy;
+    } catch {
+      // Invalid URL, continue
+    }
+  }
+
+  // Common Clash/Clash Verge ports to check
+  const commonPorts = [7890, 7891, 7897, 7898, 10808, 10809, 1080, 789];
+  const hostname = '127.0.0.1';
+
+  for (const port of commonPorts) {
+    const isReachable = await checkPort(hostname, port);
+    if (isReachable) {
+      console.log(`[Proxy] Auto-detected proxy on port ${port}`);
+      return `http://${hostname}:${port}`;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Check if a port is reachable (has a listening service)
+ */
+function checkPort(hostname: string, port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const socket = new net.Socket();
+    socket.setTimeout(500);
+
+    socket.on('connect', () => {
+      socket.destroy();
+      resolve(true);
+    });
+
+    socket.on('timeout', () => {
+      socket.destroy();
+      resolve(false);
+    });
+
+    socket.on('error', () => {
+      socket.destroy();
+      resolve(false);
+    });
+
+    socket.connect(port, hostname);
+  });
+}
 
 async function createSupabaseClient() {
   const cookieStore = await cookies();
@@ -28,13 +88,58 @@ async function createSupabaseClient() {
   );
 }
 
-// RSS 解析器
+// RSS 解析器 with auto-detect proxy
+let proxyAgent: ProxyAgent | undefined = undefined;
+let proxyInitialized = false;
+
+async function initProxy() {
+  if (proxyInitialized) return;
+
+  const detectedProxy = await detectProxy();
+  if (detectedProxy) {
+    proxyAgent = new ProxyAgent(detectedProxy);
+    setGlobalDispatcher(proxyAgent);
+    console.log(`[Proxy] Using proxy: ${detectedProxy}`);
+  } else {
+    console.log('[Proxy] No proxy detected, using direct connection');
+  }
+  proxyInitialized = true;
+}
+
 const parser = new Parser({
   timeout: 10000,
   headers: {
-    'User-Agent': 'GeekHub RSS Reader/1.0',
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+    'Accept-Language': 'en,zh-CN;q=0.9,zh;q=0.8',
+    'Cache-Control': 'max-age=0',
+  },
+  customFields: {
+    item: [
+      ['author', 'author'],
+    ],
   },
 });
+
+// Custom fetch function with proxy support
+async function fetchWithProxy(url: string): Promise<string> {
+  await initProxy();  // Ensure proxy is initialized
+
+  const response = await fetch(url, {
+    dispatcher: proxyAgent,
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+      'Accept-Language': 'en,zh-CN;q=0.9,zh;q=0.8',
+    },
+  } as any);
+
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+  }
+
+  return await response.text();
+}
 
 // Generate URL hash (first 12 chars of MD5)
 function generateUrlHash(url: string): string {
@@ -44,7 +149,10 @@ function generateUrlHash(url: string): string {
 // 验证和解析 RSS URL
 async function validateRssUrl(url: string) {
   try {
-    const feed = await parser.parseURL(url);
+    // Fetch content with proxy support
+    const xml = await fetchWithProxy(url);
+    // Parse the XML content
+    const feed = await parser.parseString(xml);
     const itemCount = feed.items?.length || 0;
     const latestItem = feed.items?.[0];
 
@@ -135,7 +243,7 @@ export async function POST(request: NextRequest) {
       .select('id')
       .eq('user_id', user.id)
       .eq('url', url)
-      .maybeSingle(); // 使用 maybeSingle 而不是 single，避免没有记录时报错
+      .maybeSingle();
 
     if (existingFeed) {
       return NextResponse.json({ error: 'RSS feed already exists' }, { status: 409 });
@@ -143,6 +251,7 @@ export async function POST(request: NextRequest) {
 
     // 创建新的 RSS 源
     const urlHash = generateUrlHash(url);
+
     const { data: feed, error } = await supabase
       .from('feeds')
       .insert({

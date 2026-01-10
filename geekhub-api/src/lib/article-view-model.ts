@@ -132,11 +132,39 @@ export class ArticleViewModelService {
 
   /**
    * Extract first image from HTML content
+   * Handles various src attribute formats: src="...", src='...', src=..., data-src=...
    */
   private extractFirstImage(html: string): string | null {
-    if (!html) return null;
-    const imgMatch = html.match(/<img[^>]+src=["']([^"']+)["'][^>]*>/i);
-    return imgMatch ? imgMatch[1] : null;
+    if (!html) {
+      return null;
+    }
+
+    // Try multiple patterns to find the first valid image URL
+    const patterns = [
+      // Standard src with quotes
+      /<img[^>]+src=["']([^"']+)["'][^>]*>/i,
+      // src without quotes (fallback)
+      /<img[^>]+src=([^"\s>]+)[^>]*>/i,
+      // data-src attribute (lazy loaded images)
+      /<img[^>]+data-src=["']([^"']+)["'][^>]*>/i,
+      // Check for picture source
+      /<source[^>]+srcset=["']([^"']+)["'][^>]*>/i,
+    ];
+
+    for (const pattern of patterns) {
+      const match = html.match(pattern);
+      if (match && match[1]) {
+        let url = match[1];
+        // Decode HTML entities like &amp; -> &
+        url = url.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"');
+        // Filter out empty strings, data URLs, and invalid URLs
+        if (url && !url.startsWith('data:') && (url.startsWith('http') || url.startsWith('//'))) {
+          return url.startsWith('//') ? 'https:' + url : url;
+        }
+      }
+    }
+
+    return null;
   }
 
   /**

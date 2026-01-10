@@ -1,9 +1,10 @@
 import { formatDistanceToNow, format } from 'date-fns';
 import parse from 'html-react-parser';
-import { ExternalLink, Bookmark, Share2, Expand, Minimize2, Image, ImageOff } from 'lucide-react';
+import { ExternalLink, Bookmark, Share2, Expand, Minimize2, Image, ImageOff, Bug, Download } from 'lucide-react';
 import { Article } from '@/hooks/useDatabase';
 import { Button } from '@/components/ui/button';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
+import { toast } from '@/components/ui/sonner';
 
 interface ReaderViewProps {
   article: Article | null;
@@ -34,9 +35,84 @@ function getFirstChar(str: string): string {
 export function ReaderView({ article }: ReaderViewProps) {
   const [fullWidth, setFullWidth] = useState(false);
   const [showImages, setShowImages] = useState(true);
+  const [enhancedContent, setEnhancedContent] = useState<string | null>(null);
+  const [isLoadingFull, setIsLoadingFull] = useState(false);
 
   const toggleWidth = useCallback(() => setFullWidth(prev => !prev), []);
   const toggleImages = useCallback(() => setShowImages(prev => !prev), []);
+
+  // Check if content is short (likely a summary only)
+  const isShortContent = useMemo(() => {
+    if (!article?.content) return false;
+    // Content is considered short if less than 500 chars
+    return article.content.length < 500;
+  }, [article?.content]);
+
+  // Reset enhanced content when article changes
+  useEffect(() => {
+    setEnhancedContent(null);
+  }, [article?.id]);
+
+  // Use enhanced content if available, otherwise use original content
+  const displayContent = enhancedContent || article?.content;
+
+  // Fetch full content from original URL
+  const handleFetchFull = useCallback(async () => {
+    if (!article?.url) return;
+
+    setIsLoadingFull(true);
+    try {
+      const response = await fetch(`/api/articles/${article.id}/fetch-full`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: article.url }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch full content');
+      }
+
+      const data = await response.json();
+      if (data.success && data.content) {
+        setEnhancedContent(data.content);
+        toast.success(`已获取完整内容 (${(data.content.length / 1000).toFixed(1)}k 字符)`);
+      } else {
+        throw new Error(data.error || 'No content returned');
+      }
+    } catch (error) {
+      console.error('Failed to fetch full content:', error);
+      toast.error('获取完整内容失败: ' + (error instanceof Error ? error.message : '未知错误'));
+    } finally {
+      setIsLoadingFull(false);
+    }
+  }, [article]);
+
+  // Copy debug info to clipboard
+  const handleDebug = useCallback(() => {
+    if (!article) return;
+
+    const debugInfo = {
+      id: article.id,
+      hash: article.hash,
+      feedId: article.feedId,
+      feedName: article.feedName,
+      title: article.title,
+      url: article.url,
+      publishedAt: article.publishedAt,
+      hasImage: !!article.image,
+      image: article.image,
+      contentLength: article.content?.length || 0,
+      enhancedContentLength: enhancedContent?.length || 0,
+      contentPreview: article.content?.slice(0, 200),
+    };
+
+    const debugString = JSON.stringify(debugInfo, null, 2);
+    navigator.clipboard.writeText(debugString).then(() => {
+      toast.success('调试信息已复制到剪贴板');
+    }).catch(() => {
+      toast.error('复制失败');
+    });
+  }, [article, enhancedContent]);
 
   if (!article) {
     return (
@@ -62,8 +138,8 @@ export function ReaderView({ article }: ReaderViewProps) {
 
   // Process content to hide images if needed
   const processedContent = showImages
-    ? article.content
-    : article.content?.replace(/<img[^>]*>/gi, '');
+    ? displayContent
+    : displayContent?.replace(/<img[^>]*>/gi, '');
 
   return (
     <div className="flex-1 h-[calc(100vh-3.5rem)] overflow-y-auto hover-scrollbar bg-background">
@@ -96,6 +172,21 @@ export function ReaderView({ article }: ReaderViewProps) {
               <Button variant="ghost" size="icon" className="h-8 w-8" title="Toggle images" onClick={toggleImages}>
                 {showImages ? <Image className="w-4 h-4" /> : <ImageOff className="w-4 h-4" />}
               </Button>
+              {isShortContent && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  title="Fetch full content"
+                  onClick={handleFetchFull}
+                  disabled={isLoadingFull}
+                >
+                  <Download className={`w-4 h-4 ${isLoadingFull ? 'animate-spin' : ''}`} />
+                </Button>
+              )}
+              <Button variant="ghost" size="icon" className="h-8 w-8" title="Debug info" onClick={handleDebug}>
+                <Bug className="w-4 h-4" />
+              </Button>
               <Button variant="ghost" size="icon" className="h-8 w-8" title="Save">
                 <Bookmark className="w-4 h-4" />
               </Button>
@@ -119,9 +210,42 @@ export function ReaderView({ article }: ReaderViewProps) {
         <div className="prose prose-geek max-w-none font-serif text-lg leading-relaxed m-0">
           {processedContent ? parse(processedContent, {
             replace: (domNode: any) => {
-              if (domNode.type === 'tag' && domNode.attribs?.fetchpriority) {
-                domNode.attribs.fetchPriority = domNode.attribs.fetchpriority;
-                delete domNode.attribs.fetchpriority;
+              if (domNode.type === 'tag') {
+                // Remove all inline styles to fix dark mode issues
+                if (domNode.attribs?.style) {
+                  delete domNode.attribs.style;
+                }
+                // Remove problematic attributes
+                if (domNode.attribs?.bgcolor) {
+                  delete domNode.attribs.bgcolor;
+                }
+                if (domNode.attribs?.background) {
+                  delete domNode.attribs.background;
+                }
+                if (domNode.attribs?.color) {
+                  delete domNode.attribs.color;
+                }
+                if (domNode.attribs?.class) {
+                  // Keep class but remove potential style conflicts
+                  // domNode.attribs.class = domNode.attribs.class;
+                }
+
+                // Fix fetchpriority attribute name
+                if (domNode.attribs?.fetchpriority) {
+                  domNode.attribs.fetchPriority = domNode.attribs.fetchpriority;
+                  delete domNode.attribs.fetchpriority;
+                }
+
+                // Add referrerPolicy to images to bypass anti-hotlinking
+                if (domNode.name === 'img') {
+                  // Remove images with empty src to avoid console errors
+                  if (!domNode.attribs.src || domNode.attribs.src === '') {
+                    return null;
+                  }
+                  domNode.attribs.referrerPolicy = 'no-referrer';
+                  // Add loading="lazy" for better performance
+                  domNode.attribs.loading = 'lazy';
+                }
               }
               return domNode;
             }

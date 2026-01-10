@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { ChevronDown, ChevronRight, Inbox, Star, Clock, MoreVertical, FolderPlus, Plus, Edit, Trash2, Rss, RefreshCw, FileText } from 'lucide-react';
 import { CrawlerTerminal } from './CrawlerTerminal';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useCategories, useFeeds, useDeleteCategory, useDeleteFeed, Category, Feed } from '@/hooks/useDatabase';
+import { useFeedFetchEvents } from '@/contexts/SSEContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { AddCategoryDialog } from '@/components/manage/AddCategoryDialog';
 import { AddFeedDialog } from '@/components/manage/AddFeedDialog';
@@ -30,6 +31,12 @@ interface SidebarProps {
 export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const selectedFeedRef = useRef(selectedFeed);
+
+  // Update ref when selectedFeed changes
+  useEffect(() => {
+    selectedFeedRef.current = selectedFeed;
+  }, [selectedFeed]);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['uncategorized']));
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [showAddFeed, setShowAddFeed] = useState(false);
@@ -46,6 +53,18 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
 
   const { data: categories = [], isLoading: categoriesLoading } = useCategories();
   const { data: feeds = [], isLoading: feedsLoading } = useFeeds();
+
+  // Listen for feed fetch completion events to refresh data
+  useFeedFetchEvents({
+    onFetchComplete: useCallback((event: { feedId: string }) => {
+      // Refresh feeds list to show updated unread counts and total articles
+      queryClient.invalidateQueries({ queryKey: ['feeds', user?.id] });
+      // If currently viewing the fetched feed, also refresh articles
+      if (selectedFeedRef.current === event.feedId) {
+        queryClient.invalidateQueries({ queryKey: ['articles', user?.id, event.feedId] });
+      }
+    }, [queryClient, user?.id]),
+  });
 
   // Auto-expand all categories when loaded
   useEffect(() => {

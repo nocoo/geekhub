@@ -73,7 +73,7 @@ export function AddFeedDialog({ open, onOpenChange, categories, onSuccess, defau
       }
     } catch (error) {
       console.error('Failed to add feed:', error);
-      toast.error('Failed to add RSS feed');
+      toast.error('添加订阅源失败');
     } finally {
       setLoading(false);
     }

@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { useLogsEvents, useSSE } from '@/contexts/SSEContext';
 
 interface LogLine {
   timestamp: string;
@@ -14,8 +15,8 @@ interface LogLine {
 export function CrawlerTerminal() {
   const [logs, setLogs] = useState<LogLine[]>([]);
   const [cursorVisible, setCursorVisible] = useState(true);
-  const [isOnline, setIsOnline] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
+  const { isOnline } = useSSE();
 
   // Auto-scroll to bottom when new logs arrive
   useEffect(() => {
@@ -24,18 +25,12 @@ export function CrawlerTerminal() {
     }
   }, [logs]);
 
-  // Set up SSE connection
-  useEffect(() => {
-    const eventSource = new EventSource('/api/logs/stream');
-
-    eventSource.addEventListener('init', (e) => {
-      const data = JSON.parse(e.data);
+  // Listen for log events using global SSE connection
+  useLogsEvents({
+    onInit: (data) => {
       setLogs(data.logs || []);
-      setIsOnline(true);
-    });
-
-    eventSource.addEventListener('update', (e) => {
-      const data = JSON.parse(e.data);
+    },
+    onUpdate: (data) => {
       setLogs((prev) => {
         // Merge new logs, avoiding duplicates
         const newLogs = data.logs || [];
@@ -45,22 +40,8 @@ export function CrawlerTerminal() {
         );
         return [...prev, ...uniqueNewLogs];
       });
-      setIsOnline(true);
-    });
-
-    eventSource.addEventListener('system', (e) => {
-      const data = JSON.parse(e.data);
-      console.log('System:', data.message);
-    });
-
-    eventSource.onerror = () => {
-      setIsOnline(false);
-    };
-
-    return () => {
-      eventSource.close();
-    };
-  }, []);
+    },
+  });
 
   // Cursor blinking
   useEffect(() => {

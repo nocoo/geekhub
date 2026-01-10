@@ -3,6 +3,66 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { FeedLogger } from './logger';
+import { setGlobalDispatcher, ProxyAgent } from 'undici';
+import net from 'net';
+
+/**
+ * Auto-detect proxy server by checking common Clash ports
+ */
+async function detectProxy(): Promise<string | null> {
+  // Check environment variables first
+  const envProxy = process.env.HTTP_PROXY || process.env.HTTPS_PROXY;
+  if (envProxy) {
+    try {
+      const url = new URL(envProxy);
+      const isReachable = await checkPort(url.hostname, parseInt(url.port) || 80);
+      if (isReachable) return envProxy;
+    } catch {
+      // Invalid URL, continue
+    }
+  }
+
+  // Common Clash/Clash Verge ports to check
+  const commonPorts = [7890, 7891, 7897, 7898, 10808, 10809, 1080, 789];
+  const hostname = '127.0.0.1';
+
+  for (const port of commonPorts) {
+    const isReachable = await checkPort(hostname, port);
+    if (isReachable) {
+      console.log(`[Proxy] Auto-detected proxy on port ${port}`);
+      return `http://${hostname}:${port}`;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Check if a port is reachable (has a listening service)
+ */
+function checkPort(hostname: string, port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const socket = new net.Socket();
+    socket.setTimeout(500);
+
+    socket.on('connect', () => {
+      socket.destroy();
+      resolve(true);
+    });
+
+    socket.on('timeout', () => {
+      socket.destroy();
+      resolve(false);
+    });
+
+    socket.on('error', () => {
+      socket.destroy();
+      resolve(false);
+    });
+
+    socket.connect(port, hostname);
+  });
+}
 
 export interface FeedInfo {
   id: string;
@@ -45,16 +105,60 @@ export interface ArticleData {
   fetched_at: string;
 }
 
-const parser = new Parser({
-  timeout: 10000,
-  customFields: {
-    item: [
-      ['dc:creator', 'creator'],
-      ['content:encoded', 'content'],
-      ['author', 'author'],
-    ],
-  },
-});
+// Configure proxy with auto-detection
+let proxyAgent: ProxyAgent | undefined = undefined;
+let proxyInitialized = false;
+
+async function initProxy() {
+  if (proxyInitialized) return;
+
+  const detectedProxy = await detectProxy();
+  if (detectedProxy) {
+    proxyAgent = new ProxyAgent(detectedProxy);
+    setGlobalDispatcher(proxyAgent);
+    console.log(`[Proxy] Using proxy: ${detectedProxy}`);
+  } else {
+    console.log('[Proxy] No proxy detected, using direct connection');
+  }
+  proxyInitialized = true;
+}
+
+function createParser(): Parser {
+  const options: any = {
+    timeout: 10000,
+    customFields: {
+      item: [
+        ['dc:creator', 'creator'],
+        ['content:encoded', 'content'],
+        ['author', 'author'],
+      ],
+    },
+  };
+
+  return new Parser(options);
+}
+
+const parser = createParser();
+
+// Custom fetch function with proxy support
+async function fetchWithProxy(url: string): Promise<string> {
+  await initProxy();  // Ensure proxy is initialized
+
+  const response = await fetch(url, {
+    dispatcher: proxyAgent,
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+      'Accept-Language': 'en,zh-CN;q=0.9,zh;q=0.8',
+    },
+  } as any);
+
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+  }
+
+  return await response.text();
+}
 
 export class FeedFetcher {
   private logger: FeedLogger;
@@ -164,7 +268,10 @@ export class FeedFetcher {
     try {
       await this.logger.info('FETCH', this.feed.url, `Starting fetch for "${this.feed.title}"`);
 
-      const feed = await parser.parseURL(this.feed.url);
+      // Fetch content with proxy support
+      const xml = await fetchWithProxy(this.feed.url);
+      // Parse the XML content
+      const feed = await parser.parseString(xml);
       const items = feed.items || [];
 
       await this.logger.success(200, 'PARSE', `${items.length} items`, '0ms', `Parsed RSS feed`);

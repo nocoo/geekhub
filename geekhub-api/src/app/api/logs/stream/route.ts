@@ -63,13 +63,18 @@ export async function GET(request: NextRequest) {
   // Get user's feeds
   const { data: feeds } = await supabase
     .from('feeds')
-    .select('id, url_hash, title')
+    .select('id, url_hash, title, last_fetched_at')
     .eq('user_id', user.id)
     .eq('is_active', true);
 
   if (!feeds) {
     return new Response('No feeds found', { status: 404 });
   }
+
+  // Store initial last_fetched_at for each feed to detect changes
+  const feedFetchTimestamps = new Map<string, string>(
+    feeds.map(f => [f.id, f.last_fetched_at || ''])
+  );
 
   const encoder = new TextEncoder();
 
@@ -80,6 +85,9 @@ export async function GET(request: NextRequest) {
         const message = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
         controller.enqueue(encoder.encode(message));
       };
+
+      // Flag to skip first check (avoid sending events for initial data)
+      let isFirstCheck = true;
 
       // Send initial connection message
       sendEvent({ type: 'connected', message: 'Connected to log stream' }, 'system');
@@ -144,6 +152,40 @@ export async function GET(request: NextRequest) {
           );
           sendEvent({ logs: sorted }, 'update');
         }
+
+        // Check for feed fetch completion by monitoring last_fetched_at changes
+        const { data: updatedFeeds } = await supabase
+          .from('feeds')
+          .select('id, last_fetched_at, total_articles')
+          .eq('user_id', user.id)
+          .eq('is_active', true);
+
+        if (updatedFeeds) {
+          for (const updatedFeed of updatedFeeds) {
+            const previousTimestamp = feedFetchTimestamps.get(updatedFeed.id);
+            const currentTimestamp = updatedFeed.last_fetched_at || '';
+
+            // Normalize both to empty string for comparison (handle null/undefined)
+            const normalizedPrevious = previousTimestamp || '';
+            const normalizedCurrent = currentTimestamp || '';
+
+            // Skip first check to avoid sending events for initial data
+            if (!isFirstCheck && normalizedPrevious !== normalizedCurrent) {
+              // Feed was updated, send fetch-complete event
+              sendEvent({
+                feedId: updatedFeed.id,
+                lastFetchedAt: updatedFeed.last_fetched_at,
+                totalArticles: updatedFeed.total_articles,
+              }, 'fetch-complete');
+            }
+
+            // Update stored timestamp
+            feedFetchTimestamps.set(updatedFeed.id, normalizedCurrent);
+          }
+        }
+
+        // Mark first check as complete
+        isFirstCheck = false;
       }, 3000); // Check every 3 seconds
 
       // Keep connection alive
