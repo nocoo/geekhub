@@ -1,4 +1,4 @@
-import { formatDistanceToNow, format } from 'date-fns';
+import { format } from 'date-fns';
 import parse from 'html-react-parser';
 import { ExternalLink, Bookmark, Share2, Expand, Minimize2, Image, ImageOff, Bug, Download, Clock } from 'lucide-react';
 import { Article, useBookmarkArticle, useUnbookmarkArticle, useSaveForLater, useRemoveFromLater } from '@/hooks/useDatabase';
@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { toast } from '@/components/ui/sonner';
 import { getProxyImageUrl, getRefererFromUrl } from '@/lib/image-proxy';
+import { useFormatTime } from '@/lib/format-time';
 
 interface ReaderViewProps {
   article: Article | null;
@@ -34,6 +35,7 @@ function getFirstChar(str: string): string {
 }
 
 export function ReaderView({ article }: ReaderViewProps) {
+  const formatTime = useFormatTime();
   const [fullWidth, setFullWidth] = useState(false);
   const [showImages, setShowImages] = useState(true);
   const [enhancedContent, setEnhancedContent] = useState<string | null>(null);
@@ -234,7 +236,7 @@ export function ReaderView({ article }: ReaderViewProps) {
               <span>{article.feedName}</span>
               <span>·</span>
               <span>
-                {article.publishedAt ? formatDistanceToNow(article.publishedAt, { addSuffix: true }) : 'No date'}
+                {article.publishedAt ? formatTime(article.publishedAt) : '无日期'}
               </span>
             </div>
 
@@ -326,8 +328,16 @@ export function ReaderView({ article }: ReaderViewProps) {
                 }
 
                 // Remove empty href attributes to avoid console warnings
-                if (domNode.name === 'a' && domNode.attribs?.href === '') {
-                  delete domNode.attribs.href;
+                if (domNode.name === 'a') {
+                  if (!domNode.attribs?.href || domNode.attribs.href === '' || domNode.attribs.href === '#') {
+                    // Convert to span if href is empty or just a hash
+                    domNode.name = 'span';
+                    delete domNode.attribs.href;
+                  } else {
+                    // Ensure external links open in new tab
+                    domNode.attribs.target = '_blank';
+                    domNode.attribs.rel = 'noopener noreferrer';
+                  }
                 }
 
                 // Use proxy for images to bypass anti-hotlinking

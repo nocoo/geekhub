@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { rm } from 'fs/promises';
+import { join } from 'path';
 
 async function createSupabaseClient() {
   const cookieStore = await cookies();
@@ -117,8 +119,15 @@ export async function DELETE(
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // TODO: 在这里可以添加删除文件系统中对应文件夹的逻辑
-    // 删除 data/feeds/{url_hash} 目录
+    // 清理文件系统中的数据文件
+    try {
+      const feedDataDir = join(process.cwd(), 'data', 'feeds', feed.url_hash);
+      await rm(feedDataDir, { recursive: true, force: true });
+      console.log(`Cleaned up feed data directory: ${feedDataDir}`);
+    } catch (fileError) {
+      // 文件清理失败不影响删除操作，只记录日志
+      console.warn(`Failed to clean up feed data directory for ${feed.url_hash}:`, fileError);
+    }
 
     return NextResponse.json({ success: true, url_hash: feed.url_hash });
   } catch (error) {

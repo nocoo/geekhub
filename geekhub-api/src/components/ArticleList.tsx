@@ -31,10 +31,45 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
   // Track articles read in current feed session (cleared when switching feeds)
   const sessionReadHashesRef = useRef<Set<string>>(new Set());
 
+  // Ref for the article list container and selected article
+  const listContainerRef = useRef<HTMLDivElement>(null);
+  const selectedArticleRef = useRef<HTMLButtonElement>(null);
+
   // Clear session read hashes when feed changes
   useEffect(() => {
     sessionReadHashesRef.current.clear();
   }, [feedId]);
+
+  // Scroll selected article into view
+  const scrollToSelectedArticle = useCallback(() => {
+    if (selectedArticleRef.current && listContainerRef.current) {
+      const container = listContainerRef.current;
+      const element = selectedArticleRef.current;
+
+      const containerRect = container.getBoundingClientRect();
+      const elementRect = element.getBoundingClientRect();
+
+      // Check if element is outside the visible area
+      const isAbove = elementRect.top < containerRect.top;
+      const isBelow = elementRect.bottom > containerRect.bottom;
+
+      if (isAbove || isBelow) {
+        element.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+          inline: 'nearest'
+        });
+      }
+    }
+  }, []);
+
+  // Auto-scroll when selected article changes via keyboard
+  useEffect(() => {
+    if (selectedArticle) {
+      // Small delay to ensure the ref is updated
+      setTimeout(scrollToSelectedArticle, 50);
+    }
+  }, [selectedArticle, scrollToSelectedArticle]);
 
   // Filter articles: show if unread OR was just read in this session
   const filteredArticles = useMemo(() => {
@@ -167,7 +202,10 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
   }
 
   return (
-    <div className="w-96 flex-shrink-0 border-r border-subtle h-[calc(100vh-3.5rem)] overflow-y-auto hover-scrollbar bg-card/50">
+    <div
+      ref={listContainerRef}
+      className="w-96 flex-shrink-0 border-r border-subtle h-[calc(100vh-3.5rem)] overflow-y-auto hover-scrollbar bg-card/50"
+    >
       <div className="p-3 border-b border-subtle sticky top-0 bg-card/95 backdrop-blur-sm z-10">
         <div className="flex items-center justify-between gap-2">
           <span className="text-sm font-medium text-foreground">
@@ -211,6 +249,7 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
         {filteredArticles.map(article => (
           <button
             key={article.id}
+            ref={selectedArticle?.id === article.id ? selectedArticleRef : null}
             onClick={() => handleSelectArticle(article)}
             className={cn(
               "w-full text-left p-4 transition-all duration-150 relative group",

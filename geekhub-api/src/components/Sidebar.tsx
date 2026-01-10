@@ -330,7 +330,7 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
                 const categoryUnread = categoryFeeds.reduce((acc, f) => acc + (f.unread_count || 0), 0);
 
                 return (
-                  <div key={category.id}>
+                  <div key={category.id} className="group/category">
                     <div className="flex items-center gap-0.5">
                       <button
                         onClick={() => toggleCategory(category.id)}
@@ -343,18 +343,13 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
                         )}
                         <span className="text-sm">{category.icon}</span>
                         <span className="font-medium truncate flex-1">{category.name}</span>
-                        {categoryUnread > 0 && (
-                          <span className="text-[10px] font-mono text-muted-foreground flex-shrink-0">
-                            {categoryUnread}
-                          </span>
-                        )}
                       </button>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-6 w-6 flex-shrink-0 text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                            className="h-6 w-6 flex-shrink-0 text-muted-foreground opacity-0 group-hover/category:opacity-100 hover:text-foreground hover:bg-accent/50 transition-all"
                           >
                             <MoreVertical className="w-3 h-3" />
                           </Button>
@@ -391,7 +386,7 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
                           </div>
                         ) : (
                           categoryFeeds.map((feed) => (
-                            <div key={feed.id} className="flex items-center gap-0.5 group">
+                            <div key={feed.id} className="flex items-center gap-0.5 group/feed">
                               <button
                                 onClick={() => handleSelectFeed(feed.id)}
                                 className={cn(
@@ -414,16 +409,18 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
                                   <Rss className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
                                 )}
                                 <span className="truncate flex-1">{feed.title}</span>
-                                <span className="text-[10px] font-mono text-muted-foreground flex-shrink-0">
-                                  {feed.unread_count || 0}/{feed.total_articles || 0}
-                                </span>
+                                {(feed.unread_count || 0) > 0 && (
+                                  <span className="text-[10px] font-mono text-muted-foreground flex-shrink-0">
+                                    {feed.unread_count}
+                                  </span>
+                                )}
                               </button>
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-6 w-6 flex-shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-foreground hover:bg-accent/50 transition-all"
+                                    className="h-6 w-6 flex-shrink-0 text-muted-foreground opacity-0 group-hover/feed:opacity-100 hover:text-foreground hover:bg-accent/50 transition-all"
                                   >
                                     <MoreVertical className="w-3 h-3" />
                                   </Button>
@@ -487,7 +484,7 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
                   {expandedCategories.has('uncategorized') && (
                     <div className="ml-4 mt-0.5 space-y-0.5">
                       {getUncategorizedFeeds().map((feed) => (
-                        <div key={feed.id} className="flex items-center gap-0.5 group">
+                        <div key={feed.id} className="flex items-center gap-0.5 group/feed">
                           <button
                             onClick={() => handleSelectFeed(feed.id)}
                             className={cn(
@@ -510,16 +507,18 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
                               <Rss className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
                             )}
                             <span className="truncate flex-1">{feed.title}</span>
-                            <span className="text-[10px] font-mono text-muted-foreground flex-shrink-0">
-                              {feed.unread_count || 0}/{feed.total_articles || 0}
-                            </span>
+                            {(feed.unread_count || 0) > 0 && (
+                              <span className="text-[10px] font-mono text-muted-foreground flex-shrink-0">
+                                {feed.unread_count}
+                              </span>
+                            )}
                           </button>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-6 w-6 flex-shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-foreground hover:bg-accent/50 transition-all"
+                                className="h-6 w-6 flex-shrink-0 text-muted-foreground opacity-0 group-hover/feed:opacity-100 hover:text-foreground hover:bg-accent/50 transition-all"
                               >
                                 <MoreVertical className="w-3 h-3" />
                               </Button>

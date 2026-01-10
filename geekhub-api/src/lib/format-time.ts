@@ -8,42 +8,31 @@ export function useFormatTime() {
       ? new Date(date)
       : date;
 
-    const distance = formatDistanceToNow(d, { addSuffix: false });
+    // 计算时间差
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const diffWeeks = Math.floor(diffDays / 7);
+    const diffMonths = Math.floor(diffDays / 30);
+    const diffYears = Math.floor(diffDays / 365);
 
-    // Parse the distance and format it in Chinese
-    const parts = distance.split(' ');
-
-    if (parts.length === 2) {
-      const value = parseInt(parts[0]);
-      const unit = parts[1]; // "minutes", "hours", etc.
-
-      // Map to Chinese
-      const unitMap: Record<string, string> = {
-        'minute': '分钟前',
-        'minutes': '分钟前',
-        'hour': '小时前',
-        'hours': '小时前',
-        'day': '天前',
-        'days': '天前',
-        'week': '周前',
-        'weeks': '周前',
-        'month': '月前',
-        'months': '月前',
-        'year': '年前',
-        'years': '年前',
-      };
-
-      const cnUnit = unitMap[unit];
-      if (cnUnit) {
-        return `${value}${cnUnit}`;
-      }
-    }
-
-    // Fallback for "less than a minute"
-    if (distance.includes('less than') || distance.includes('seconds')) {
+    // 根据时间差返回中文格式
+    if (diffMinutes < 1) {
       return '刚刚';
+    } else if (diffMinutes < 60) {
+      return `${diffMinutes}分钟前`;
+    } else if (diffHours < 24) {
+      return `${diffHours}小时前`;
+    } else if (diffDays < 7) {
+      return `${diffDays}天前`;
+    } else if (diffWeeks < 4) {
+      return `${diffWeeks}周前`;
+    } else if (diffMonths < 12) {
+      return `${diffMonths}月前`;
+    } else {
+      return `${diffYears}年前`;
     }
-
-    return distance;
   };
 }
