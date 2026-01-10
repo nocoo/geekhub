@@ -122,12 +122,12 @@ export function ReaderView({ article }: ReaderViewProps) {
           <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-muted/50 flex items-center justify-center">
             <span className="text-3xl">📖</span>
           </div>
-          <h2 className="text-lg font-medium text-foreground">Select an article</h2>
+          <h2 className="text-lg font-medium text-foreground">选择一篇文章</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Choose an article from the list to start reading
+            从列表中选择一篇文章开始阅读
           </p>
           <div className="mt-4 text-xs text-muted-foreground font-mono">
-            Pro tip: Use <kbd className="px-1.5 py-0.5 bg-muted rounded">↑</kbd> <kbd className="px-1.5 py-0.5 bg-muted rounded">↓</kbd> or <kbd className="px-1.5 py-0.5 bg-muted rounded">j</kbd> <kbd className="px-1.5 py-0.5 bg-muted rounded">k</kbd> to navigate
+            快捷提示：使用 <kbd className="px-1.5 py-0.5 bg-muted rounded">↑</kbd> <kbd className="px-1.5 py-0.5 bg-muted rounded">↓</kbd> 或 <kbd className="px-1.5 py-0.5 bg-muted rounded">j</kbd> <kbd className="px-1.5 py-0.5 bg-muted rounded">k</kbd> 导航
           </div>
         </div>
       </div>
