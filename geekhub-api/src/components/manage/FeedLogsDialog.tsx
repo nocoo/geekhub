@@ -202,10 +202,10 @@ export function FeedLogsDialog({ feedId, feedTitle, open, onOpenChange }: FeedLo
                         if (!parts) return <div key={i}>{log}</div>;
 
                         const [, timestamp, level, message] = parts;
-                        const levelColor = level === 'SUCCESS' ? 'text-emerald-400' :
-                                          level === 'ERROR' ? 'text-red-400' :
-                                          level === 'WARNING' ? 'text-yellow-400' :
-                                          'text-blue-400';
+                        const levelColor = level === 'SUCCESS' ? 'text-emerald-600 dark:text-emerald-400' :
+                                          level === 'ERROR' ? 'text-red-600 dark:text-red-400' :
+                                          level === 'WARNING' ? 'text-yellow-600 dark:text-yellow-400' :
+                                          'text-blue-600 dark:text-blue-400';
 
                         return (
                           <div key={i} className="flex gap-3">

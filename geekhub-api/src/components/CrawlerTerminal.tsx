@@ -53,17 +53,17 @@ export function CrawlerTerminal() {
 
   const getStatusColor = (status?: number) => {
     if (!status) return 'text-muted-foreground';
-    if (status >= 200 && status < 300) return 'text-emerald-400';
-    if (status >= 300 && status < 400) return 'text-yellow-400';
-    return 'text-red-400';
+    if (status >= 200 && status < 300) return 'text-emerald-600 dark:text-emerald-400';
+    if (status >= 300 && status < 400) return 'text-yellow-600 dark:text-yellow-400';
+    return 'text-red-600 dark:text-red-400';
   };
 
   const getLevelColor = (level: string) => {
     switch (level) {
-      case 'SUCCESS': return 'text-emerald-400';
-      case 'ERROR': return 'text-red-400';
-      case 'WARNING': return 'text-yellow-400';
-      case 'INFO': return 'text-blue-400';
+      case 'SUCCESS': return 'text-emerald-600 dark:text-emerald-400';
+      case 'ERROR': return 'text-red-600 dark:text-red-400';
+      case 'WARNING': return 'text-yellow-600 dark:text-yellow-400';
+      case 'INFO': return 'text-blue-600 dark:text-blue-400';
       default: return 'text-muted-foreground';
     }
   };
@@ -112,9 +112,9 @@ export function CrawlerTerminal() {
                   {log.url.length > 30 ? log.url.slice(0, 30) + '...' : log.url}
                 </span>
                 {log.duration && (
-                  <span className="text-blue-400/70">{log.duration}</span>
+                  <span className="text-blue-600/70 dark:text-blue-400/70">{log.duration}</span>
                 )}
-                <span className="text-emerald-400/70">{formatTime(log.timestamp)}</span>
+                <span className="text-emerald-600/70 dark:text-emerald-400/70">{formatTime(log.timestamp)}</span>
               </div>
             ))
           )}
@@ -127,10 +127,10 @@ export function CrawlerTerminal() {
 
       <div className="flex items-center gap-2 px-3 py-1.5 bg-terminal/50 border-t border-border/20">
         <div className={`relative w-2 h-2 ${isOnline ? '' : 'opacity-30'}`}>
-          <div className={`absolute inset-0 rounded-full bg-emerald-500 ${isOnline ? 'animate-ping opacity-75' : ''}`} />
-          <div className="relative w-2 h-2 rounded-full bg-emerald-500" />
+          <div className={`absolute inset-0 rounded-full bg-emerald-600 dark:bg-emerald-500 ${isOnline ? 'animate-ping opacity-75' : ''}`} />
+          <div className="relative w-2 h-2 rounded-full bg-emerald-600 dark:bg-emerald-500" />
         </div>
-        <span className={`text-[10px] font-mono ${isOnline ? 'text-emerald-400' : 'text-red-400'}`}>
+        <span className={`text-[10px] font-mono ${isOnline ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
           状态: {isOnline ? '实时' : '离线'}
         </span>
       </div>
