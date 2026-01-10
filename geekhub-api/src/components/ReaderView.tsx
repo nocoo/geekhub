@@ -1,4 +1,3 @@
-import React from 'react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { ExternalLink, Bookmark, Share2, MoreHorizontal } from 'lucide-react';
 import { Article } from '@/lib/mockData';
