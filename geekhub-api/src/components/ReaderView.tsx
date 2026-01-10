@@ -58,14 +58,6 @@ export function ReaderView({ article }: ReaderViewProps) {
       <article className="max-w-3xl mx-auto px-6 py-8">
         {/* Article header */}
         <header className="mb-8">
-          {/* Source */}
-          <div className="flex items-center gap-2 mb-4">
-            <span className="text-lg">{article.feedIcon}</span>
-            <span className="text-sm font-medium text-muted-foreground">
-              {article.feedName}
-            </span>
-          </div>
-
           {/* Title */}
           <h1 className="text-3xl md:text-4xl font-bold font-sans leading-tight text-foreground mb-4">
             {article.title}
