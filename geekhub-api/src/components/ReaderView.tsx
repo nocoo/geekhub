@@ -1,7 +1,7 @@
 import { formatDistanceToNow, format } from 'date-fns';
 import parse from 'html-react-parser';
 import { ExternalLink, Bookmark, Share2, MoreHorizontal } from 'lucide-react';
-import { Article } from '@/lib/mockData';
+import { Article } from '@/hooks/useDatabase';
 import { Button } from '@/components/ui/button';
 
 interface ReaderViewProps {
@@ -71,7 +71,13 @@ export function ReaderView({ article }: ReaderViewProps) {
             <div>
               <div className="font-medium text-foreground">{article.feedName}</div>
               <div className="text-sm text-muted-foreground">
-                {format(article.publishedAt, 'MMMM d, yyyy')} · {formatDistanceToNow(article.publishedAt, { addSuffix: true })}
+                {article.publishedAt ? (
+                  <>
+                    {format(article.publishedAt, 'MMMM d, yyyy')} · {formatDistanceToNow(article.publishedAt, { addSuffix: true })}
+                  </>
+                ) : (
+                  'No date available'
+                )}
               </div>
             </div>
           </div>
@@ -95,17 +101,6 @@ export function ReaderView({ article }: ReaderViewProps) {
             </Button>
           </div>
         </header>
-
-        {/* Featured image */}
-        {article.thumbnail && (
-          <figure className="mb-8 -mx-6 md:mx-0">
-            <img
-              src={article.thumbnail}
-              alt=""
-              className="w-full aspect-video object-cover rounded-lg md:rounded-xl"
-            />
-          </figure>
-        )}
 
         {/* Content - Parse HTML */}
         <div className="prose prose-geek max-w-none font-serif text-lg leading-relaxed m-0">

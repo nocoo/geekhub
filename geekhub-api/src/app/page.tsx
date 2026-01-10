@@ -7,7 +7,7 @@ import { Header } from "@/components/Header";
 import { Sidebar } from "@/components/Sidebar";
 import { ArticleList } from "@/components/ArticleList";
 import { ReaderView } from "@/components/ReaderView";
-import { useArticles, useArticleContent, Article } from "@/hooks/useDatabase";
+import { useArticles, useArticleContent, useMarkAsRead, Article } from "@/hooks/useDatabase";
 
 export default function Home() {
   const { user, loading } = useAuth();
@@ -21,6 +21,9 @@ export default function Home() {
   // 获取选中文章的完整内容
   const { data: articleContent } = useArticleContent(selectedArticle?.hash || '');
 
+  // 标记已读的 mutation
+  const markAsRead = useMarkAsRead();
+
   useEffect(() => {
     if (!loading && !user) {
       router.push('/login');
@@ -29,6 +32,14 @@ export default function Home() {
 
   const handleSelectArticle = (article: Article) => {
     setSelectedArticle(article);
+
+    // 标记文章为已读（后台执行，不阻塞 UI）
+    if (article.hash && !article.isRead) {
+      markAsRead.mutate({
+        articleHash: article.hash,
+        feedId: article.feedId,
+      });
+    }
   };
 
   if (loading) {

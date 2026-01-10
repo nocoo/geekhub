@@ -200,6 +200,33 @@ export function useArticleContent(articleHash: string) {
   });
 }
 
+export function useMarkAsRead() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({ articleHash, feedId }: { articleHash: string; feedId: string }) => {
+      const response = await fetch(`/api/articles/${articleHash}/read`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ feedId }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to mark article as read');
+      }
+
+      return await response.json();
+    },
+    onSuccess: () => {
+      // 刷新文章列表以更新 isRead 状态
+      queryClient.invalidateQueries({ queryKey: ['articles', user?.id] });
+      // 刷新 feeds 列表以更新未读数
+      queryClient.invalidateQueries({ queryKey: ['feeds', user?.id] });
+    },
+  });
+}
+
 export function useUpdateArticle() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
