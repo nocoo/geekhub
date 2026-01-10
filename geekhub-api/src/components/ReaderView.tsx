@@ -8,6 +8,28 @@ interface ReaderViewProps {
   article: Article | null;
 }
 
+// Generate a consistent color from a string
+function stringToColor(str: string): string {
+  const colors = [
+    'bg-red-500', 'bg-orange-500', 'bg-amber-500', 'bg-yellow-500',
+    'bg-lime-500', 'bg-green-500', 'bg-emerald-500', 'bg-teal-500',
+    'bg-cyan-500', 'bg-sky-500', 'bg-blue-500', 'bg-indigo-500',
+    'bg-violet-500', 'bg-purple-500', 'bg-fuchsia-500', 'bg-pink-500', 'bg-rose-500'
+  ];
+
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+
+  return colors[Math.abs(hash) % colors.length];
+}
+
+// Get first character from a string (handles both English and Chinese)
+function getFirstChar(str: string): string {
+  return str?.charAt(0)?.toUpperCase() || '?';
+}
+
 export function ReaderView({ article }: ReaderViewProps) {
   if (!article) {
     return (
@@ -27,6 +49,9 @@ export function ReaderView({ article }: ReaderViewProps) {
       </div>
     );
   }
+
+  const avatarColor = stringToColor(article.feedName);
+  const avatarChar = getFirstChar(article.feedName);
 
   return (
     <div className="flex-1 h-[calc(100vh-3.5rem)] overflow-y-auto hover-scrollbar bg-background">
@@ -48,13 +73,11 @@ export function ReaderView({ article }: ReaderViewProps) {
 
           {/* Author & Date */}
           <div className="flex items-center gap-4 mb-6">
-            <img
-              src={article.authorAvatar}
-              alt={article.author}
-              className="w-10 h-10 rounded-full bg-muted"
-            />
+            <div className={`w-10 h-10 rounded-full ${avatarColor} flex items-center justify-center text-white font-medium text-sm`}>
+              {avatarChar}
+            </div>
             <div>
-              <div className="font-medium text-foreground">{article.author}</div>
+              <div className="font-medium text-foreground">{article.feedName}</div>
               <div className="text-sm text-muted-foreground">
                 {format(article.publishedAt, 'MMMM d, yyyy')} · {formatDistanceToNow(article.publishedAt, { addSuffix: true })}
               </div>
@@ -93,7 +116,7 @@ export function ReaderView({ article }: ReaderViewProps) {
         )}
 
         {/* Content - Parse HTML */}
-        <div className="prose prose-geek max-w-none font-serif text-lg leading-relaxed">
+        <div className="prose prose-geek max-w-none font-serif text-lg leading-relaxed m-0">
           {article.content ? parse(article.content) : <p className="text-muted-foreground italic">No content available</p>}
         </div>
 
