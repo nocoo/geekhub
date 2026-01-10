@@ -313,21 +313,6 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
             </div>
           </div>
 
-          {/* Batch Fetch Progress */}
-          {batchFetching && (
-            <div className="px-2 py-1">
-              <div className="text-xs text-muted-foreground mb-1">
-                抓取进度: {batchProgress.current}/{batchProgress.total}
-              </div>
-              <div className="w-full bg-muted rounded-full h-1.5">
-                <div
-                  className="bg-primary h-1.5 rounded-full transition-all duration-300"
-                  style={{ width: `${(batchProgress.current / batchProgress.total) * 100}%` }}
-                />
-              </div>
-            </div>
-          )}
-
           {isLoading ? (
             <div className="flex items-center justify-center h-32">
               <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -574,6 +559,21 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
             </>
           )}
         </div>
+
+        {/* Batch Fetch Progress - Above Crawler Terminal */}
+        {batchFetching && (
+          <div className="px-2 py-2 border-t border-subtle">
+            <div className="text-xs text-muted-foreground mb-1">
+              抓取进度: {batchProgress.current}/{batchProgress.total}
+            </div>
+            <div className="w-full bg-muted rounded-full h-1.5">
+              <div
+                className="bg-primary h-1.5 rounded-full transition-all duration-300"
+                style={{ width: `${(batchProgress.current / batchProgress.total) * 100}%` }}
+              />
+            </div>
+          </div>
+        )}
 
         {/* Crawler Terminal */}
         <div className="p-2 border-t border-subtle">
