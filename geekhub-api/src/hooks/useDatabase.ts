@@ -460,6 +460,9 @@ export function useBookmarkArticle() {
     onSuccess: () => {
       // Invalidate bookmarks queries
       queryClient.invalidateQueries({ queryKey: ['bookmarks', user?.id] });
+      // Invalidate starred count and articles
+      queryClient.invalidateQueries({ queryKey: ['starred-count', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['articles', user?.id, 'starred'] });
     },
   });
 }
@@ -483,6 +486,9 @@ export function useUnbookmarkArticle() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bookmarks', user?.id] });
+      // Invalidate starred count and articles
+      queryClient.invalidateQueries({ queryKey: ['starred-count', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['articles', user?.id, 'starred'] });
     },
   });
 }
@@ -514,6 +520,9 @@ export function useSaveForLater() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['read-later', user?.id] });
+      // Invalidate later count and articles
+      queryClient.invalidateQueries({ queryKey: ['later-count', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['articles', user?.id, 'later'] });
     },
   });
 }
@@ -537,6 +546,51 @@ export function useRemoveFromLater() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['read-later', user?.id] });
+      // Invalidate later count and articles
+      queryClient.invalidateQueries({ queryKey: ['later-count', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['articles', user?.id, 'later'] });
     },
+  });
+}
+
+// Get starred articles count
+export function useStarredCount() {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['starred-count', user?.id],
+    queryFn: async () => {
+      if (!user) return 0;
+
+      const response = await fetch('/api/feeds/starred/articles');
+      if (!response.ok) {
+        throw new Error('Failed to load starred count');
+      }
+
+      const data = await response.json();
+      return data.total || 0;
+    },
+    enabled: !!user,
+  });
+}
+
+// Get later articles count
+export function useLaterCount() {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['later-count', user?.id],
+    queryFn: async () => {
+      if (!user) return 0;
+
+      const response = await fetch('/api/feeds/later/articles');
+      if (!response.ok) {
+        throw new Error('Failed to load later count');
+      }
+
+      const data = await response.json();
+      return data.total || 0;
+    },
+    enabled: !!user,
   });
 }

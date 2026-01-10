@@ -48,7 +48,10 @@ export async function GET(_request: NextRequest) {
       .eq('user_id', user.id)
       .order('bookmarked_at', { ascending: false });
 
+    console.log('[StarredArticles] Raw data:', JSON.stringify(bookmarked, null, 2));
+
     if (bookmarkedError) {
+      console.error('[StarredArticles] DB Error:', bookmarkedError);
       throw bookmarkedError;
     }
 
@@ -120,6 +123,12 @@ export async function GET(_request: NextRequest) {
 
     // Filter out nulls
     const validArticles = articles.filter(a => a !== null);
+
+    console.log('[StarredArticles] Result:', {
+      total: bookmarked.length,
+      valid: validArticles.length,
+      nulls: bookmarked.length - validArticles.length
+    });
 
     return NextResponse.json({
       feed: {

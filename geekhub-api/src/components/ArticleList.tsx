@@ -43,9 +43,14 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
       return articles;
     }
 
+    // For special feeds (starred, later), always show all articles
+    if (feedId === 'starred' || feedId === 'later') {
+      return articles;
+    }
+
     // Show articles that are unread OR were read in this session
     return articles.filter(a => !a.isRead || (a.hash && sessionReadHashesRef.current.has(a.hash)));
-  }, [articles, showRead]);
+  }, [articles, showRead, feedId]);
 
   // Handle article selection - mark as read and track in session
   const handleSelectArticle = useCallback((article: Article) => {

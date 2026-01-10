@@ -6,7 +6,7 @@ import { ChevronDown, ChevronRight, Star, Clock, MoreVertical, Plus, Edit, Trash
 import { CrawlerTerminal } from './CrawlerTerminal';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { useCategories, useFeeds, useDeleteCategory, useDeleteFeed, Category, Feed } from '@/hooks/useDatabase';
+import { useCategories, useFeeds, useDeleteCategory, useDeleteFeed, useStarredCount, useLaterCount, Category, Feed } from '@/hooks/useDatabase';
 import { useFeedFetchEvents } from '@/contexts/SSEContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { AddCategoryDialog } from '@/components/manage/AddCategoryDialog';
@@ -54,6 +54,8 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
 
   const { data: categories = [], isLoading: categoriesLoading } = useCategories();
   const { data: feeds = [], isLoading: feedsLoading } = useFeeds();
+  const { data: starredCount = 0 } = useStarredCount();
+  const { data: laterCount = 0 } = useLaterCount();
 
   // Listen for feed fetch completion events to refresh data
   useFeedFetchEvents({
@@ -178,26 +180,40 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
           <button
             onClick={() => onSelectFeed('starred')}
             className={cn(
-              "w-full flex items-center justify-start gap-2 px-2 py-1.5 rounded-md text-xs transition-colors text-left",
+              "w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-md text-xs transition-colors text-left",
               selectedFeed === 'starred'
                 ? "bg-accent text-accent-foreground"
                 : "text-sidebar-foreground hover:bg-accent/50"
             )}
           >
-            <Star className="w-3.5 h-3.5 text-yellow-500" />
-            <span className="font-medium">已收藏</span>
+            <div className="flex items-center gap-2">
+              <Star className="w-3.5 h-3.5 text-yellow-500" />
+              <span className="font-medium">已收藏</span>
+            </div>
+            {starredCount > 0 && (
+              <span className="text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded-full min-w-[1.25rem] text-center">
+                {starredCount}
+              </span>
+            )}
           </button>
           <button
             onClick={() => onSelectFeed('later')}
             className={cn(
-              "w-full flex items-center justify-start gap-2 px-2 py-1.5 rounded-md text-xs transition-colors text-left",
+              "w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-md text-xs transition-colors text-left",
               selectedFeed === 'later'
                 ? "bg-accent text-accent-foreground"
                 : "text-sidebar-foreground hover:bg-accent/50"
             )}
           >
-            <Clock className="w-3.5 h-3.5 text-muted-foreground" />
-            <span className="font-medium">稍后阅读</span>
+            <div className="flex items-center gap-2">
+              <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+              <span className="font-medium">稍后阅读</span>
+            </div>
+            {laterCount > 0 && (
+              <span className="text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded-full min-w-[1.25rem] text-center">
+                {laterCount}
+              </span>
+            )}
           </button>
         </div>
 
