@@ -172,7 +172,17 @@ export function useArticles(feedId?: string | null) {
         return [];
       }
 
-      const response = await fetch(`/api/feeds/${feedId}/articles`);
+      // Handle special feed types
+      let apiUrl: string;
+      if (feedId === 'starred') {
+        apiUrl = '/api/feeds/starred/articles';
+      } else if (feedId === 'later') {
+        apiUrl = '/api/feeds/later/articles';
+      } else {
+        apiUrl = `/api/feeds/${feedId}/articles`;
+      }
+
+      const response = await fetch(apiUrl);
       if (!response.ok) {
         throw new Error('Failed to load articles');
       }
