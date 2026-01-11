@@ -41,6 +41,7 @@ class TranslationQueue {
     if (hasTranslationInCache(article.id)) {
       const cached = getTranslationFromCache(article.id);
       if (cached) {
+        console.log('[TranslationQueue] Using cached translation for article:', article.id);
         this.applyTranslation(queryClient, userId, feedId, article.id, {
           translatedTitle: cached.translatedTitle,
           translatedDescription: cached.translatedDescription,
@@ -108,6 +109,8 @@ class TranslationQueue {
         translatedDescription: translation.translatedDescription,
         timestamp: Date.now(),
       });
+
+      console.log('[TranslationQueue] Saved translation to cache for article:', article.id);
 
       // Apply translation to UI
       this.applyTranslation(queryClient, userId, feedId, article.id, {

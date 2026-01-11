@@ -46,14 +46,11 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
   const selectedArticleRef = useRef<HTMLButtonElement>(null);
   const intersectionObserverRef = useRef<IntersectionObserver | null>(null);
   const visibleArticlesRef = useRef<Set<string>>(new Set());
-  const hasStartedAutoTranslateRef = useRef(false);
+  const translateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Clear session read hashes when feed changes
   useEffect(() => {
     sessionReadHashesRef.current.clear();
-    // Reset auto-translate state when feed changes
-    hasStartedAutoTranslateRef.current = false;
-    visibleArticlesRef.current.clear();
   }, [feedId]);
 
   // Scroll selected article into view
@@ -145,15 +142,18 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
   useEffect(() => {
     // Only setup for feeds with auto_translate enabled
     if (!autoTranslate || !feedId || feedId === 'starred' || feedId === 'later') {
+      // Clean up observer if auto_translate is disabled
+      if (intersectionObserverRef.current) {
+        intersectionObserverRef.current.disconnect();
+        intersectionObserverRef.current = null;
+      }
+      if (translateTimeoutRef.current) {
+        clearTimeout(translateTimeoutRef.current);
+        translateTimeoutRef.current = null;
+      }
+      visibleArticlesRef.current.clear();
       return;
     }
-
-    // Only start once per feed
-    if (hasStartedAutoTranslateRef.current) {
-      return;
-    }
-
-    hasStartedAutoTranslateRef.current = true;
 
     // Create Intersection Observer
     const observer = new IntersectionObserver(
@@ -163,41 +163,45 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
           if (!articleId) return;
 
           if (entry.isIntersecting) {
-            // Article is visible, add to visible set
             visibleArticlesRef.current.add(articleId);
           } else {
-            // Article is not visible, remove from visible set
             visibleArticlesRef.current.delete(articleId);
           }
         });
 
-        // Trigger translation for visible articles that don't have translation yet
-        if (visibleArticlesRef.current.size > 0) {
-          const queue = getTranslationQueue(10);
-
-          filteredArticles.forEach((article) => {
-            // Skip if already translated or in queue
-            if (article.translatedTitle || queue.isInQueue(article.id)) {
-              return;
-            }
-
-            // Only translate articles currently visible
-            if (visibleArticlesRef.current.has(article.id)) {
-              queue.translate({
-                article,
-                feedId,
-                userId: user?.id,
-                queryClient,
-                aiSettings: settings.ai,
-              });
-            }
-          });
+        // Debounce: wait for scrolling to stop before translating
+        if (translateTimeoutRef.current) {
+          clearTimeout(translateTimeoutRef.current);
         }
+
+        translateTimeoutRef.current = setTimeout(() => {
+          if (visibleArticlesRef.current.size > 0) {
+            const queue = getTranslationQueue(10);
+
+            filteredArticles.forEach((article) => {
+              // Skip if already in queue (queue will handle cache check)
+              if (queue.isInQueue(article.id)) {
+                return;
+              }
+
+              // Only translate articles currently visible
+              if (visibleArticlesRef.current.has(article.id)) {
+                queue.translate({
+                  article,
+                  feedId,
+                  userId: user?.id,
+                  queryClient,
+                  aiSettings: settings.ai,
+                });
+              }
+            });
+          }
+        }, 300); // Wait 300ms after scrolling stops
       },
       {
         root: listContainerRef.current,
         rootMargin: '0px',
-        threshold: 0.1, // 10% visible counts as visible
+        threshold: 0.1,
       }
     );
 
@@ -210,6 +214,10 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
     return () => {
       observer.disconnect();
       intersectionObserverRef.current = null;
+      if (translateTimeoutRef.current) {
+        clearTimeout(translateTimeoutRef.current);
+        translateTimeoutRef.current = null;
+      }
     };
   }, [autoTranslate, feedId, filteredArticles, user?.id, queryClient, settings.ai]);
 
