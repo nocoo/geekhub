@@ -163,7 +163,7 @@
   /* Prose customization for reader */
   .prose-geek {
     @apply prose prose-slate dark:prose-invert max-w-none;
-    font-family: Georgia, 'Times New Roman', Times, serif;
+    font-family: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', -apple-system, sans-serif;
   }
 
   .prose-geek h1,
