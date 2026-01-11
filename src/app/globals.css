@@ -1,0 +1,231 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 152 76% 46%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 150 30% 96%;
+    --secondary-foreground: 152 76% 20%;
+
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 152 76% 46%;
+
+    --radius: 0.5rem;
+
+    --sidebar-background: 150 20% 98%;
+    --sidebar-foreground: 240 5% 26%;
+    --sidebar-primary: 152 76% 46%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 150 20% 95%;
+    --sidebar-accent-foreground: 152 60% 20%;
+    --sidebar-border: 150 15% 90%;
+    --sidebar-ring: 152 76% 46%;
+
+    /* GeekHub custom tokens */
+    --terminal-bg: 150 10% 94%;
+    --terminal-text: 152 20% 20%;
+    --terminal-muted: 152 15% 40%;
+    --glow: 152 76% 46%;
+  }
+
+  .dark {
+    --background: 222 47% 6%;
+    --foreground: 210 40% 98%;
+
+    --card: 222 47% 8%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222 47% 8%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 152 76% 46%;
+    --primary-foreground: 152 76% 6%;
+
+    --secondary: 152 30% 17%;
+    --secondary-foreground: 150 40% 98%;
+
+    --muted: 152 30% 17%;
+    --muted-foreground: 150 20% 65%;
+
+    --accent: 152 30% 17%;
+    --accent-foreground: 150 40% 98%;
+
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 152 30% 17%;
+    --input: 152 30% 17%;
+    --ring: 152 76% 46%;
+
+    --sidebar-background: 152 47% 5%;
+    --sidebar-foreground: 150 20% 96%;
+    --sidebar-primary: 152 76% 46%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 152 25% 16%;
+    --sidebar-accent-foreground: 150 20% 96%;
+    --sidebar-border: 152 25% 16%;
+    --sidebar-ring: 152 76% 46%;
+
+    /* GeekHub custom tokens dark */
+    --terminal-bg: 152 30% 4%;
+    --terminal-text: 142 71% 45%;
+    --terminal-muted: 150 20% 55%;
+    --glow: 152 76% 46%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border/50 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-border;
+  }
+
+  /* Hide scrollbar by default, show on hover */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+
+  .scrollbar-hidden {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .scrollbar-hidden::-webkit-scrollbar {
+    display: none;
+  }
+
+  .hover-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-transparent;
+  }
+
+  .hover-scrollbar:hover::-webkit-scrollbar-thumb {
+    @apply bg-border/50;
+  }
+}
+
+@layer components {
+  /* Terminal styling */
+  .terminal {
+    @apply bg-terminal rounded-lg border border-border/30 font-mono text-xs;
+  }
+
+  .terminal-line {
+    @apply text-terminal-text opacity-80;
+  }
+
+  .terminal-line-muted {
+    @apply text-terminal-muted;
+  }
+
+  /* Prose customization for reader */
+  .prose-geek {
+    @apply prose prose-slate dark:prose-invert max-w-none;
+    font-family: Georgia, 'Times New Roman', Times, serif;
+  }
+
+  .prose-geek h1,
+  .prose-geek h2,
+  .prose-geek h3,
+  .prose-geek h4 {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    @apply font-semibold;
+  }
+
+  .prose-geek code {
+    font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+    @apply bg-muted px-1.5 py-0.5 rounded text-sm;
+  }
+
+  .prose-geek pre {
+    font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+    @apply bg-terminal border border-border/30 rounded-lg;
+  }
+
+  .prose-geek blockquote {
+    @apply border-l-4 border-primary/50 bg-muted/30 py-1 italic;
+  }
+
+  /* Glow effect */
+  .glow {
+    box-shadow: 0 0 20px hsl(var(--glow) / 0.15);
+  }
+
+  .glow-sm {
+    box-shadow: 0 0 10px hsl(var(--glow) / 0.1);
+  }
+
+  /* Status indicator */
+  .pulse-green {
+    @apply relative;
+  }
+
+  .pulse-green::before {
+    content: '';
+    @apply absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-75;
+  }
+}
+
+@layer utilities {
+  .bg-terminal {
+    background-color: hsl(var(--terminal-bg));
+  }
+
+  .text-terminal-text {
+    color: hsl(var(--terminal-text));
+  }
+
+  .text-terminal-muted {
+    color: hsl(var(--terminal-muted));
+  }
+
+  .bg-glass {
+    @apply bg-background/80 backdrop-blur-md;
+  }
+
+  .border-subtle {
+    @apply border-border/40;
+  }
+}

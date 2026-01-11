@@ -14,9 +14,33 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        mono: ['JetBrains Mono', 'monospace'],
-        serif: ['Merriweather', 'Georgia', 'serif'],
+        // System UI fonts - optimized for cross-platform display
+        sans: [
+          '-apple-system',      // macOS/iOS
+          'BlinkMacSystemFont', // macOS Chrome
+          '"Segoe UI"',         // Windows
+          '"Microsoft YaHei"',  // Windows Chinese
+          'PingFang SC',        // macOS Chinese
+          'Hiragino Sans GB',   // macOS Chinese fallback
+          'sans-serif',
+        ],
+        // Monospace fonts for code
+        mono: [
+          'ui-monospace',       // Modern browsers
+          'SFMono-Regular',     // macOS
+          '"SF Mono"',          // macOS
+          'Menlo',              // macOS
+          'Consolas',           // Windows
+          '"Liberation Mono"',  // Linux
+          'monospace',
+        ],
+        // Serif fonts for article reading
+        serif: [
+          'Georgia',            // Classic serif
+          '"Times New Roman"',  // Windows
+          'Times',              // Fallback
+          'serif',
+        ],
       },
       colors: {
         border: "hsl(var(--border))",
