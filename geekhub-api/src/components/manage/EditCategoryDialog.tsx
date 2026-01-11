@@ -9,14 +9,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-
-interface Category {
-  id: string;
-  name: string;
-  color: string;
-  icon: string;
-  sort_order: number;
-}
+import type { Category } from '@/hooks/useDatabase';
 
 interface EditCategoryDialogProps {
   category: Category;

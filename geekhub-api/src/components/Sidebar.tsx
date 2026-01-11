@@ -612,10 +612,13 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
         <EditCategoryDialog
           category={{
             id: editingCategory.id,
+            user_id: editingCategory.user_id || user?.id || '',
             name: editingCategory.name,
             color: editingCategory.color,
             icon: editingCategory.icon,
             sort_order: editingCategory.sort_order,
+            created_at: editingCategory.created_at || new Date().toISOString(),
+            updated_at: editingCategory.updated_at || new Date().toISOString(),
           }}
           open={!!editingCategory}
           onOpenChange={(open) => !open && setEditingCategory(null)}
@@ -633,23 +636,41 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
         <EditFeedDialog
           feed={{
             id: editingFeed.id,
+            user_id: editingFeed.user_id || user?.id || '',
             title: editingFeed.title,
             url: editingFeed.url,
+            url_hash: editingFeed.url_hash,
+            category_id: editingFeed.category_id,
             description: editingFeed.description || '',
+            favicon_url: editingFeed.favicon_url || null,
             is_active: editingFeed.is_active,
             fetch_interval_minutes: editingFeed.fetch_interval_minutes,
+            auto_translate: editingFeed.auto_translate || false,
+            unread_count: editingFeed.unread_count,
+            total_articles: editingFeed.total_articles,
+            last_fetched_at: editingFeed.last_fetched_at || null,
+            created_at: editingFeed.created_at || new Date().toISOString(),
+            updated_at: editingFeed.updated_at || new Date().toISOString(),
             category: editingFeed.category ? {
               id: editingFeed.category.id,
+              user_id: editingFeed.category.user_id || user?.id || '',
               name: editingFeed.category.name,
               color: editingFeed.category.color,
               icon: editingFeed.category.icon,
-            } : null,
+              sort_order: editingFeed.category.sort_order,
+              created_at: editingFeed.category.created_at || new Date().toISOString(),
+              updated_at: editingFeed.category.updated_at || new Date().toISOString(),
+            } : undefined,
           }}
           categories={categories.map(c => ({
             id: c.id,
+            user_id: c.user_id || user?.id || '',
             name: c.name,
             color: c.color,
             icon: c.icon,
+            sort_order: c.sort_order,
+            created_at: c.created_at || new Date().toISOString(),
+            updated_at: c.updated_at || new Date().toISOString(),
           }))}
           open={!!editingFeed}
           onOpenChange={(open) => !open && setEditingFeed(null)}

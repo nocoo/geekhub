@@ -103,9 +103,8 @@ export class FeedScheduler {
           const result = await fetcher.fetch();
 
           // Update database
-          // @ts-ignore - Supabase update type inference issue
-          await this.supabase
-            .from('feeds')
+          // @ts-ignore
+          await (this.supabase.from('feeds') as any)
             .update({
               last_fetched_at: now.toISOString(),
               last_success_at: result.success ? now.toISOString() : feed.last_success_at || undefined,
@@ -123,9 +122,8 @@ export class FeedScheduler {
           this.log(`Error fetching "${feed.title}": ${err.message}`);
 
           // Update error in database
-          // @ts-ignore - Supabase update type inference issue
-          await this.supabase
-            .from('feeds')
+          // @ts-ignore
+          await (this.supabase.from('feeds') as any)
             .update({
               last_fetched_at: now.toISOString(),
               fetch_error: err.message,

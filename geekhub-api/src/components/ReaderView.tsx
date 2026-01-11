@@ -1,5 +1,5 @@
 import parse from 'html-react-parser';
-import { ExternalLink, Bookmark, Share2, Expand, Minimize2, Image, ImageOff, Bug, Clock, Sparkles } from 'lucide-react';
+import { ExternalLink, Bookmark, Share2, Expand, Minimize2, Image, ImageOff, Bug, Clock, Sparkles, Languages } from 'lucide-react';
 import { Article, useBookmarkArticle, useUnbookmarkArticle, useSaveForLater, useRemoveFromLater } from '@/hooks/useDatabase';
 import { Button } from '@/components/ui/button';
 import { useState, useCallback, useEffect, useRef } from 'react';
@@ -10,6 +10,44 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSettings } from '@/lib/settings';
 import { AISummaryDialog } from '@/components/AISummaryDialog';
+
+const CONTENT_CACHE_KEY = 'geekhub_content_translations';
+const CONTENT_CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+function getContentTranslationCache(articleId: string): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const cached = localStorage.getItem(CONTENT_CACHE_KEY);
+    if (!cached) return null;
+    const cache = JSON.parse(cached);
+    const entry = cache[articleId];
+    if (!entry) return null;
+    // Check if expired
+    if (Date.now() - entry.timestamp > CONTENT_CACHE_DURATION) {
+      delete cache[articleId];
+      localStorage.setItem(CONTENT_CACHE_KEY, JSON.stringify(cache));
+      return null;
+    }
+    return entry.translatedContent;
+  } catch {
+    return null;
+  }
+}
+
+function saveContentTranslationCache(articleId: string, translatedContent: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const cached = localStorage.getItem(CONTENT_CACHE_KEY);
+    const cache = cached ? JSON.parse(cached) : {};
+    cache[articleId] = {
+      translatedContent,
+      timestamp: Date.now(),
+    };
+    localStorage.setItem(CONTENT_CACHE_KEY, JSON.stringify(cache));
+  } catch (e) {
+    console.error('Failed to save content translation cache:', e);
+  }
+}
 
 interface ReaderViewProps {
   article: Article | null;
@@ -49,6 +87,9 @@ export function ReaderView({ article }: ReaderViewProps) {
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [isReadLater, setIsReadLater] = useState(false);
   const [showAISummary, setShowAISummary] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [showTranslation, setShowTranslation] = useState(false);
+  const [translatedContent, setTranslatedContent] = useState<string | null>(null);
 
   // Ref for the scrollable container
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -186,6 +227,18 @@ export function ReaderView({ article }: ReaderViewProps) {
   // Reset enhanced content when article changes
   useEffect(() => {
     setEnhancedContent(null);
+    setShowTranslation(false);
+    setTranslatedContent(null);
+  }, [article?.id]);
+
+  // Load cached translation when article changes
+  useEffect(() => {
+    if (!article?.id) return;
+    const cached = getContentTranslationCache(article.id);
+    if (cached) {
+      setTranslatedContent(cached);
+      setShowTranslation(true);
+    }
   }, [article?.id]);
 
   // Auto-fetch content when article has no content or very short content
@@ -237,7 +290,10 @@ export function ReaderView({ article }: ReaderViewProps) {
   }, [article?.id]);
 
   // Use enhanced content if available, otherwise use original content
-  const displayContent = enhancedContent || article?.content;
+  // Show translated content if translation is active
+  const displayContent = showTranslation && translatedContent
+    ? translatedContent
+    : (enhancedContent || article?.content);
 
   // Handle AI summary
   const handleAISummary = useCallback(() => {
@@ -294,6 +350,69 @@ export function ReaderView({ article }: ReaderViewProps) {
     });
   }, [article, enhancedContent]);
 
+  // Handle content translation
+  const handleTranslate = useCallback(async () => {
+    if (!article?.id || !displayContent) {
+      toast.error('文章内容为空，无法翻译');
+      return;
+    }
+
+    if (!settings.ai.enabled) {
+      toast.error('请先在设置中启用 AI 功能');
+      return;
+    }
+
+    // Toggle translation if already translated
+    if (showTranslation && translatedContent) {
+      setShowTranslation(false);
+      return;
+    }
+
+    // Check cache first
+    const cached = getContentTranslationCache(article.id);
+    if (cached) {
+      setTranslatedContent(cached);
+      setShowTranslation(true);
+      toast.success('使用缓存的翻译');
+      return;
+    }
+
+    // Fetch translation
+    setIsTranslating(true);
+    toast.info('翻译中，请稍候...');
+
+    try {
+      const response = await fetch('/api/ai/translate-content', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          articleId: article.id,
+          content: displayContent,
+          aiSettings: settings.ai,
+        }),
+      });
+
+      if (!response.ok) {
+        const { error } = await response.json();
+        throw new Error(error || '翻译失败');
+      }
+
+      const { translatedContent: content } = await response.json();
+
+      // Save to cache
+      saveContentTranslationCache(article.id, content);
+
+      setTranslatedContent(content);
+      setShowTranslation(true);
+      toast.success('翻译完成');
+    } catch (error) {
+      console.error('Translation error:', error);
+      toast.error(error instanceof Error ? error.message : '翻译失败');
+    } finally {
+      setIsTranslating(false);
+    }
+  }, [article, displayContent, settings.ai, showTranslation, translatedContent]);
+
   if (!article) {
     return (
       <div className="flex-1 h-[calc(100vh-3.5rem)] flex items-center justify-center bg-background">
@@ -349,6 +468,16 @@ export function ReaderView({ article }: ReaderViewProps) {
 
             {/* Action buttons */}
             <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                className={`h-8 w-8 ${showTranslation ? 'bg-green-500/10 text-green-600 dark:text-green-400' : ''}`}
+                title={showTranslation ? '显示原文' : '翻译全文'}
+                onClick={handleTranslate}
+                disabled={isTranslating}
+              >
+                <Languages className={`w-4 h-4 ${isTranslating ? 'animate-pulse' : ''}`} />
+              </Button>
               <Button variant="ghost" size="icon" className="h-8 w-8" title="AI总结" onClick={handleAISummary}>
                 <Sparkles className="w-4 h-4" />
               </Button>

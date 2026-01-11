@@ -9,7 +9,7 @@
  * Usage:
  *   npm run scheduler          # Start scheduler (every 15 min)
  *   npm run scheduler -- --trigger  # Trigger immediate fetch
- *   npm run scheduler -- --cron "*/5 * * * *"  # Custom cron pattern
+ *   npm run scheduler -- --cron '\\/5 * * * *'  # Custom cron pattern
  *
  * Environment variables (required):
  *   NEXT_PUBLIC_SUPABASE_URL - Your Supabase project URL

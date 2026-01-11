@@ -11,23 +11,7 @@ import {
 import { toast } from 'sonner';
 import { formatFeedUrlForDisplay } from '@/lib/rsshub-display';
 import { useSettings } from '@/lib/settings';
-
-interface Category {
-  id: string;
-  name: string;
-  color: string;
-  icon: string;
-}
-
-interface Feed {
-  id: string;
-  title: string;
-  url: string;
-  description: string;
-  is_active: boolean;
-  fetch_interval_minutes: number;
-  category: Category | null;
-}
+import type { Feed, Category } from '@/hooks/useDatabase';
 
 interface EditFeedDialogProps {
   feed: Feed;

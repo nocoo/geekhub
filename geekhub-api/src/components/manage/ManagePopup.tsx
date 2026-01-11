@@ -21,25 +21,33 @@ import {
 
 interface Category {
   id: string;
+  user_id: string;
   name: string;
   color: string;
   icon: string;
   sort_order: number;
+  created_at: string;
+  updated_at: string;
 }
 
 interface Feed {
   id: string;
+  user_id: string;
   title: string;
   url: string;
-  description: string;
-  favicon_url?: string | null;
-  site_url?: string | null;
+  url_hash?: string;
+  category_id: string | null;
+  description: string | null;
+  favicon_url: string | null;
   is_active: boolean;
-  total_articles?: number;
+  fetch_interval_minutes: number;
+  auto_translate: boolean;
   unread_count?: number;
-  last_fetched_at?: string;
-  fetch_interval_minutes?: number;
-  category: Category | null;
+  total_articles?: number;
+  last_fetched_at: string | null;
+  created_at: string;
+  updated_at: string;
+  category?: Category;
 }
 
 interface ManagePopupProps {
