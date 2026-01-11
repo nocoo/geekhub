@@ -34,10 +34,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Test connection by fetching models list
-    console.log(`[AI Validate] Testing connection to ${aiSettings.baseUrl}`);
     const models = await openai.models.list();
-
-    console.log(`[AI Validate] Found ${models.data.length} models`);
 
     return NextResponse.json({
       success: true,

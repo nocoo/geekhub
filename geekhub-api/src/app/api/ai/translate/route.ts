@@ -19,16 +19,6 @@ export async function POST(request: NextRequest) {
     const { articles, aiSettings } = await request.json();
     baseUrl = aiSettings?.baseUrl || '';
 
-    console.log('[AI Translate] Request received');
-    console.log('[AI Translate] Articles count:', articles?.length);
-    console.log('[AI Translate] AI Settings:', JSON.stringify({
-      enabled: aiSettings?.enabled,
-      provider: aiSettings?.provider,
-      baseUrl: aiSettings?.baseUrl,
-      model: aiSettings?.model,
-    }));
-    console.log('[AI Translate] Sample article:', articles?.[0] ? JSON.stringify(articles[0]) : 'none');
-
     // Validate AI settings
     if (!aiSettings?.enabled) {
       return NextResponse.json(
@@ -109,28 +99,17 @@ ${articlesText}
     const response = completion.choices[0]?.message?.content;
 
     if (!response) {
-      console.error('[AI Translate] Empty response from AI');
-      console.error('[AI Translate] completion:', JSON.stringify(completion, null, 2));
       return NextResponse.json(
         { success: false, error: 'AI返回了空的结果' },
         { status: 500 }
       );
     }
 
-    console.log('[AI Translate] Raw AI response length:', response.length);
-    console.log('[AI Translate] Raw AI response (first 500 chars):', response.substring(0, 500));
-    console.log('[AI Translate] Raw AI response (last 500 chars):', response.substring(response.length - 500));
-
     // Parse the JSON response
     let parsed: { translations: TranslatedArticle[] };
     try {
       parsed = JSON.parse(response.trim());
-      console.log('[AI Translate] Parsed JSON successfully');
-      console.log('[AI Translate] Parsed keys:', Object.keys(parsed));
     } catch (e) {
-      console.error('[AI Translate] Failed to parse JSON');
-      console.error('[AI Translate] Parse error:', e);
-      console.error('[AI Translate] Raw response:', response);
       return NextResponse.json(
         {
           success: false,
@@ -143,8 +122,6 @@ ${articlesText}
 
     // Extract translations array
     if (!parsed.translations || !Array.isArray(parsed.translations)) {
-      console.error('[AI Translate] No "translations" array found in response');
-      console.error('[AI Translate] Parsed data:', JSON.stringify(parsed, null, 2));
       return NextResponse.json(
         {
           success: false,
@@ -156,10 +133,6 @@ ${articlesText}
     }
 
     const translations = parsed.translations;
-    console.log('[AI Translate] Translations array length:', translations.length);
-    if (translations.length > 0) {
-      console.log('[AI Translate] First item:', JSON.stringify(translations[0], null, 2));
-    }
 
     // Validate translations count
     if (translations.length !== articles.length) {
@@ -168,9 +141,6 @@ ${articlesText}
         received: translations.length
       });
     }
-
-    console.log('[AI Translate] Translation successful, returning', translations.length, 'translations');
-    console.log('[AI Translate] Usage:', JSON.stringify(completion.usage));
 
     return NextResponse.json({
       success: true,

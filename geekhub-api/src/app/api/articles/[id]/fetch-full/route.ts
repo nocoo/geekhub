@@ -114,15 +114,11 @@ export async function POST(
       return NextResponse.json({ error: 'URL is required' }, { status: 400 });
     }
 
-    console.log(`[FetchFull] Fetching full content for article ${id} from ${url}`);
-
     const { content, title } = await extractFullContent(url);
 
     if (!content) {
       return NextResponse.json({ error: 'Failed to extract content' }, { status: 500 });
     }
-
-    console.log(`[FetchFull] Successfully fetched ${content.length} chars`);
 
     return NextResponse.json({
       success: true,

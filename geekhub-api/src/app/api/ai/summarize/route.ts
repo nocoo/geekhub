@@ -76,9 +76,6 @@ ${content}
       temperature: 0.3,
     });
 
-    // Debug log
-    console.log('[AI Summarize] Raw completion:', JSON.stringify(completion, null, 2));
-
     const summary = completion.choices[0]?.message?.content;
 
     if (!summary) {
@@ -118,7 +115,6 @@ ${content}
 
         // Write back to file
         await fs.writeFile(articlePath, JSON.stringify(articleData, null, 2), 'utf-8');
-        console.log(`[AI Summarize] Saved summary to article: ${articleId}`);
       } catch (saveError) {
         console.error('[AI Summarize] Failed to save summary:', saveError);
         // Don't fail the request if saving fails
@@ -133,7 +129,6 @@ ${content}
 
   } catch (error) {
     console.error('AI summarization error:', error);
-    console.error('Error details:', JSON.stringify(error, null, 2));
 
     let errorMessage = '总结失败';
     if (error instanceof Error) {

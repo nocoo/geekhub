@@ -90,8 +90,6 @@ export function AddFeedDialog({ open, onOpenChange, categories, onSuccess, defau
         payload.rsshub = settings.rsshub;
       }
 
-      console.log('[AddFeed] Sending request:', payload);
-
       const response = await fetch('/api/feeds', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

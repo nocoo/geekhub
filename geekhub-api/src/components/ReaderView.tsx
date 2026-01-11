@@ -267,7 +267,6 @@ export function ReaderView({ article }: ReaderViewProps) {
         const data = await response.json();
         if (data.success && data.content) {
           setEnhancedContent(data.content);
-          console.log(`[AutoFetch] Fetched ${data.content.length} chars for: ${article.title?.slice(0, 30)}`);
         }
       } catch (error) {
         console.error('[AutoFetch] Failed:', error);
@@ -298,9 +297,6 @@ export function ReaderView({ article }: ReaderViewProps) {
   // Handle AI summary
   const handleAISummary = useCallback(() => {
     if (!article) return;
-
-    // Debug: log current AI settings
-    console.log('AI Settings:', settings.ai);
 
     // Check if AI is enabled
     if (!settings.ai.enabled) {
