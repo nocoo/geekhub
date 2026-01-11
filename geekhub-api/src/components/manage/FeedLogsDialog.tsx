@@ -119,23 +119,10 @@ export function FeedLogsDialog({ feedId, feedTitle, open, onOpenChange }: FeedLo
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader className="flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <div>
-              <DialogTitle className="text-xl">{feedTitle}</DialogTitle>
-              <p className="text-sm text-muted-foreground mt-1 font-mono">
-                {displayUrl}
-              </p>
-            </div>
-            <Button
-              onClick={handleFetch}
-              disabled={fetching}
-              size="sm"
-              className="gap-2"
-            >
-              <RefreshCw className={`w-4 h-4 ${fetching ? 'animate-spin' : ''}`} />
-              {fetching ? 'Fetching...' : 'Fetch Now'}
-            </Button>
-          </div>
+          <DialogTitle className="text-xl">{feedTitle}</DialogTitle>
+          <p className="text-sm text-muted-foreground mt-1 font-mono truncate">
+            {displayUrl}
+          </p>
         </DialogHeader>
 
         {loading ? (
@@ -254,6 +241,23 @@ export function FeedLogsDialog({ feedId, feedTitle, open, onOpenChange }: FeedLo
             </div>
           </div>
         ) : null}
+
+        {/* Footer with Fetch button */}
+        {!loading && data && (
+          <div className="flex-shrink-0 pt-4 border-t border-border">
+            <div className="flex justify-end">
+              <Button
+                onClick={handleFetch}
+                disabled={fetching}
+                size="sm"
+                className="gap-2"
+              >
+                <RefreshCw className={`w-4 h-4 ${fetching ? 'animate-spin' : ''}`} />
+                {fetching ? 'Fetching...' : 'Fetch Now'}
+              </Button>
+            </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

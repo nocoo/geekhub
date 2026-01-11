@@ -37,17 +37,17 @@ export function AddFeedDialog({ open, onOpenChange, categories, onSuccess, defau
   const [loading, setLoading] = useState(false);
   const [validating, setValidating] = useState(false);
 
-  // Parse RssHub URL
+  // Parse RssHub URL (with trim to handle paste with leading/trailing spaces)
   const rsshubConfig = useMemo(() => ({
     instanceUrl: settings.rsshub?.enabled ? settings.rsshub.url : undefined
   }), [settings.rsshub]);
 
   const rsshubInfo = useMemo(() => {
-    const result = parseRssHubUrl(url, rsshubConfig);
+    const result = parseRssHubUrl(url.trim(), rsshubConfig);
     return result;
   }, [url, rsshubConfig]);
 
-  const isRssHub = isRssHubUrl(url, rsshubConfig);
+  const isRssHub = isRssHubUrl(url.trim(), rsshubConfig);
 
   // Update categoryId when defaultCategoryId changes or dialog opens
   useEffect(() => {
@@ -58,17 +58,17 @@ export function AddFeedDialog({ open, onOpenChange, categories, onSuccess, defau
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!url.trim() || loading) return;
+    const trimmedUrl = url.trim();
+    if (!trimmedUrl || loading) return;
 
     // Check if RssHub URL but RssHub not enabled in settings
-    if (url.startsWith('rsshub://') && !settings.rsshub?.enabled) {
+    if (trimmedUrl.startsWith('rsshub://') && !settings.rsshub?.enabled) {
       toast.error('请先在设置中启用并配置 RssHub 地址', {
         description: '点击右上角设置按钮 → RssHub 标签页 → 启用 RssHub',
         duration: 5000,
         action: {
           label: '去设置',
           onClick: () => {
-            // Trigger settings dialog open (you can emit event or use callback)
             toast.info('请在设置中启用 RssHub');
           },
         },
@@ -79,7 +79,7 @@ export function AddFeedDialog({ open, onOpenChange, categories, onSuccess, defau
     setLoading(true);
     try {
       const payload: any = {
-        url: url.trim(),  // Always send original URL
+        url: trimmedUrl,
         category_id: categoryId || null,
         title: title.trim() || undefined,
         description: description.trim() || undefined,
@@ -122,10 +122,11 @@ export function AddFeedDialog({ open, onOpenChange, categories, onSuccess, defau
   };
 
   const validateUrl = async () => {
-    if (!url.trim()) return;
+    const trimmedUrl = url.trim();
+    if (!trimmedUrl) return;
 
     // Check if RssHub URL but RssHub not enabled in settings
-    if (url.startsWith('rsshub://') && !settings.rsshub?.enabled) {
+    if (trimmedUrl.startsWith('rsshub://') && !settings.rsshub?.enabled) {
       toast.error('请先在设置中启用并配置 RssHub 地址', {
         description: '点击右上角设置按钮 → RssHub 标签页 → 启用 RssHub',
         duration: 5000,
@@ -135,7 +136,7 @@ export function AddFeedDialog({ open, onOpenChange, categories, onSuccess, defau
 
     setValidating(true);
     try {
-      const payload: any = { url: url.trim(), validate_only: true };
+      const payload: any = { url: trimmedUrl, validate_only: true };
 
       // Send RssHub settings if enabled
       if (settings.rsshub?.enabled) {
@@ -176,55 +177,53 @@ export function AddFeedDialog({ open, onOpenChange, categories, onSuccess, defau
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Add RSS Feed</DialogTitle>
+      <DialogContent className="max-w-xl p-6">
+        <DialogHeader className="mb-6">
+          <DialogTitle className="text-xl">Add RSS Feed</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-5">
           {/* RSS URL */}
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
+          <div className="space-y-3">
+            <label className="block text-sm font-medium text-foreground">
               RSS URL *
             </label>
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                {isRssHub && (
-                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-primary">
-                    <Rss className="w-4 h-4" />
-                  </div>
-                )}
-                <input
-                  type="url"
-                  value={url}
-                  onChange={(e) => setUrl(e.target.value)}
-                  onBlur={() => setUrl(url.trim())}
-                  placeholder="https://example.com/rss.xml or rsshub://sspai/index"
-                  className={`flex-1 px-3 py-2 border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary ${isRssHub ? 'pl-10' : ''}`}
-                  required
-                />
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={validateUrl}
-                disabled={!url.trim() || validating}
-              >
-                {validating ? 'Checking...' : 'Validate'}
-              </Button>
+            <div className="relative">
+              {isRssHub && (
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-primary">
+                  <Rss className="w-4 h-4" />
+                </div>
+              )}
+              <input
+                type="url"
+                value={url}
+                onChange={(e) => setUrl(e.target.value.trim())}
+                placeholder="https://example.com/rss.xml or rsshub://sspai/index"
+                className={`w-full px-3 py-2.5 border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary ${isRssHub ? 'pl-10' : ''}`}
+                required
+              />
             </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={validateUrl}
+              disabled={!url.trim() || validating}
+              className="w-full"
+            >
+              {validating ? 'Checking...' : 'Validate URL'}
+            </Button>
 
             {/* RssHub URL preview */}
-            {isRssHub && rsshubInfo.feedUrl && rsshubInfo.feedUrl !== url && (
+            {isRssHub && rsshubInfo.feedUrl && rsshubInfo.feedUrl !== url.trim() && (
               <>
-                <div className="mt-2 p-2 rounded-md bg-primary/10 border border-primary/20">
+                <div className="p-3 rounded-md bg-primary/10 border border-primary/20">
                   <p className="text-xs text-muted-foreground mb-1">RssHub Feed URL:</p>
                   <p className="text-xs font-mono text-foreground break-all">{rsshubInfo.feedUrl}</p>
                 </div>
 
                 {/* Warning if RssHub not enabled */}
                 {!settings.rsshub?.enabled && (
-                  <div className="mt-2 p-3 rounded-md bg-destructive/10 border border-destructive/20 flex items-start gap-2">
+                  <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20 flex items-start gap-3">
                     <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
                     <div className="flex-1">
                       <p className="text-xs font-medium text-destructive mb-1">
@@ -241,15 +240,14 @@ export function AddFeedDialog({ open, onOpenChange, categories, onSuccess, defau
           </div>
 
           {/* 分类选择 */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
               <label className="block text-sm font-medium text-foreground">
                 Category
               </label>
               <button
                 type="button"
                 onClick={() => {
-                  // Close add feed dialog and open add category dialog
                   onOpenChange(false);
                   setTimeout(() => {
                     window.dispatchEvent(new CustomEvent('open-add-category'));
@@ -263,7 +261,7 @@ export function AddFeedDialog({ open, onOpenChange, categories, onSuccess, defau
             <select
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
-              className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-3 py-2.5 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <option value="">No Category</option>
               {categories.map((category) => (
@@ -275,30 +273,30 @@ export function AddFeedDialog({ open, onOpenChange, categories, onSuccess, defau
           </div>
 
           {/* 自定义标题 */}
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
-              Custom Title (optional)
+          <div className="space-y-3">
+            <label className="block text-sm font-medium text-foreground">
+              Custom Title <span className="text-muted-foreground font-normal">(optional)</span>
             </label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Leave empty to use feed title"
-              className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-3 py-2.5 border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
 
           {/* 自定义描述 */}
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
-              Custom Description (optional)
+          <div className="space-y-3">
+            <label className="block text-sm font-medium text-foreground">
+              Custom Description <span className="text-muted-foreground font-normal">(optional)</span>
             </label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Leave empty to use feed description"
               rows={3}
-              className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+              className="w-full px-3 py-2.5 border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none"
             />
           </div>
 
