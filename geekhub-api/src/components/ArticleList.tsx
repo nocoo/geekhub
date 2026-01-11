@@ -185,113 +185,37 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
     }
   };
 
-  // Handle translation
+  // Handle translation toggle
   const handleTranslate = async () => {
-    if (!settings.ai.enabled) {
-      toast.error('请先在设置中启用 AI 功能');
-      return;
-    }
-
     if (!feedId || feedId === 'starred' || feedId === 'later') {
       toast.error('特殊订阅源不支持自动翻译');
       return;
     }
 
-    // Toggle auto_translate in database
     const newAutoTranslate = !autoTranslate;
-    try {
-      const response = await fetch(`/api/feeds/${feedId}/auto-translate`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ auto_translate: newAutoTranslate }),
-      });
 
-      if (!response.ok) {
-        throw new Error('更新翻译设置失败');
-      }
+    // Optimistically update UI immediately
+    queryClient.setQueryData<Feed[]>(['feeds', user?.id], (old = []) =>
+      old.map(f => f.id === feedId ? { ...f, auto_translate: newAutoTranslate } : f)
+    );
+    forceUpdate({});
 
-      // Optimistically update the feed in cache
+    toast.success(newAutoTranslate ? '已开启自动翻译' : '已关闭自动翻译');
+
+    // Update database in background (fire and forget)
+    fetch(`/api/feeds/${feedId}/auto-translate`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ auto_translate: newAutoTranslate }),
+    }).catch((error) => {
+      console.error('Failed to update auto_translate:', error);
+      // Revert on error
       queryClient.setQueryData<Feed[]>(['feeds', user?.id], (old = []) =>
-        old.map(f => f.id === feedId ? { ...f, auto_translate: newAutoTranslate } : f)
+        old.map(f => f.id === feedId ? { ...f, auto_translate: autoTranslate } : f)
       );
-
-      toast.success(newAutoTranslate ? '已开启自动翻译' : '已关闭自动翻译');
-
-      // If turning on, start translating immediately
-      if (newAutoTranslate) {
-        const articlesToTranslate = filteredArticles;
-        if (articlesToTranslate.length === 0) {
-          toast.error('没有可翻译的文章');
-          return;
-        }
-
-        setTranslating(true);
-        setShowTranslation(true);
-
-        const BATCH_SIZE = 10;
-        const batch = articlesToTranslate.slice(0, BATCH_SIZE);
-
-        let completedCount = 0;
-        const totalCount = batch.length;
-
-        batch.forEach((article) => {
-          fetch('/api/ai/translate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              articles: [{
-                id: article.id,
-                title: article.title,
-                description: article.description,
-              }],
-              aiSettings: settings.ai,
-            }),
-          })
-            .then(async (response) => {
-              if (!response.ok) {
-                const { error } = await response.json();
-                throw new Error(error || '翻译失败');
-              }
-              return response.json();
-            })
-            .then(({ translations }) => {
-              flushSync(() => {
-                queryClient.setQueryData<Article[]>(['articles', user?.id, feedId], (old = []) =>
-                  old.map(a => {
-                    if (a.id === article.id) {
-                      return {
-                        ...a,
-                        translatedTitle: translations[0].translatedTitle,
-                        translatedDescription: translations[0].translatedDescription,
-                      };
-                    }
-                    return a;
-                  })
-                );
-              });
-
-              completedCount++;
-              if (completedCount === totalCount) {
-                setTranslating(false);
-                toast.success(`翻译完成！共翻译 ${totalCount} 篇文章`);
-              }
-            })
-            .catch((error) => {
-              console.error('Translation error for article:', article.id, error);
-              completedCount++;
-              if (completedCount === totalCount) {
-                setTranslating(false);
-              }
-            });
-        });
-      } else {
-        // If turning off, hide translations
-        setShowTranslation(false);
-      }
-    } catch (error) {
-      console.error('Failed to toggle auto_translate:', error);
+      forceUpdate({});
       toast.error('更新翻译设置失败');
-    }
+    });
   };
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
