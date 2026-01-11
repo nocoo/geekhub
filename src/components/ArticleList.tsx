@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/sonner';
 import { fetchFeedWithSettings } from '@/lib/fetch-with-settings';
 import { getProxyImageUrl, getRefererFromUrl } from '@/lib/image-proxy';
+import { getTranslationFromCache } from '@/lib/translation-cache';
 import { getTranslationQueue } from '@/lib/translation-queue';
 
 interface ArticleListProps {
@@ -37,6 +38,23 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
   const feeds = queryClient.getQueryData<Feed[]>(['feeds', user?.id]) || [];
   const currentFeed = feeds.find(f => f.id === feedId);
   const autoTranslate = currentFeed?.auto_translate || false;
+
+  // Apply cached translations to articles to prevent flash on initial render
+  const articlesWithCachedTranslations = useMemo(() => {
+    if (!autoTranslate) return articles;
+
+    return articles.map(article => {
+      const cached = getTranslationFromCache(article.id);
+      if (cached) {
+        return {
+          ...article,
+          translatedTitle: cached.translatedTitle,
+          translatedDescription: cached.translatedDescription,
+        };
+      }
+      return article;
+    });
+  }, [articles, autoTranslate]);
 
   // Track articles read in current feed session (cleared when switching feeds)
   const sessionReadHashesRef = useRef<Set<string>>(new Set());
@@ -93,17 +111,17 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
   const filteredArticles = useMemo(() => {
     if (showRead) {
       // Show all articles
-      return articles;
+      return articlesWithCachedTranslations;
     }
 
     // For special feeds (starred, later), always show all articles
     if (feedId === 'starred' || feedId === 'later') {
-      return articles;
+      return articlesWithCachedTranslations;
     }
 
     // Show articles that are unread OR were read in this session
-    return articles.filter(a => !a.isRead || (a.hash && sessionReadHashesRef.current.has(a.hash)));
-  }, [articles, showRead, feedId]);
+    return articlesWithCachedTranslations.filter(a => !a.isRead || (a.hash && sessionReadHashesRef.current.has(a.hash)));
+  }, [articlesWithCachedTranslations, showRead, feedId]);
 
   // Handle article selection - mark as read and track in session
   const handleSelectArticle = useCallback((article: Article) => {
@@ -179,8 +197,13 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
             const queue = getTranslationQueue(10);
 
             filteredArticles.forEach((article) => {
-              // Skip if already in queue (queue will handle cache check)
+              // Skip if already in queue
               if (queue.isInQueue(article.id)) {
+                return;
+              }
+
+              // Skip if already has cached translation (to avoid flash)
+              if (getTranslationFromCache(article.id)) {
                 return;
               }
 

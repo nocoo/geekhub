@@ -41,6 +41,15 @@ export default {
           'Times',              // Fallback
           'serif',
         ],
+        // Serif-like fonts with Chinese support for article reading
+        serifCN: [
+          'PingFang SC',        // macOS Chinese
+          'Hiragino Sans GB',   // macOS Chinese fallback
+          '"Microsoft YaHei"',  // Windows Chinese
+          'Georgia',            // Classic serif fallback
+          '"Times New Roman"',  // Windows fallback
+          'serif',
+        ],
       },
       colors: {
         border: "hsl(var(--border))",

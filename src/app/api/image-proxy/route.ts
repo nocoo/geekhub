@@ -17,12 +17,13 @@ interface ImageProxyRequest {
   referer?: string;
 }
 
-// Parse query parameter (base64 encoded JSON)
+// Parse query parameter (base64 encoded JSON with URI encoding for Unicode)
 function parseQueryData(dataParam: string | null): ImageProxyRequest | null {
   if (!dataParam) return null;
 
   try {
-    const decoded = atob(dataParam);
+    // Decode base64 then URI component to handle Unicode
+    const decoded = decodeURIComponent(atob(dataParam));
     return JSON.parse(decoded);
   } catch {
     return null;

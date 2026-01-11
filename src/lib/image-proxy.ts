@@ -10,7 +10,8 @@ export function getProxyImageUrl(imageUrl: string, referer?: string): string {
   const payload = { url: imageUrl, referer };
 
   // Convert to base64 to pass as query param
-  const encoded = btoa(JSON.stringify(payload));
+  // Use encodeURIComponent first to handle Unicode characters
+  const encoded = btoa(encodeURIComponent(JSON.stringify(payload)));
 
   return `${proxyUrl}?data=${encoded}`;
 }

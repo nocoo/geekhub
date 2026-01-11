@@ -136,6 +136,9 @@ async function fetchWithProxy(url: string): Promise<string> {
   } as any);
 
   if (!response.ok) {
+    if (response.status === 503) {
+      throw new Error('RSSHub 服务暂时不可用，请稍后再试');
+    }
     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
   }
 

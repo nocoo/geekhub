@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { ChevronDown, ChevronRight, Star, Clock, MoreVertical, Plus, Edit, Trash2, Rss, RefreshCw, FileText } from 'lucide-react';
+import { ChevronDown, ChevronRight, Star, Clock, MoreVertical, Plus, Edit, Trash2, Rss, RefreshCw, FileText, ChevronsUpDown, ChevronsLeftRight } from 'lucide-react';
 import { CrawlerTerminal } from './CrawlerTerminal';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -185,6 +185,26 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
     });
   };
 
+  // Toggle all categories expand/collapse
+  const toggleAllCategories = () => {
+    const hasExpanded = categories.length > 0 &&
+      categories.every(cat => expandedCategories.has(cat.id)) &&
+      expandedCategories.has('uncategorized');
+
+    if (hasExpanded) {
+      // Collapse all
+      setExpandedCategories(new Set());
+    } else {
+      // Expand all
+      setExpandedCategories(prev => {
+        const next = new Set(prev);
+        categories.forEach(cat => next.add(cat.id));
+        next.add('uncategorized');
+        return next;
+      });
+    }
+  };
+
   // 处理 feed 选择
   const handleSelectFeed = useCallback((feedId: string | null) => {
     onSelectFeed(feedId);
@@ -289,9 +309,9 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
 
       // 显示结果
       if (failCount === 0) {
-        toast.success(`✅ 所有 ${successCount} 个订阅源抓取完成`);
+        toast.success(`所有 ${successCount} 个订阅源抓取完成`);
       } else {
-        toast.success(`📊 抓取完成：成功 ${successCount} 个，失败 ${failCount} 个`);
+        toast.success(`抓取完成：成功 ${successCount} 个，失败 ${failCount} 个`);
       }
     } catch (error) {
       console.error('Batch fetch error:', error);
@@ -357,6 +377,18 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
               订阅源
             </span>
             <div className="flex items-center gap-1">
+              {/* Toggle All Categories Button */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleAllCategories}
+                disabled={isLoading || categories.length === 0}
+                className="h-5 w-5 text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                title={expandedCategories.size > 0 ? "收起所有分类" : "展开所有分类"}
+              >
+                <ChevronsUpDown className="w-3.5 h-3.5" />
+              </Button>
+
               {/* Fetch All Button */}
               <Button
                 variant="ghost"

@@ -26,7 +26,7 @@ export function Header() {
           <Link href="/" className="flex items-center gap-2">
             <img src="/logo-32.png" alt="GeekHub" className="w-8 h-8" />
             <span className="font-semibold tracking-tight text-foreground">
-              GEEK<span className="text-primary">HUB</span>
+              Geek<span className="text-primary">Hub</span>
             </span>
           </Link>
           <span className="text-xs font-mono text-muted-foreground ml-2 hidden sm:inline">

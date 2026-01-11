@@ -525,7 +525,7 @@ export function ReaderView({ article }: ReaderViewProps) {
         )}
 
         {/* Content - Parse HTML */}
-        <div className="prose prose-geek max-w-none font-serif text-lg leading-relaxed m-0">
+        <div className="prose prose-geek max-w-none font-serifCN text-lg leading-relaxed m-0">
           {isLoadingFull ? (
             <div className="flex items-center justify-center py-12">
               <div className="text-center">
@@ -536,6 +536,11 @@ export function ReaderView({ article }: ReaderViewProps) {
           ) : processedContent ? parse(processedContent, {
             replace: (domNode: any) => {
               if (domNode.type === 'tag') {
+                // Remove MS Word XML namespace tags (o:p, w:, m:, etc.)
+                if (domNode.name?.includes(':') || ['o:p', 'xml'].includes(domNode.name)) {
+                  return null;
+                }
+
                 // Remove all inline styles to fix dark mode issues
                 if (domNode.attribs?.style) {
                   delete domNode.attribs.style;
