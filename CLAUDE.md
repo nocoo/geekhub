@@ -1,21 +1,145 @@
-# GeekHub API
+# CLAUDE.md
 
-## RSS Cache File Naming
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Files are saved to `data/` directory with the following pattern:
+## Project Overview
+
+**GeekHub** is a modern RSS feed reader with AI-powered summaries, built with Next.js 16, React 19, and Supabase. The application features a hybrid storage architecture: metadata in Supabase (PostgreSQL) and article content on the file system for efficient scaling.
+
+## Architecture
+
+### Hybrid Storage Strategy
+
+The codebase uses a dual-layer storage pattern:
+
+- **Supabase (PostgreSQL)**: User auth, categories, feeds, read status, bookmarks
+  - Enforced via Row Level Security (RLS) - users can only access their own data
+  - Migrations in `supabase/migrations/`
+  - Key tables: `categories`, `feeds`, `read_articles`, `bookmarked_articles`
+
+- **File System (`data/`)**: Article content and RSS metadata
+  - `data/feeds/{url_hash}/` - Per-feed storage (url_hash = MD5(url)[:12])
+  - `meta.json` - RSS feed metadata
+  - `articles/{YYYY}/{MM}/{article_hash}.json` - Article content (date-sharded)
+  - `index.json` - Article index (recent 1000)
+  - `cache.json` - Fetch cache with ETag/Last-Modified support
+
+### Key Patterns
+
+- **Repository Pattern**: `ArticleRepository` (file system access), `ReadStatusService` (Supabase)
+- **ViewModel**: `ArticleViewModel` transforms data for UI consumption
+- **SSE (Server-Sent Events)**: Real-time push for fetch logs and article updates
+- **Proxy Detection**: Auto-detects Clash/Clash Verge ports (7890, 7891, 7897, 7898, 10808, 10809)
+- **AI Integration**: OpenAI-compatible API for summaries/translation (supports custom base URL)
+
+## Development Commands
+
+```bash
+# Development
+npm run dev              # Start Next.js dev server (Turbopack)
+
+# Build & Deploy
+npm run build           # Production build
+npm start              # Start production server
+
+# Testing
+npm test               # Run Jest tests
+npm run test:watch     # Watch mode
+npm run test:coverage  # Coverage report
+
+# RSS Scheduler (cron-based feed fetching)
+npm run scheduler                 # Start 15-min interval scheduler
+npm run scheduler -- --trigger    # Trigger immediate fetch
+npm run scheduler -- --cron '*/5 * * * *'  # Custom cron expression
+
+# Linting
+npm run lint           # ESLint
+```
+
+## Environment Variables
+
+Required in `.env.local`:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=           # Supabase project URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY=      # Supabase anonymous key
+SUPABASE_SERVICE_KEY=               # Service role key (required for scheduler)
+```
+
+Optional (AI features):
+```bash
+OPENAI_API_KEY=                     # For AI summaries
+OPENAI_API_BASE=                    # Custom API base (default: AIMixHub)
+OPENAI_MODEL=                       # Model name (default: gpt-4o-mini)
+```
+
+## Code Structure
 
 ```
-rss_<hash>_<timestamp>.json
+src/
+├── app/api/              # Next.js API routes
+├── components/
+│   ├── ui/              # shadcn/ui primitives (Dialog, Select, etc.)
+│   ├── manage/          # Management dialogs (AddFeed, EditCategory, etc.)
+│   ├── ArticleList.tsx  # Article list with infinite scroll
+│   ├── ReaderView.tsx   # Immersive reading view (auto-translate, AI summary)
+│   ├── Sidebar.tsx      # Category nav + crawler preview terminal
+│   └── SettingsDialog.tsx  # Proxy/AI/RSSHub settings
+├── contexts/
+│   ├── AuthContext.tsx  # Supabase auth state
+│   └── SSEContext.tsx   # Server-Sent Events for real-time updates
+├── lib/
+│   ├── article-repository.ts      # File system data access
+│   ├── article-view-model.ts      # UI data transformation
+│   ├── feed-fetcher.ts            # RSS fetching with proxy support
+│   ├── read-status-service.ts     # Supabase read status management
+│   ├── translation-queue.ts       # AI translation queue with cache
+│   ├── image-proxy.ts             # Image proxy for hotlink protection
+│   ├── rsshub.ts                  # RSSHub route parser
+│   └── settings.ts                # User settings (proxy, AI, RSSHub)
+└── types/               # TypeScript definitions
 ```
 
-- `<hash>`: First 12 characters of MD5 hash of the RSS URL
-- `<timestamp>`: ISO 8601 timestamp with special characters replaced by `-`
+## Key Files to Understand
 
-Example:
-```
-URL: https://hnrss.org/newest?points=100
-Hash: 0055c44846cb (first 12 chars of MD5)
-File: rss_0055c44846cb_2026-01-09T21-50-14-712Z.json
+- `middleware.ts` - Auth guard, redirects unauthenticated users to `/login`
+- `scripts/scheduler.ts` - Standalone RSS fetch scheduler (cron-based)
+- `docs/file-storage-design.md` - Detailed file storage architecture
+- `src/lib/rss.ts` - RSS parsing logic (uses rss-parser + cheerio)
+- `src/lib/fetch-with-settings.ts` - HTTP fetch with proxy/auto-detect
+
+## Testing
+
+- Framework: Jest with ts-jest
+- Existing tests cover: repository layer, view model, read status service, RSS parsing
+- Test files follow `*.test.ts` naming convention
+- Use `npm test` to run, target `src/**/*.ts`
+
+## Technology Stack
+
+- **Frontend**: Next.js 16.1 (App Router), React 19.2, TypeScript 5 (strict)
+- **UI**: Radix UI primitives + shadcn/ui + TailwindCSS 3.4
+- **State**: React Context (AuthContext, SSEContext)
+- **Data Fetching**: TanStack Query (React Query)
+- **Backend**: Supabase (PostgreSQL + Auth + RLS)
+- **RSS**: rss-parser + cheerio (HTML parsing)
+- **AI**: OpenAI SDK (supports custom API base URL)
+- **Proxy**: undici + https-proxy-agent
+- **Scheduler**: node-cron
+- **Real-time**: Server-Sent Events (SSE)
+
+## Path Aliases
+
+Use `@/` prefix for imports from `src/`:
+```typescript
+import { ArticleRepository } from '@/lib/article-repository'
 ```
 
-This allows grouping files by URL prefix for easy cache lookup.
+## Important Notes
+
+- **TypeScript strict mode enabled** - All code must be type-safe
+- **File system storage** - Articles stored in `data/feeds/{url_hash}/articles/{YYYY}/{MM}/`
+- **Hash generation** - url_hash = MD5(url)[:12], article_hash = MD5(url|title|published_at)
+- **RLS enforced** - All Supabase queries respect user isolation
+- **Proxy auto-detection** - Checks Clash ports sequentially
+- **SSE endpoints** - `/api/logs` (crawler logs), `/api/sse` (fetch events)
