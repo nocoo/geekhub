@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/sonner';
 import { fetchFeedWithSettings } from '@/lib/fetch-with-settings';
 import { getProxyImageUrl, getRefererFromUrl } from '@/lib/image-proxy';
+import { getTranslationQueue } from '@/lib/translation-queue';
 
 interface ArticleListProps {
   articles: Article[];
@@ -30,8 +31,6 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
   const markAsRead = useMarkAsRead();
   const [showRead, setShowRead] = useState(false);
   const [fetching, setFetching] = useState(false);
-  const [translating, setTranslating] = useState(false);
-  const [showTranslation, setShowTranslation] = useState(false);
   const [, forceUpdate] = useState({});
 
   // Get current feed's auto_translate status
@@ -45,10 +44,16 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
   // Ref for the article list container and selected article
   const listContainerRef = useRef<HTMLDivElement>(null);
   const selectedArticleRef = useRef<HTMLButtonElement>(null);
+  const intersectionObserverRef = useRef<IntersectionObserver | null>(null);
+  const visibleArticlesRef = useRef<Set<string>>(new Set());
+  const hasStartedAutoTranslateRef = useRef(false);
 
   // Clear session read hashes when feed changes
   useEffect(() => {
     sessionReadHashesRef.current.clear();
+    // Reset auto-translate state when feed changes
+    hasStartedAutoTranslateRef.current = false;
+    visibleArticlesRef.current.clear();
   }, [feedId]);
 
   // Scroll selected article into view
@@ -135,6 +140,94 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
       setFetching(false);
     }
   };
+
+  // Setup Intersection Observer for visible articles
+  useEffect(() => {
+    // Only setup for feeds with auto_translate enabled
+    if (!autoTranslate || !feedId || feedId === 'starred' || feedId === 'later') {
+      return;
+    }
+
+    // Only start once per feed
+    if (hasStartedAutoTranslateRef.current) {
+      return;
+    }
+
+    hasStartedAutoTranslateRef.current = true;
+
+    // Create Intersection Observer
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const articleId = entry.target.getAttribute('data-article-id');
+          if (!articleId) return;
+
+          if (entry.isIntersecting) {
+            // Article is visible, add to visible set
+            visibleArticlesRef.current.add(articleId);
+          } else {
+            // Article is not visible, remove from visible set
+            visibleArticlesRef.current.delete(articleId);
+          }
+        });
+
+        // Trigger translation for visible articles that don't have translation yet
+        if (visibleArticlesRef.current.size > 0) {
+          const queue = getTranslationQueue(10);
+
+          filteredArticles.forEach((article) => {
+            // Skip if already translated or in queue
+            if (article.translatedTitle || queue.isInQueue(article.id)) {
+              return;
+            }
+
+            // Only translate articles currently visible
+            if (visibleArticlesRef.current.has(article.id)) {
+              queue.translate({
+                article,
+                feedId,
+                userId: user?.id,
+                queryClient,
+                aiSettings: settings.ai,
+              });
+            }
+          });
+        }
+      },
+      {
+        root: listContainerRef.current,
+        rootMargin: '0px',
+        threshold: 0.1, // 10% visible counts as visible
+      }
+    );
+
+    intersectionObserverRef.current = observer;
+
+    // Observe all article elements
+    const articleElements = listContainerRef.current?.querySelectorAll('[data-article-id]');
+    articleElements?.forEach((el) => observer.observe(el));
+
+    return () => {
+      observer.disconnect();
+      intersectionObserverRef.current = null;
+    };
+  }, [autoTranslate, feedId, filteredArticles, user?.id, queryClient, settings.ai]);
+
+  // Re-observe when filteredArticles change
+  useEffect(() => {
+    if (!intersectionObserverRef.current || !autoTranslate) {
+      return;
+    }
+
+    const observer = intersectionObserverRef.current;
+
+    // Disconnect old observations
+    const articleElements = listContainerRef.current?.querySelectorAll('[data-article-id]');
+    articleElements?.forEach((el) => observer.unobserve(el));
+
+    // Re-observe
+    articleElements?.forEach((el) => observer.observe(el));
+  }, [filteredArticles.length, autoTranslate]);
 
   // Listen for feed fetch completion events
   useFeedFetchEvents({
@@ -264,14 +357,14 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
               variant="ghost"
               size="icon"
               onClick={handleTranslate}
-              disabled={!settings.ai.enabled || translating || filteredArticles.length === 0}
+              disabled={filteredArticles.length === 0}
               className={cn(
                 "h-7 w-7",
                 autoTranslate && "bg-green-500/10 hover:bg-green-500/20 text-green-600 dark:text-green-400"
               )}
               title={autoTranslate ? "已开启自动翻译" : "翻译文章"}
             >
-              <Languages className={`w-3.5 h-3.5 ${translating ? 'animate-pulse' : ''}`} />
+              <Languages className="w-3.5 h-3.5" />
             </Button>
             <Button
               variant="ghost"
@@ -312,6 +405,7 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
             key={article.id}
             ref={selectedArticle?.id === article.id ? selectedArticleRef : null}
             onClick={() => handleSelectArticle(article)}
+            data-article-id={article.id}
             className={cn(
               "w-full text-left p-4 transition-all duration-150 relative group",
               selectedArticle?.id === article.id
@@ -336,12 +430,12 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
                     "text-sm leading-snug line-clamp-2",
                     !isArticleRead(article) ? "font-semibold text-foreground" : "font-medium text-foreground/90"
                   )}>
-                    {showTranslation && article.translatedTitle ? article.translatedTitle : article.title}
+                    {article.translatedTitle || article.title}
                   </h3>
                 </div>
 
                 <p className="text-xs text-muted-foreground line-clamp-2 mt-1.5">
-                  {showTranslation && article.translatedDescription ? article.translatedDescription : article.description}
+                  {article.translatedDescription || article.description}
                 </p>
 
                 {/* Metadata */}
