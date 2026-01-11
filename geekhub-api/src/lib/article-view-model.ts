@@ -16,8 +16,19 @@ export interface ArticleViewModel {
   feedIcon: string;
   isRead: boolean;
   hash: string;
+  urlHash: string;         // feed URL hash for file system path
   image: string | null;
   content?: string;        // full HTML content - now included in list
+  ai_summary?: {
+    content: string;
+    model: string;
+    generated_at: string;
+    usage?: {
+      prompt_tokens: number;
+      completion_tokens: number;
+      total_tokens: number;
+    };
+  };
 }
 
 /**
@@ -83,11 +94,15 @@ export class ArticleViewModelService {
       index.articles.map(async (article) => {
         let firstImage: string | null = null;
         let content: string | undefined = undefined;
+        let ai_summary: any = undefined;
         try {
           const fullArticle = await this.repo.getArticle(feedUrlHash, article.hash);
           if (fullArticle?.content) {
             firstImage = this.extractFirstImage(fullArticle.content);
             content = fullArticle.content;  // 保存完整内容
+          }
+          if (fullArticle?.ai_summary) {
+            ai_summary = fullArticle.ai_summary;
           }
         } catch {
           // Ignore errors, image and content will be null/undefined
@@ -97,6 +112,7 @@ export class ArticleViewModelService {
           ...article,
           firstImage,
           content,
+          ai_summary,
         };
       })
     );
@@ -114,8 +130,10 @@ export class ArticleViewModelService {
       feedIcon: feedIcon || '',
       isRead: readHashes.has(article.hash),
       hash: article.hash,
+      urlHash: feedUrlHash,
       image: article.firstImage,
       content: article.content,  // 包含完整内容
+      ai_summary: article.ai_summary,
     }));
 
     return {
@@ -199,7 +217,9 @@ export class ArticleViewModelService {
       feedIcon: feedIcon || '',
       isRead: readHashes.has(article.hash),
       hash: article.hash,
+      urlHash: feedUrlHash,
       image: firstImage,
+      ai_summary: article.ai_summary,
     };
   }
 }

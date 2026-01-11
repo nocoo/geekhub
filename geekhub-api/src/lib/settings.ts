@@ -57,7 +57,12 @@ function loadSettings(): AppSettings {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
-      return { ...DEFAULT_SETTINGS, ...parsed };
+      // Deep merge to preserve nested object structure
+      return {
+        proxy: { ...DEFAULT_SETTINGS.proxy, ...parsed.proxy },
+        ai: { ...DEFAULT_SETTINGS.ai, ...parsed.ai },
+        rsshub: { ...DEFAULT_SETTINGS.rsshub, ...parsed.rsshub },
+      };
     }
   } catch (error) {
     console.error('Failed to load settings:', error);

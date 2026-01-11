@@ -85,6 +85,7 @@ export async function GET(_request: NextRequest) {
         let firstImage: string | null = null;
         let content: string | undefined = undefined;
         let publishedAt: Date | null = null;
+        let ai_summary: any = undefined;
 
         if (feed.url_hash) {
           try {
@@ -96,6 +97,9 @@ export async function GET(_request: NextRequest) {
               }
               if (fullArticle.published_at) {
                 publishedAt = new Date(fullArticle.published_at);
+              }
+              if (fullArticle.ai_summary) {
+                ai_summary = fullArticle.ai_summary;
               }
             }
           } catch {
@@ -117,6 +121,7 @@ export async function GET(_request: NextRequest) {
           hash: bookmark.article_hash,
           image: firstImage,
           content,
+          ai_summary,
         };
       })
     );

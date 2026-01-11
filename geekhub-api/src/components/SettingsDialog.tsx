@@ -20,7 +20,7 @@ import { useSettings } from '@/lib/settings';
 import { useState } from 'react';
 
 const KNOWN_PROVIDERS = [
-  { name: 'AIMixHub', url: 'https://api.aimixhub.com/v1', model: 'gpt-4o-mini' },
+  { name: 'AIMixHub', url: 'https://aihubmix.com/v1', model: 'gpt-5-nano' },
   { name: 'OpenAI', url: 'https://api.openai.com/v1', model: 'gpt-4o-mini' },
   { name: 'DeepSeek', url: 'https://api.deepseek.com/v1', model: 'deepseek-chat' },
   { name: 'Custom', url: '', model: '' },
@@ -31,6 +31,10 @@ export function SettingsDialogContent() {
 
   const [proxyTestState, setProxyTestState] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [proxyTestMessage, setProxyTestMessage] = useState('');
+
+  const [aiTestState, setAiTestState] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
+  const [aiTestMessage, setAiTestMessage] = useState('');
+  const [aiTestDetails, setAiTestDetails] = useState<any>(null);
 
   const testProxy = async () => {
     setProxyTestState('testing');
@@ -61,6 +65,36 @@ export function SettingsDialogContent() {
     }
 
     setTimeout(() => setProxyTestState('idle'), 3000);
+  };
+
+  const testAI = async () => {
+    setAiTestState('testing');
+    setAiTestMessage('');
+    setAiTestDetails(null);
+
+    try {
+      const response = await fetch('/api/ai/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          aiSettings: settings.ai,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setAiTestState('success');
+        setAiTestMessage(`连接成功！找到 ${data.modelCount} 个可用模型`);
+        setAiTestDetails(data);
+      } else {
+        setAiTestState('error');
+        setAiTestMessage(data.error || '连接失败');
+      }
+    } catch (error) {
+      setAiTestState('error');
+      setAiTestMessage('测试失败：' + (error instanceof Error ? error.message : '未知错误'));
+    }
   };
 
   const handleProviderChange = (provider: string) => {
@@ -217,7 +251,7 @@ export function SettingsDialogContent() {
             <CardHeader>
               <CardTitle className="text-base">AI BYOM 设置</CardTitle>
               <CardDescription>
-                配置 OpenAI 兼容的 AI 服务提供商（暂未实现）
+                配置 OpenAI 兼容的 AI 服务提供商
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -271,10 +305,9 @@ export function SettingsDialogContent() {
                     <Label htmlFor="ai-base-url">Base URL</Label>
                     <Input
                       id="ai-base-url"
-                      placeholder="https://api.openai.com/v1"
+                      placeholder="https://aihubmix.com/v1"
                       value={settings.ai.baseUrl}
                       onChange={(e) => updateAI({ baseUrl: e.target.value })}
-                      disabled={settings.ai.provider !== 'Custom'}
                     />
                   </div>
 
@@ -282,16 +315,66 @@ export function SettingsDialogContent() {
                     <Label htmlFor="ai-model">模型</Label>
                     <Input
                       id="ai-model"
-                      placeholder="gpt-4o-mini"
+                      placeholder="gpt-5-nano"
                       value={settings.ai.model || ''}
                       onChange={(e) => updateAI({ model: e.target.value })}
                     />
                   </div>
 
+                  <Separator />
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={testAI}
+                    disabled={aiTestState === 'testing'}
+                  >
+                    {aiTestState === 'testing' ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        验证中...
+                      </>
+                    ) : aiTestState === 'success' ? (
+                      <>
+                        <Check className="w-4 h-4 mr-2 text-green-500" />
+                        {aiTestMessage}
+                      </>
+                    ) : aiTestState === 'error' ? (
+                      <>
+                        <Info className="w-4 h-4 mr-2 text-destructive" />
+                        {aiTestMessage}
+                      </>
+                    ) : (
+                      '验证配置'
+                    )}
+                  </Button>
+
+                  {aiTestDetails?.models && (
+                    <div className="space-y-2">
+                      <Label className="text-xs text-muted-foreground">可用模型（前10个）：</Label>
+                      <div className="flex flex-wrap gap-1">
+                        {aiTestDetails.models.map((model: string) => (
+                          <span
+                            key={model}
+                            className="px-2 py-1 text-xs rounded-md bg-muted font-mono"
+                          >
+                            {model}
+                          </span>
+                        ))}
+                        {aiTestDetails.hasMore && (
+                          <span className="px-2 py-1 text-xs rounded-md bg-muted/50 text-muted-foreground">
+                            ...还有 {aiTestDetails.modelCount - 10} 个
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex items-start gap-2 p-3 rounded-md bg-muted/50 text-xs text-muted-foreground">
                     <Info className="w-4 h-4 shrink-0 mt-0.5" />
                     <p>
-                      选择预设提供商可自动填充 Base URL。AI 功能暂未实现，设置仅用于未来扩展。
+                      选择预设提供商可自动填充 Base URL。
                     </p>
                   </div>
                 </>

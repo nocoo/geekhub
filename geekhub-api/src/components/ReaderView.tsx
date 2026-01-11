@@ -1,6 +1,5 @@
-import { format } from 'date-fns';
 import parse from 'html-react-parser';
-import { ExternalLink, Bookmark, Share2, Expand, Minimize2, Image, ImageOff, Bug, Download, Clock } from 'lucide-react';
+import { ExternalLink, Bookmark, Share2, Expand, Minimize2, Image, ImageOff, Bug, Download, Clock, Sparkles } from 'lucide-react';
 import { Article, useBookmarkArticle, useUnbookmarkArticle, useSaveForLater, useRemoveFromLater } from '@/hooks/useDatabase';
 import { Button } from '@/components/ui/button';
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
@@ -9,6 +8,8 @@ import { getProxyImageUrl, getRefererFromUrl } from '@/lib/image-proxy';
 import { useFormatTime } from '@/lib/format-time';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSettings } from '@/lib/settings';
+import { AISummaryDialog } from '@/components/AISummaryDialog';
 
 interface ReaderViewProps {
   article: Article | null;
@@ -40,12 +41,14 @@ export function ReaderView({ article }: ReaderViewProps) {
   const formatTime = useFormatTime();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { settings } = useSettings();
   const [fullWidth, setFullWidth] = useState(false);
   const [showImages, setShowImages] = useState(true);
   const [enhancedContent, setEnhancedContent] = useState<string | null>(null);
   const [isLoadingFull, setIsLoadingFull] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [isReadLater, setIsReadLater] = useState(false);
+  const [showAISummary, setShowAISummary] = useState(false);
 
   // Ref for the scrollable container
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -236,6 +239,34 @@ export function ReaderView({ article }: ReaderViewProps) {
     }
   }, [article]);
 
+  // Handle AI summary
+  const handleAISummary = useCallback(() => {
+    if (!article) return;
+
+    // Debug: log current AI settings
+    console.log('AI Settings:', settings.ai);
+
+    // Check if AI is enabled
+    if (!settings.ai.enabled) {
+      toast.error('AI 功能未启用，请在设置中开启');
+      return;
+    }
+
+    // Check if API key is configured
+    if (!settings.ai.apiKey || settings.ai.apiKey.trim() === '') {
+      toast.error('请先在设置中配置 AI API Key');
+      return;
+    }
+
+    // Check if base URL is configured
+    if (!settings.ai.baseUrl || settings.ai.baseUrl.trim() === '') {
+      toast.error('请先在设置中配置 AI Base URL');
+      return;
+    }
+
+    setShowAISummary(true);
+  }, [article, settings.ai]);
+
   // Copy debug info to clipboard
   const handleDebug = useCallback(() => {
     if (!article) return;
@@ -318,6 +349,9 @@ export function ReaderView({ article }: ReaderViewProps) {
 
             {/* Action buttons */}
             <div className="flex items-center gap-1">
+              <Button variant="ghost" size="icon" className="h-8 w-8" title="AI总结" onClick={handleAISummary}>
+                <Sparkles className="w-4 h-4" />
+              </Button>
               <Button variant="ghost" size="icon" className="h-8 w-8" title="Toggle width" onClick={toggleWidth}>
                 {fullWidth ? <Minimize2 className="w-4 h-4" /> : <Expand className="w-4 h-4" />}
               </Button>
@@ -372,6 +406,23 @@ export function ReaderView({ article }: ReaderViewProps) {
             </div>
           </div>
         </header>
+
+        {/* AI Summary (cached) */}
+        {article.ai_summary && (
+          <blockquote className="border-l-4 border-primary/50 pl-4 py-3 my-6 bg-muted/30 rounded-r-lg">
+            <div className="flex items-center gap-2 mb-2 text-sm text-muted-foreground">
+              <Sparkles className="w-4 h-4" />
+              <span>AI 总结</span>
+              <span className="text-xs">·</span>
+              <span className="text-xs">
+                {new Date(article.ai_summary.generated_at).toLocaleDateString()}
+              </span>
+            </div>
+            <p className="text-base leading-relaxed m-0">
+              {article.ai_summary.content}
+            </p>
+          </blockquote>
+        )}
 
         {/* Content - Parse HTML */}
         <div className="prose prose-geek max-w-none font-serif text-lg leading-relaxed m-0">
@@ -435,6 +486,19 @@ export function ReaderView({ article }: ReaderViewProps) {
           }) : <p className="text-muted-foreground italic">No content available</p>}
         </div>
       </article>
+
+      {/* AI Summary Dialog */}
+      {article && (
+        <AISummaryDialog
+          isOpen={showAISummary}
+          onClose={() => setShowAISummary(false)}
+          title={article.title}
+          content={displayContent || ''}
+          articleId={article.hash}
+          feedId={article.feedId}
+          urlHash={article.urlHash}
+        />
+      )}
     </div>
   );
 }

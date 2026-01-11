@@ -206,29 +206,6 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
     );
   }
 
-  if (filteredArticles.length === 0) {
-    return (
-      <div className="w-96 flex-shrink-0 border-r border-subtle h-[calc(100vh-3.5rem)] flex items-center justify-center">
-        <div className="text-center text-muted-foreground">
-          <p className="text-sm">没有找到文章</p>
-          <p className="text-xs mt-1">{showRead ? '该订阅源暂无文章' : '选择一个订阅源开始阅读'}</p>
-          {feedId && (
-            <Button
-              onClick={handleRefresh}
-              disabled={fetching}
-              variant="outline"
-              size="sm"
-              className="mt-4 gap-2"
-            >
-              <RefreshCw className={`w-4 h-4 ${fetching ? 'animate-spin' : ''}`} />
-              {fetching ? '正在抓取...' : '立即抓取'}
-            </Button>
-          )}
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div
       ref={listContainerRef}
@@ -347,6 +324,28 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
             </div>
           </button>
         ))}
+
+        {/* Empty state */}
+        {filteredArticles.length === 0 && (
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center text-muted-foreground">
+              <p className="text-sm">没有找到文章</p>
+              <p className="text-xs mt-1">{showRead ? '该订阅源暂无已读文章' : '该订阅源暂无未读文章'}</p>
+              {feedId && (
+                <Button
+                  onClick={handleRefresh}
+                  disabled={fetching}
+                  variant="outline"
+                  size="sm"
+                  className="mt-4 gap-2"
+                >
+                  <RefreshCw className={`w-4 h-4 ${fetching ? 'animate-spin' : ''}`} />
+                  {fetching ? '正在抓取...' : '立即抓取'}
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

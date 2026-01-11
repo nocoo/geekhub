@@ -22,6 +22,16 @@ export interface ArticleRaw {
     length?: number;
   }>;
   fetched_at: string;
+  ai_summary?: {
+    content: string;
+    model: string;
+    generated_at: string;
+    usage?: {
+      prompt_tokens: number;
+      completion_tokens: number;
+      total_tokens: number;
+    };
+  };
 }
 
 /**
