@@ -59,6 +59,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/swagger-ui-react": "^5.18.0",
+    "ajv-formats": "^1.4.1",
     "autoprefixer": "^10.4.21",
     "eslint": "^9",
     "eslint-config-next": "16.1.1",
