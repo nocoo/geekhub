@@ -51,6 +51,8 @@ export interface Article {
   hash?: string;
   urlHash?: string;
   image?: string | null;
+  translatedTitle?: string;
+  translatedDescription?: string;
   ai_summary?: {
     content: string;
     model: string;

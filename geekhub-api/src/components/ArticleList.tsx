@@ -1,11 +1,13 @@
 import { useEffect, useCallback, useState, useMemo, useRef } from 'react';
+import { flushSync } from 'react-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { Rss, CheckCheck, Eye, EyeOff, RefreshCw } from 'lucide-react';
+import { Rss, CheckCheck, Eye, EyeOff, RefreshCw, Languages } from 'lucide-react';
 import { Article, useMarkAllAsRead, useMarkAsRead } from '@/hooks/useDatabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFeedFetchEvents } from '@/contexts/SSEContext';
 import { cn } from '@/lib/utils';
 import { useFormatTime } from '@/lib/format-time';
+import { useSettings } from '@/lib/settings';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/sonner';
 import { fetchFeedWithSettings } from '@/lib/fetch-with-settings';
@@ -23,10 +25,13 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const formatTime = useFormatTime();
+  const { settings } = useSettings();
   const markAllAsRead = useMarkAllAsRead();
   const markAsRead = useMarkAsRead();
   const [showRead, setShowRead] = useState(false);
   const [fetching, setFetching] = useState(false);
+  const [translating, setTranslating] = useState(false);
+  const [showTranslation, setShowTranslation] = useState(false);
   const [, forceUpdate] = useState({});
 
   // Track articles read in current feed session (cleared when switching feeds)
@@ -175,6 +180,93 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
     }
   };
 
+  // Handle translation
+  const handleTranslate = async () => {
+    if (!settings.ai.enabled) {
+      toast.error('请先在设置中启用 AI 功能');
+      return;
+    }
+
+    const articlesToTranslate = filteredArticles;
+    if (articlesToTranslate.length === 0) {
+      toast.error('没有可翻译的文章');
+      return;
+    }
+
+    setTranslating(true);
+    setShowTranslation(true);  // Enable translation display immediately
+
+    // Only translate first batch (max 10 articles)
+    const BATCH_SIZE = 10;
+    const batch = articlesToTranslate.slice(0, BATCH_SIZE);
+
+    let completedCount = 0;
+    const totalCount = batch.length;
+
+    try {
+      toast.info('翻译中...');
+
+      // Send concurrent requests, one per article
+      batch.forEach((article) => {
+        // Fire and forget - each request updates UI independently
+        fetch('/api/ai/translate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            articles: [{
+              id: article.id,
+              title: article.title,
+              description: article.description,
+            }],
+            aiSettings: settings.ai,
+          }),
+        })
+          .then(async (response) => {
+            if (!response.ok) {
+              const { error } = await response.json();
+              throw new Error(error || '翻译失败');
+            }
+            return response.json();
+          })
+          .then(({ translations }) => {
+            // Update this specific article immediately with forced sync render
+            flushSync(() => {
+              queryClient.setQueryData<Article[]>(['articles', user?.id, feedId], (old = []) =>
+                old.map(a => {
+                  if (a.id === article.id) {
+                    return {
+                      ...a,
+                      translatedTitle: translations[0].translatedTitle,
+                      translatedDescription: translations[0].translatedDescription,
+                    };
+                  }
+                  return a;
+                })
+              );
+            });
+
+            // Update progress
+            completedCount++;
+            if (completedCount === totalCount) {
+              setTranslating(false);
+              toast.success(`翻译完成！共翻译 ${totalCount} 篇文章`);
+            }
+          })
+          .catch((error) => {
+            console.error('Translation error for article:', article.id, error);
+            completedCount++;
+            if (completedCount === totalCount) {
+              setTranslating(false);
+            }
+          });
+      });
+    } catch (error) {
+      console.error('Translation error:', error);
+      toast.error(error instanceof Error ? error.message : '翻译失败');
+      setTranslating(false);
+    }
+  };
+
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (!filteredArticles.length) return;
 
@@ -217,6 +309,16 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
             {filteredArticles.length} 篇文章{hasUnread && <span className="text-muted-foreground ml-1">({unreadCount} 未读)</span>}
           </span>
           <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleTranslate}
+              disabled={!settings.ai.enabled || translating || filteredArticles.length === 0}
+              className="h-7 w-7"
+              title={showTranslation ? "翻译完成" : "翻译文章"}
+            >
+              <Languages className={`w-3.5 h-3.5 ${translating ? 'animate-pulse' : ''}`} />
+            </Button>
             <Button
               variant="ghost"
               size="icon"
@@ -280,12 +382,12 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
                     "text-sm leading-snug line-clamp-2",
                     !isArticleRead(article) ? "font-semibold text-foreground" : "font-medium text-foreground/90"
                   )}>
-                    {article.title}
+                    {showTranslation && article.translatedTitle ? article.translatedTitle : article.title}
                   </h3>
                 </div>
 
                 <p className="text-xs text-muted-foreground line-clamp-2 mt-1.5">
-                  {article.description}
+                  {showTranslation && article.translatedDescription ? article.translatedDescription : article.description}
                 </p>
 
                 {/* Metadata */}
