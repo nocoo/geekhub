@@ -28,6 +28,7 @@ export interface Feed {
   description: string | null;
   is_active: boolean;
   fetch_interval_minutes: number;
+  auto_translate: boolean;
   unread_count?: number;
   total_articles?: number;
   last_fetched_at: string | null;

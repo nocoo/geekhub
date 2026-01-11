@@ -43,7 +43,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { title, description, category_id, is_active, fetch_interval_minutes } = body;
+    const { title, description, category_id, is_active, fetch_interval_minutes, auto_translate } = body;
 
     const { data: feed, error } = await supabase
       .from('feeds')
@@ -53,6 +53,7 @@ export async function PUT(
         ...(category_id !== undefined && { category_id }),
         ...(is_active !== undefined && { is_active }),
         ...(fetch_interval_minutes && { fetch_interval_minutes }),
+        ...(auto_translate !== undefined && { auto_translate }),
       })
       .eq('id', id)
       .eq('user_id', user.id)
