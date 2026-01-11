@@ -91,7 +91,6 @@ export function ReaderView({ article }: ReaderViewProps) {
   const [showTranslation, setShowTranslation] = useState(false);
   const [translatedContent, setTranslatedContent] = useState<string | null>(null);
 
-  // Ref for the scrollable container
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const toggleWidth = useCallback(() => setFullWidth(prev => !prev), []);
@@ -153,20 +152,16 @@ export function ReaderView({ article }: ReaderViewProps) {
     if (!article) return;
 
     if (isBookmarked) {
-      // Optimistically update UI
       setIsBookmarked(false);
       toast.success('已取消收藏');
 
       unbookmarkArticle.mutate(article.hash || '', {
-        onError: (error) => {
-          // Rollback on error
+        onError: () => {
           setIsBookmarked(true);
-          console.error('Failed to toggle bookmark:', error);
           toast.error('操作失败，已回滚');
         }
       });
     } else {
-      // Optimistically update UI
       setIsBookmarked(true);
       toast.success('已收藏');
 
@@ -176,10 +171,8 @@ export function ReaderView({ article }: ReaderViewProps) {
         articleTitle: article.title,
         articleUrl: article.url,
       }, {
-        onError: (error) => {
-          // Rollback on error
+        onError: () => {
           setIsBookmarked(false);
-          console.error('Failed to toggle bookmark:', error);
           toast.error('操作失败，已回滚');
         }
       });
@@ -191,20 +184,16 @@ export function ReaderView({ article }: ReaderViewProps) {
     if (!article) return;
 
     if (isReadLater) {
-      // Optimistically update UI
       setIsReadLater(false);
       toast.success('已从稍后阅读移除');
 
       removeFromLater.mutate(article.hash || '', {
-        onError: (error) => {
-          // Rollback on error
+        onError: () => {
           setIsReadLater(true);
-          console.error('Failed to toggle read later:', error);
           toast.error('操作失败，已回滚');
         }
       });
     } else {
-      // Optimistically update UI
       setIsReadLater(true);
       toast.success('已添加到稍后阅读');
 
@@ -214,10 +203,8 @@ export function ReaderView({ article }: ReaderViewProps) {
         articleTitle: article.title,
         articleUrl: article.url,
       }, {
-        onError: (error) => {
-          // Rollback on error
+        onError: () => {
           setIsReadLater(false);
-          console.error('Failed to toggle read later:', error);
           toast.error('操作失败，已回滚');
         }
       });

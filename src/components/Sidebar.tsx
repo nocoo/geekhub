@@ -29,6 +29,87 @@ interface SidebarProps {
   onSelectFeed: (feedId: string | null) => void;
 }
 
+interface FeedItemProps {
+  feed: Feed;
+  selectedFeed: string | null;
+  fetchingFeeds: Set<string>;
+  onSelectFeed: (feedId: string) => void;
+  onFetchFeed: (feedId: string, feedTitle: string) => void;
+  onEditFeed: (feed: Feed) => void;
+  onDeleteFeed: (feed: Feed) => void;
+  onViewLogs: (feed: Feed) => void;
+}
+
+// Extracted feed item component to reduce duplication
+function FeedItem({ feed, selectedFeed, fetchingFeeds, onSelectFeed, onFetchFeed, onEditFeed, onDeleteFeed, onViewLogs }: FeedItemProps) {
+  const handleSelect = useCallback(() => onSelectFeed(feed.id), [feed.id, onSelectFeed]);
+
+  return (
+    <div key={feed.id} className="flex items-center gap-0.5 group/feed">
+      <button
+        onClick={handleSelect}
+        className={cn(
+          "flex-1 flex items-center justify-start gap-1.5 px-2 py-1 rounded-md text-xs transition-colors min-w-0 text-left",
+          selectedFeed === feed.id
+            ? "bg-accent text-accent-foreground"
+            : "text-sidebar-foreground/80 hover:bg-accent/50"
+        )}
+      >
+        {feed.favicon_url ? (
+          <img
+            src={feed.favicon_url}
+            alt=""
+            className="w-3.5 h-3.5 rounded flex-shrink-0"
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+            }}
+          />
+        ) : (
+          <Rss className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+        )}
+        <span className="truncate flex-1">{feed.title}</span>
+        {(feed.unread_count || 0) > 0 && (
+          <span className="text-[10px] font-mono text-muted-foreground flex-shrink-0">
+            {feed.unread_count}
+          </span>
+        )}
+      </button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 flex-shrink-0 text-muted-foreground opacity-0 group-hover/feed:opacity-100 hover:text-foreground hover:bg-accent/50 transition-all"
+          >
+            <MoreVertical className="w-3 h-3" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={() => onFetchFeed(feed.id, feed.title)} disabled={fetchingFeeds.has(feed.id)}>
+            <RefreshCw className={`w-3.5 h-3.5 mr-2 ${fetchingFeeds.has(feed.id) ? 'animate-spin' : ''}`} />
+            立即抓取
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onViewLogs(feed)}>
+            <FileText className="w-3.5 h-3.5 mr-2" />
+            查看日志
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onEditFeed(feed)}>
+            <Edit className="w-3.5 h-3.5 mr-2" />
+            编辑
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className="text-destructive focus:text-destructive"
+            onClick={() => onDeleteFeed(feed)}
+          >
+            <Trash2 className="w-3.5 h-3.5 mr-2" />
+            删除
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+}
+
 export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -327,7 +408,6 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
               {categories.map((category) => {
                 const categoryFeeds = getCategoryFeeds(category.id);
                 const isExpanded = expandedCategories.has(category.id);
-                const categoryUnread = categoryFeeds.reduce((acc, f) => acc + (f.unread_count || 0), 0);
 
                 return (
                   <div key={category.id} className="group/category">
@@ -386,72 +466,21 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
                           </div>
                         ) : (
                           categoryFeeds.map((feed) => (
-                            <div key={feed.id} className="flex items-center gap-0.5 group/feed">
-                              <button
-                                onClick={() => handleSelectFeed(feed.id)}
-                                className={cn(
-                                  "flex-1 flex items-center justify-start gap-1.5 px-2 py-1 rounded-md text-xs transition-colors min-w-0 text-left",
-                                  selectedFeed === feed.id
-                                    ? "bg-accent text-accent-foreground"
-                                    : "text-sidebar-foreground/80 hover:bg-accent/50"
-                                )}
-                              >
-                                {feed.favicon_url ? (
-                                  <img
-                                    src={feed.favicon_url}
-                                    alt=""
-                                    className="w-3.5 h-3.5 rounded flex-shrink-0"
-                                    onError={(e) => {
-                                      e.currentTarget.style.display = 'none';
-                                    }}
-                                  />
-                                ) : (
-                                  <Rss className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                                )}
-                                <span className="truncate flex-1">{feed.title}</span>
-                                {(feed.unread_count || 0) > 0 && (
-                                  <span className="text-[10px] font-mono text-muted-foreground flex-shrink-0">
-                                    {feed.unread_count}
-                                  </span>
-                                )}
-                              </button>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-6 w-6 flex-shrink-0 text-muted-foreground opacity-0 group-hover/feed:opacity-100 hover:text-foreground hover:bg-accent/50 transition-all"
-                                  >
-                                    <MoreVertical className="w-3 h-3" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => handleFetchFeed(feed.id, feed.title)} disabled={fetchingFeeds.has(feed.id)}>
-                                    <RefreshCw className={`w-3.5 h-3.5 mr-2 ${fetchingFeeds.has(feed.id) ? 'animate-spin' : ''}`} />
-                                    立即抓取
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => setViewingLogsFeed({ id: feed.id, title: feed.title })}>
-                                    <FileText className="w-3.5 h-3.5 mr-2" />
-                                    查看日志
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => setEditingFeed(feed)}>
-                                    <Edit className="w-3.5 h-3.5 mr-2" />
-                                    编辑
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    className="text-destructive focus:text-destructive"
-                                    onClick={() => setDeleteConfirm({
-                                      type: 'feed',
-                                      id: feed.id,
-                                      name: feed.title,
-                                    })}
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5 mr-2" />
-                                    删除
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
+                            <FeedItem
+                              key={feed.id}
+                              feed={feed}
+                              selectedFeed={selectedFeed}
+                              fetchingFeeds={fetchingFeeds}
+                              onSelectFeed={handleSelectFeed}
+                              onFetchFeed={handleFetchFeed}
+                              onEditFeed={() => setEditingFeed(feed)}
+                              onDeleteFeed={() => setDeleteConfirm({
+                                type: 'feed',
+                                id: feed.id,
+                                name: feed.title,
+                              })}
+                              onViewLogs={() => setViewingLogsFeed({ id: feed.id, title: feed.title })}
+                            />
                           ))
                         )}
                       </div>
@@ -484,72 +513,21 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
                   {expandedCategories.has('uncategorized') && (
                     <div className="ml-4 mt-0.5 space-y-0.5">
                       {getUncategorizedFeeds().map((feed) => (
-                        <div key={feed.id} className="flex items-center gap-0.5 group/feed">
-                          <button
-                            onClick={() => handleSelectFeed(feed.id)}
-                            className={cn(
-                              "flex-1 flex items-center gap-1.5 px-2 py-1 rounded-md text-xs transition-colors min-w-0",
-                              selectedFeed === feed.id
-                                ? "bg-accent text-accent-foreground"
-                                : "text-sidebar-foreground/80 hover:bg-accent/50"
-                            )}
-                          >
-                            {feed.favicon_url ? (
-                              <img
-                                src={feed.favicon_url}
-                                alt=""
-                                className="w-3.5 h-3.5 rounded flex-shrink-0"
-                                onError={(e) => {
-                                  e.currentTarget.style.display = 'none';
-                                }}
-                              />
-                            ) : (
-                              <Rss className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                            )}
-                            <span className="truncate flex-1">{feed.title}</span>
-                            {(feed.unread_count || 0) > 0 && (
-                              <span className="text-[10px] font-mono text-muted-foreground flex-shrink-0">
-                                {feed.unread_count}
-                              </span>
-                            )}
-                          </button>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 flex-shrink-0 text-muted-foreground opacity-0 group-hover/feed:opacity-100 hover:text-foreground hover:bg-accent/50 transition-all"
-                              >
-                                <MoreVertical className="w-3 h-3" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleFetchFeed(feed.id, feed.title)} disabled={fetchingFeeds.has(feed.id)}>
-                                <RefreshCw className={`w-3.5 h-3.5 mr-2 ${fetchingFeeds.has(feed.id) ? 'animate-spin' : ''}`} />
-                                立即抓取
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => setViewingLogsFeed({ id: feed.id, title: feed.title })}>
-                                <FileText className="w-3.5 h-3.5 mr-2" />
-                                查看日志
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => setEditingFeed(feed)}>
-                                <Edit className="w-3.5 h-3.5 mr-2" />
-                                编辑
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="text-destructive focus:text-destructive"
-                                onClick={() => setDeleteConfirm({
-                                  type: 'feed',
-                                  id: feed.id,
-                                  name: feed.title,
-                                })}
-                              >
-                                <Trash2 className="w-3.5 h-3.5 mr-2" />
-                                删除
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
+                        <FeedItem
+                          key={feed.id}
+                          feed={feed}
+                          selectedFeed={selectedFeed}
+                          fetchingFeeds={fetchingFeeds}
+                          onSelectFeed={handleSelectFeed}
+                          onFetchFeed={handleFetchFeed}
+                          onEditFeed={() => setEditingFeed(feed)}
+                          onDeleteFeed={() => setDeleteConfirm({
+                            type: 'feed',
+                            id: feed.id,
+                            name: feed.title,
+                          })}
+                          onViewLogs={() => setViewingLogsFeed({ id: feed.id, title: feed.title })}
+                        />
                       ))}
                     </div>
                   )}
