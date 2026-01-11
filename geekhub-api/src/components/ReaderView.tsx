@@ -1,8 +1,8 @@
 import parse from 'html-react-parser';
-import { ExternalLink, Bookmark, Share2, Expand, Minimize2, Image, ImageOff, Bug, Download, Clock, Sparkles } from 'lucide-react';
+import { ExternalLink, Bookmark, Share2, Expand, Minimize2, Image, ImageOff, Bug, Clock, Sparkles } from 'lucide-react';
 import { Article, useBookmarkArticle, useUnbookmarkArticle, useSaveForLater, useRemoveFromLater } from '@/hooks/useDatabase';
 import { Button } from '@/components/ui/button';
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { toast } from '@/components/ui/sonner';
 import { getProxyImageUrl, getRefererFromUrl } from '@/lib/image-proxy';
 import { useFormatTime } from '@/lib/format-time';
@@ -183,17 +183,48 @@ export function ReaderView({ article }: ReaderViewProps) {
     }
   }, [article, isReadLater, saveForLater, removeFromLater]);
 
-  // Check if content is short (likely a summary only)
-  const isShortContent = useMemo(() => {
-    if (!article?.content) return false;
-    // Content is considered short if less than 500 chars
-    return article.content.length < 500;
-  }, [article?.content]);
-
   // Reset enhanced content when article changes
   useEffect(() => {
     setEnhancedContent(null);
   }, [article?.id]);
+
+  // Auto-fetch content when article has no content or very short content
+  useEffect(() => {
+    if (!article?.url) return;
+
+    // Check if we need to fetch full content
+    const needsFetch = !article.content || article.content.length < 500;
+
+    if (!needsFetch) return;
+
+    // Auto-fetch full content
+    const fetchContent = async () => {
+      setIsLoadingFull(true);
+      try {
+        const response = await fetch(`/api/articles/${article.id}/fetch-full`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: article.url }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch full content');
+        }
+
+        const data = await response.json();
+        if (data.success && data.content) {
+          setEnhancedContent(data.content);
+          console.log(`[AutoFetch] Fetched ${data.content.length} chars for: ${article.title?.slice(0, 30)}`);
+        }
+      } catch (error) {
+        console.error('[AutoFetch] Failed:', error);
+      } finally {
+        setIsLoadingFull(false);
+      }
+    };
+
+    fetchContent();
+  }, [article?.id, article?.url, article?.content, article?.title]);
 
   // Scroll to top when article changes
   useEffect(() => {
@@ -207,37 +238,6 @@ export function ReaderView({ article }: ReaderViewProps) {
 
   // Use enhanced content if available, otherwise use original content
   const displayContent = enhancedContent || article?.content;
-
-  // Fetch full content from original URL
-  const handleFetchFull = useCallback(async () => {
-    if (!article?.url) return;
-
-    setIsLoadingFull(true);
-    try {
-      const response = await fetch(`/api/articles/${article.id}/fetch-full`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: article.url }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch full content');
-      }
-
-      const data = await response.json();
-      if (data.success && data.content) {
-        setEnhancedContent(data.content);
-        toast.success(`已获取完整内容 (${(data.content.length / 1000).toFixed(1)}k 字符)`);
-      } else {
-        throw new Error(data.error || 'No content returned');
-      }
-    } catch (error) {
-      console.error('Failed to fetch full content:', error);
-      toast.error('获取完整内容失败: ' + (error instanceof Error ? error.message : '未知错误'));
-    } finally {
-      setIsLoadingFull(false);
-    }
-  }, [article]);
 
   // Handle AI summary
   const handleAISummary = useCallback(() => {
@@ -358,18 +358,6 @@ export function ReaderView({ article }: ReaderViewProps) {
               <Button variant="ghost" size="icon" className="h-8 w-8" title="Toggle images" onClick={toggleImages}>
                 {showImages ? <Image className="w-4 h-4" /> : <ImageOff className="w-4 h-4" />}
               </Button>
-              {isShortContent && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  title="Fetch full content"
-                  onClick={handleFetchFull}
-                  disabled={isLoadingFull}
-                >
-                  <Download className={`w-4 h-4 ${isLoadingFull ? 'animate-spin' : ''}`} />
-                </Button>
-              )}
               <Button variant="ghost" size="icon" className="h-8 w-8" title="Debug info" onClick={handleDebug}>
                 <Bug className="w-4 h-4" />
               </Button>
@@ -426,7 +414,14 @@ export function ReaderView({ article }: ReaderViewProps) {
 
         {/* Content - Parse HTML */}
         <div className="prose prose-geek max-w-none font-serif text-lg leading-relaxed m-0">
-          {processedContent ? parse(processedContent, {
+          {isLoadingFull ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+                <p className="text-sm text-muted-foreground">正在获取文章内容...</p>
+              </div>
+            </div>
+          ) : processedContent ? parse(processedContent, {
             replace: (domNode: any) => {
               if (domNode.type === 'tag') {
                 // Remove all inline styles to fix dark mode issues

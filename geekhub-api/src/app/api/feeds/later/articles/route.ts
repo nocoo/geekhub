@@ -48,8 +48,6 @@ export async function GET(_request: NextRequest) {
       .eq('user_id', user.id)
       .order('saved_at', { ascending: false });
 
-    console.log('[ReadLaterArticles] Raw data:', JSON.stringify(readLater, null, 2));
-
     if (readLaterError) {
       console.error('[ReadLaterArticles] DB Error:', readLaterError);
       throw readLaterError;
@@ -128,12 +126,6 @@ export async function GET(_request: NextRequest) {
 
     // Filter out nulls
     const validArticles = articles.filter(a => a !== null);
-
-    console.log('[ReadLaterArticles] Result:', {
-      total: readLater.length,
-      valid: validArticles.length,
-      nulls: readLater.length - validArticles.length
-    });
 
     return NextResponse.json({
       feed: {

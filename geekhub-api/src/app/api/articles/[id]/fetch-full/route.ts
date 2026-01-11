@@ -22,7 +22,8 @@ async function fetchWithProxy(url: string): Promise<string> {
     dispatcher: proxyAgent,
     headers: {
       'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36',
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+      'Accept-Language': 'en,zh-CN;q=0.9,zh;q=0.8',
     },
   } as any);
 
@@ -34,13 +35,13 @@ async function fetchWithProxy(url: string): Promise<string> {
 }
 
 /**
- * Extract article content from various sources
+ * Extract article content using improved selectors
  */
 async function extractFullContent(url: string): Promise<{ content: string; title?: string }> {
   const html = await fetchWithProxy(url);
   const $ = cheerio.load(html);
 
-  // WeChat Article (mp.weixin.qq.com)
+  // WeChat Article (mp.weixin.qq.com) - special handling
   if (url.includes('mp.weixin.qq.com')) {
     const content = $('#js_content').html() || '';
     const title = $('#activity-name').text().trim() ||
@@ -48,29 +49,55 @@ async function extractFullContent(url: string): Promise<{ content: string; title
     return { content: content.trim(), title };
   }
 
-  // Generic article extraction - try common content selectors
+  // Remove unwanted elements first
+  $('script, style, nav, aside, footer, header, .comments, .share-buttons, .sidebar, .ad, .advertisement').remove();
+
+  // Try content selectors in order of priority
   const contentSelectors = [
     'article',
     '[role="article"]',
     '.post-content',
     '.entry-content',
     '.article-content',
+    '.post-body',
+    '.entry-body',
     '.content',
     '#content',
+    '.post',
+    '.article',
     'main',
   ];
 
   for (const selector of contentSelectors) {
     const element = $(selector);
-    if (element.length && element.text().length > 200) {
-      // Remove unwanted elements
-      element.find('script, style, nav, aside, footer, .comments, .share-buttons').remove();
-      return { content: element.html() || '' };
+    if (element.length > 0) {
+      const text = element.text().trim();
+      // Check if it has meaningful content (more than 200 chars and not just navigation)
+      if (text.length > 200 && !text.includes('Skip to content')) {
+        return { content: element.html() || '' };
+      }
     }
   }
 
-  // Fallback: get body content
-  $('script, style, nav, aside, footer, header').remove();
+  // Fallback: try to find the div with most text content
+  let bestElement: any = null;
+  let maxLength = 0;
+
+  $('div, p, section').each(function() {
+    const $this = $(this);
+    const text = $this.text().trim();
+    // Skip if too short or contains too many links (likely navigation)
+    if (text.length > 300 && text.length > maxLength && $this.find('a').length < 20) {
+      maxLength = text.length;
+      bestElement = $this;
+    }
+  });
+
+  if (bestElement && bestElement.length > 0) {
+    return { content: bestElement.html() || '' };
+  }
+
+  // Last resort: body content
   return { content: $('body').html() || '' };
 }
 
@@ -95,7 +122,7 @@ export async function POST(
       return NextResponse.json({ error: 'Failed to extract content' }, { status: 500 });
     }
 
-    console.log(`[FetchFull] Successfully fetched ${content.length} characters`);
+    console.log(`[FetchFull] Successfully fetched ${content.length} chars`);
 
     return NextResponse.json({
       success: true,
