@@ -63,7 +63,8 @@
 
 ### 前置要求
 
-- Node.js 18+
+- **Bun** 1.0+ (https://bun.sh)
+- Node.js 18+ (仅用于 Next.js 构建)
 - Supabase 实例（可使用 [Supabase Cloud](https://supabase.com) 或自托管）
 
 ### 1. 克隆项目
@@ -71,7 +72,7 @@
 ```bash
 git clone https://github.com/yourusername/geekhub.git
 cd geekhub
-npm install
+bun install
 ```
 
 ### 2. 配置 Supabase
@@ -103,7 +104,7 @@ OPENAI_MODEL=gpt-4o-mini
 ### 4. 启动开发服务器
 
 ```bash
-npm run dev
+bun run dev
 ```
 
 访问 http://localhost:3000
@@ -112,35 +113,35 @@ npm run dev
 
 ```bash
 # 默认 15 分钟抓取一次
-npm run scheduler
+bun run scheduler
 
 # 立即触发一次抓取
-npm run scheduler -- --trigger
+bun run scheduler -- --trigger
 
 # 自定义 cron 表达式（例如每 5 分钟）
-npm run scheduler -- --cron '*/5 * * * *'
+bun run scheduler -- --cron '*/5 * * * *'
 ```
 
 ### 6. 生产环境部署
 
 ```bash
 # 构建
-npm run build
+bun run build
 
 # 启动生产服务器
-npm start
+bun start
 ```
 
 推荐使用 **PM2** 进行进程管理：
 
 ```bash
-npm install -g pm2
+bun install -g pm2
 
 # 启动 Web 服务
-pm2 start npm --name "geekhub-web" -- start
+pm2 start bun --name "geekhub-web" -- run start
 
 # 启动调度器
-pm2 start npm --name "geekhub-scheduler" -- run scheduler
+pm2 start bun --name "geekhub-scheduler" -- run scheduler
 
 # 保存 PM2 配置
 pm2 save
@@ -204,13 +205,7 @@ geekhub/
 
 ```bash
 # 运行测试
-npm test
-
-# 监视模式
-npm run test:watch
-
-# 覆盖率报告
-npm run test:coverage
+bun test
 ```
 
 ---

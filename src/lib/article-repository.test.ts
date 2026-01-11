@@ -3,7 +3,7 @@
  *
  * Tests the file system layer that reads article data.
  *
- * Run: npm test -- article-repository.test.ts
+ * Run: bun test -- article-repository.test.ts
  */
 
 import { ArticleRepository, ArticleRaw } from './article-repository';

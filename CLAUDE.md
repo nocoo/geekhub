@@ -36,24 +36,22 @@ The codebase uses a dual-layer storage pattern:
 
 ```bash
 # Development
-npm run dev              # Start Next.js dev server (Turbopack)
+bun run dev              # Start Next.js dev server (Turbopack)
 
 # Build & Deploy
-npm run build           # Production build
-npm start              # Start production server
+bun run build           # Production build
+bun start              # Start production server
 
 # Testing
-npm test               # Run Jest tests
-npm run test:watch     # Watch mode
-npm run test:coverage  # Coverage report
+bun test               # Run Bun tests
 
 # RSS Scheduler (cron-based feed fetching)
-npm run scheduler                 # Start 15-min interval scheduler
-npm run scheduler -- --trigger    # Trigger immediate fetch
-npm run scheduler -- --cron '*/5 * * * *'  # Custom cron expression
+bun run scheduler                 # Start 15-min interval scheduler
+bun run scheduler -- --trigger    # Trigger immediate fetch
+bun run scheduler -- --cron '*/5 * * * *'  # Custom cron expression
 
 # Linting
-npm run lint           # ESLint
+bun run lint           # ESLint
 ```
 
 ## Environment Variables
@@ -110,10 +108,10 @@ src/
 
 ## Testing
 
-- Framework: Jest with ts-jest
+- Framework: Bun test (native)
 - Existing tests cover: repository layer, view model, read status service, RSS parsing
 - Test files follow `*.test.ts` naming convention
-- Use `npm test` to run, target `src/**/*.ts`
+- Use `bun test` to run, target `src/**/*.ts`
 
 ## Technology Stack
 

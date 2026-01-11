@@ -308,7 +308,7 @@ Current unit test structure by layer:
 | DB | `read-status-service.test.ts` | Read status CRUD |
 | View Model | `article-view-model.test.ts` | Data aggregation |
 
-**Total**: 83 test cases passing
+**Total**: 70 test cases passing (using Bun test)
 
 ---
 
@@ -320,4 +320,4 @@ Current unit test structure by layer:
 | Article Index | index.json (1000 limit) | Add pagination |
 | Unread Count | Real-time O(n) | Cached O(1) |
 | Content Loading | All at once | Lazy load |
-| Test Coverage | 83 cases | Expand for new features |
+| Test Coverage | 70 cases (Bun) | Expand for new features |

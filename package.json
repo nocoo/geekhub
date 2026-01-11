@@ -7,9 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
+    "test": "bun test",
     "scheduler": "tsx scripts/scheduler.ts"
   },
   "dependencies": {
@@ -53,7 +51,6 @@
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.19",
-    "@types/jest": "^30.0.0",
     "@types/node": "^20",
     "@types/node-cron": "^3.0.11",
     "@types/react": "^19",
@@ -63,10 +60,8 @@
     "autoprefixer": "^10.4.21",
     "eslint": "^9",
     "eslint-config-next": "16.1.1",
-    "jest": "^30.2.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17",
-    "ts-jest": "^29.4.6",
     "tsx": "^4.21.0",
     "typescript": "^5"
   }

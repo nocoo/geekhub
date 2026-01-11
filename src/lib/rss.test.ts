@@ -3,7 +3,7 @@
  *
  * Tests the fetch layer utilities for URL hashing and file naming.
  *
- * Run: npm test -- rss.test.ts
+ * Run: bun test -- rss.test.ts
  */
 
 import { promises as fs } from "fs";

@@ -3,7 +3,7 @@
  *
  * Tests the fetch layer that handles RSS parsing, URL hashing, and article data conversion.
  *
- * Run: npm test -- feed-fetcher.test.ts
+ * Run: bun test -- feed-fetcher.test.ts
  */
 
 import crypto from "crypto";
