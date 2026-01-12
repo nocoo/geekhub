@@ -221,12 +221,11 @@ export class FeedFetcher {
 
   constructor(
     private feed: FeedInfo,
-    private dataDir: string = process.cwd(), // Still needed for FeedLogger
     proxyConfig?: ProxyConfig,
     rsshubConfig?: RssHubConfig
   ) {
     // Initialize logger with feedId and urlHash
-    this.logger = new FeedLogger(this.feed.id, this.feed.url_hash, this.dataDir);
+    this.logger = new FeedLogger(this.feed.id, this.feed.url_hash);
 
     // Set proxy and RssHub config for this fetcher
     setProxyConfig(proxyConfig);

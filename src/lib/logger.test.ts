@@ -20,11 +20,6 @@ describe('FeedLogger', () => {
       const logger = new FeedLogger('feed-123', 'urlhash123');
       expect((logger as any).urlHash).toBe('urlhash123');
     });
-
-    it('should store dataDir', () => {
-      const logger = new FeedLogger('feed-123', 'urlhash123', '/some/path');
-      expect((logger as any).dataDir).toBe('/some/path');
-    });
   });
 
   describe('LogLevel enum', () => {

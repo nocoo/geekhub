@@ -84,8 +84,7 @@ export async function POST(
     };
 
     // 创建 fetcher 并执行抓取（传递代理和 RssHub 配置）
-    // 不传递 dataDir 参数，使用默认值 path.join(process.cwd(), 'data')
-    const fetcher = new FeedFetcher(feedInfo, undefined, body.proxy, body.rsshub);
+    const fetcher = new FeedFetcher(feedInfo, body.proxy, body.rsshub);
 
     // 异步执行抓取任务
     (async () => {

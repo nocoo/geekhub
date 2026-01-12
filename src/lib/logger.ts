@@ -34,8 +34,7 @@ export interface FetchLogEntry {
 export class FeedLogger {
   constructor(
     private feedId: string,
-    private urlHash: string,
-    private dataDir: string = ''
+    private urlHash: string
   ) {}
 
   private async saveToDatabase(entry: FetchLogEntry): Promise<void> {
