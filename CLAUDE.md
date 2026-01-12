@@ -61,14 +61,7 @@ Required in `.env.local`:
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=           # Supabase project URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY=      # Supabase anonymous key
-SUPABASE_SERVICE_KEY=               # Service role key (required for scheduler)
-```
-
-Optional (AI features):
-```bash
-OPENAI_API_KEY=                     # For AI summaries
-OPENAI_API_BASE=                    # Custom API base (default: AIMixHub)
-OPENAI_MODEL=                       # Model name (default: gpt-4o-mini)
+SUPABASE_SERVICE_KEY=               # Service role key (required for admin operations)
 ```
 
 ## Code Structure
