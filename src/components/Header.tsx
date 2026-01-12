@@ -1,11 +1,12 @@
 "use client";
 
-import { Sun, Moon, Bug } from 'lucide-react';
+import { Sun, Moon, Bug, Compass } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
 import { AuthButton } from '@/components/AuthButton';
 import { SettingsDialog } from '@/components/SettingsDialog';
 import { DataManagerPanel } from '@/components/DataManagerPanel';
+import { DiscoverDialog } from '@/components/DiscoverDialog';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
@@ -13,6 +14,7 @@ export function Header() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [showDataManager, setShowDataManager] = useState(false);
+  const [showDiscover, setShowDiscover] = useState(false);
 
   // useEffect only runs on the client, so now we can safely show the UI
   useEffect(() => {
@@ -35,6 +37,15 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setShowDiscover(true)}
+            className="h-9 w-9 text-muted-foreground hover:text-foreground"
+            title="发现博客"
+          >
+            <Compass className="h-4 w-4" />
+          </Button>
           <Button
             variant="ghost"
             size="icon"
@@ -66,6 +77,12 @@ export function Header() {
       <DataManagerPanel
         open={showDataManager}
         onOpenChange={setShowDataManager}
+      />
+
+      {/* Discover Dialog */}
+      <DiscoverDialog
+        open={showDiscover}
+        onOpenChange={setShowDiscover}
       />
     </>
   );

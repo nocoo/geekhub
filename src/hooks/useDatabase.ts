@@ -66,6 +66,21 @@ export interface Article {
   };
 }
 
+export interface Blog {
+  id: string;
+  name: string;
+  url: string;
+  feed?: string | null;
+  tags?: string[] | null;
+  last_updated?: string | null;
+  score?: {
+    overall?: string;
+    [key: string]: string | undefined;
+  } | null;
+  created_at: string;
+  updated_at: string;
+}
+
 // Categories hooks
 export function useCategories() {
   const { user } = useAuth();
@@ -700,5 +715,44 @@ export function useLaterCount() {
       return data.total || 0;
     },
     enabled: !!user,
+  });
+}
+
+// Blog discovery hooks
+export function useBlogs(params: {
+  sort?: string;
+  tag?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+} = {}) {
+  return useQuery({
+    queryKey: ['blogs', params],
+    queryFn: async () => {
+      const queryParams = new URLSearchParams();
+      if (params.sort) queryParams.set('sort', params.sort);
+      if (params.tag) queryParams.set('tag', params.tag);
+      if (params.search) queryParams.set('search', params.search);
+      if (params.page) queryParams.set('page', params.page.toString());
+      if (params.limit) queryParams.set('limit', params.limit.toString());
+
+      const response = await fetch(`/api/blogs?${queryParams.toString()}`);
+      if (!response.ok) {
+        throw new Error('Failed to load blogs');
+      }
+
+      const data = await response.json();
+      return data as {
+        blogs: Blog[];
+        tags: string[];
+        pagination: {
+          page: number;
+          limit: number;
+          hasMore: boolean;
+        };
+      };
+    },
+    enabled: true,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }
