@@ -19,7 +19,9 @@ import {
   Server,
   Wifi,
   Cpu,
-  MemoryStick
+  MemoryStick,
+  Ban,
+  Calendar
 } from 'lucide-react';
 import {
   Dialog,
@@ -133,6 +135,25 @@ interface CleanupExecuteResult {
   errors: string[];
 }
 
+interface ArticleCleanupStats {
+  totalArticles: number;
+  readArticles: number;
+  unreadArticles: number;
+  oldArticles: number;
+  articlesByFeed: Array<{
+    feedId: string;
+    total: number;
+    read: number;
+    unread: number;
+  }>;
+}
+
+interface ArticleCleanupResult {
+  deletedCount: number;
+  errors: string[];
+  message: string;
+}
+
 interface DataManagerPanelProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -152,6 +173,10 @@ export function DataManagerPanel({ open, onOpenChange }: DataManagerPanelProps) 
   const [systemHealth, setSystemHealth] = useState<SystemHealth | null>(null);
   const [cleanupData, setCleanupData] = useState<CleanupResult | null>(null);
   const [cleanupLoading, setCleanupLoading] = useState(false);
+  const [articleCleanupStats, setArticleCleanupStats] = useState<ArticleCleanupStats | null>(null);
+  const [articleCleanupLoading, setArticleCleanupLoading] = useState(false);
+  const [selectedFeedForCleanup, setSelectedFeedForCleanup] = useState<string | null>(null);
+  const [storageInfo, setStorageInfo] = useState<any>(null);
 
   // Load all data manager data
   const loadDataManagerData = useCallback(async () => {
@@ -200,6 +225,20 @@ export function DataManagerPanel({ open, onOpenChange }: DataManagerPanelProps) 
         const cleanup = await cleanupResponse.json();
         setCleanupData(cleanup);
       }
+
+      // Load article cleanup stats
+      const articleCleanupResponse = await fetch('/api/data/cleanup-articles');
+      if (articleCleanupResponse.ok) {
+        const articleStats = await articleCleanupResponse.json();
+        setArticleCleanupStats(articleStats);
+      }
+
+      // Load storage info
+      const storageResponse = await fetch('/api/data/storage');
+      if (storageResponse.ok) {
+        const storage = await storageResponse.json();
+        setStorageInfo(storage);
+      }
     } catch (error) {
       console.error('Failed to load data manager data:', error);
       toast.error('加载数据管理数据失败');
@@ -208,15 +247,12 @@ export function DataManagerPanel({ open, onOpenChange }: DataManagerPanelProps) 
     }
   }, [open]);
 
-  // Auto-refresh data
+  // Load data when dialog opens
   useEffect(() => {
-    loadDataManagerData();
-
     if (open) {
-      const interval = setInterval(loadDataManagerData, 10000); // Refresh every 10s
-      return () => clearInterval(interval);
+      loadDataManagerData();
     }
-  }, [open, loadDataManagerData]);
+  }, [open]);
 
   // Format bytes
   const formatBytes = (bytes: number): string => {
@@ -289,6 +325,43 @@ export function DataManagerPanel({ open, onOpenChange }: DataManagerPanelProps) 
     }
   };
 
+  // Handle article cleanup operations
+  const handleArticleCleanup = async (options: {
+    deleteRead?: boolean;
+    olderThanDays?: number;
+    feedId?: string;
+  }) => {
+    setArticleCleanupLoading(true);
+    try {
+      const response = await fetch('/api/data/cleanup-articles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(options),
+      });
+
+      if (response.ok) {
+        const result: ArticleCleanupResult = await response.json();
+
+        if (result.errors && result.errors.length > 0) {
+          toast.error(`清理完成，但有 ${result.errors.length} 个错误`);
+        } else {
+          toast.success(result.message || `成功删除 ${result.deletedCount} 篇文章`);
+        }
+
+        // 重新加载数据
+        loadDataManagerData();
+      } else {
+        const { error } = await response.json();
+        toast.error(error || '清理失败');
+      }
+    } catch (error) {
+      console.error('Article cleanup error:', error);
+      toast.error('清理文章失败');
+    } finally {
+      setArticleCleanupLoading(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-7xl max-h-[95vh] overflow-hidden flex flex-col">
@@ -324,8 +397,12 @@ export function DataManagerPanel({ open, onOpenChange }: DataManagerPanelProps) 
                   <div className="text-xs text-muted-foreground">总文章数</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-purple-600">{formatBytes(systemStats.storageSize)}</div>
-                  <div className="text-xs text-muted-foreground">存储大小</div>
+                  <div className="text-2xl font-bold text-purple-600">
+                    {storageInfo ? storageInfo.totalSizeFormatted : formatBytes(systemStats.storageSize)}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {storageInfo ? `已用 ${storageInfo.usage.databasePercent}%` : '存储大小'}
+                  </div>
                 </div>
               </div>
             )}
@@ -391,31 +468,73 @@ export function DataManagerPanel({ open, onOpenChange }: DataManagerPanelProps) 
                         <CardHeader>
                           <CardTitle className="text-base flex items-center gap-2">
                             <HardDrive className="w-4 h-4" />
-                            存储统计
+                            Supabase 存储统计
                           </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3">
-                          <div className="flex justify-between">
-                            <span className="text-sm text-muted-foreground">总文章数</span>
-                            <span className="text-sm font-medium">{systemStats.totalArticles.toLocaleString()}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-sm text-muted-foreground">存储大小</span>
-                            <span className="text-sm font-medium">{formatBytes(systemStats.storageSize)}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-sm text-muted-foreground">平均文章大小</span>
-                            <span className="text-sm font-medium">
-                              {systemStats.totalArticles > 0
-                                ? formatBytes(systemStats.storageSize / systemStats.totalArticles)
-                                : '0 B'
-                              }
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-sm text-muted-foreground">最后更新</span>
-                            <span className="text-sm font-medium">{formatDate(systemStats.lastUpdate)}</span>
-                          </div>
+                          {storageInfo ? (
+                            <>
+                              <div className="flex justify-between">
+                                <span className="text-sm text-muted-foreground">数据库使用</span>
+                                <span className="text-sm font-medium">{storageInfo.usage.databaseUsedFormatted} / {storageInfo.usage.databaseLimitFormatted}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-sm text-muted-foreground">使用率</span>
+                                <span className="text-sm font-medium">{storageInfo.usage.databasePercent}%</span>
+                              </div>
+                              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                                <div
+                                  className="bg-blue-600 h-2 rounded-full"
+                                  style={{ width: `${Math.min(parseFloat(storageInfo.usage.databasePercent), 100)}%` }}
+                                />
+                              </div>
+                              <div className="border-t pt-3 space-y-2">
+                                <div className="flex justify-between text-xs">
+                                  <span className="text-muted-foreground">文章内容</span>
+                                  <span>{storageInfo.breakdownFormatted.articles}</span>
+                                </div>
+                                <div className="flex justify-between text-xs">
+                                  <span className="text-muted-foreground">日志</span>
+                                  <span>{storageInfo.breakdownFormatted.logs}</span>
+                                </div>
+                                <div className="flex justify-between text-xs">
+                                  <span className="text-muted-foreground">Feeds</span>
+                                  <span>{storageInfo.breakdownFormatted.feeds}</span>
+                                </div>
+                                <div className="flex justify-between text-xs">
+                                  <span className="text-muted-foreground">其他</span>
+                                  <span>{formatBytes(storageInfo.breakdown.categories + storageInfo.breakdown.userArticles + storageInfo.breakdown.fetchStatus)}</span>
+                                </div>
+                              </div>
+                              <div className="border-t pt-3 text-xs text-muted-foreground">
+                                Supabase 免费额度：{storageInfo.supabaseLimits.freeDatabaseLimitFormatted} 数据库存储
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="flex justify-between">
+                                <span className="text-sm text-muted-foreground">总文章数</span>
+                                <span className="text-sm font-medium">{systemStats.totalArticles.toLocaleString()}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-sm text-muted-foreground">存储大小</span>
+                                <span className="text-sm font-medium">{formatBytes(systemStats.storageSize)}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-sm text-muted-foreground">平均文章大小</span>
+                                <span className="text-sm font-medium">
+                                  {systemStats.totalArticles > 0
+                                    ? formatBytes(systemStats.storageSize / systemStats.totalArticles)
+                                    : '0 B'
+                                  }
+                                </span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-sm text-muted-foreground">最后更新</span>
+                                <span className="text-sm font-medium">{formatDate(systemStats.lastUpdate)}</span>
+                              </div>
+                            </>
+                          )}
                         </CardContent>
                       </Card>
                     </div>
@@ -624,6 +743,133 @@ export function DataManagerPanel({ open, onOpenChange }: DataManagerPanelProps) 
                             <p className="text-sm text-muted-foreground">
                               删除超过30天的抓取日志以释放空间
                             </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Article cleanup section */}
+                  {articleCleanupStats && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <Ban className="w-4 h-4" />
+                          文章清理
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        {/* Article statistics */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div>
+                            <div className="text-2xl font-bold">{articleCleanupStats.totalArticles}</div>
+                            <div className="text-xs text-muted-foreground">总文章数</div>
+                          </div>
+                          <div>
+                            <div className="text-2xl font-bold text-blue-600">{articleCleanupStats.readArticles}</div>
+                            <div className="text-xs text-muted-foreground">已读</div>
+                          </div>
+                          <div>
+                            <div className="text-2xl font-bold text-green-600">{articleCleanupStats.unreadArticles}</div>
+                            <div className="text-xs text-muted-foreground">未读</div>
+                          </div>
+                          <div>
+                            <div className="text-2xl font-bold text-orange-600">{articleCleanupStats.oldArticles}</div>
+                            <div className="text-xs text-muted-foreground">30天前</div>
+                          </div>
+                        </div>
+
+                        {/* Cleanup buttons */}
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleArticleCleanup({ deleteRead: true })}
+                            disabled={articleCleanupLoading || articleCleanupStats.readArticles === 0}
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            删除所有已读文章 ({articleCleanupStats.readArticles})
+                          </Button>
+
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleArticleCleanup({ olderThanDays: 30 })}
+                            disabled={articleCleanupLoading || articleCleanupStats.oldArticles === 0}
+                          >
+                            <Calendar className="w-4 h-4 mr-2" />
+                            删除30天前的文章 ({articleCleanupStats.oldArticles})
+                          </Button>
+
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleArticleCleanup({ olderThanDays: 60 })}
+                            disabled={articleCleanupLoading}
+                          >
+                            <Calendar className="w-4 h-4 mr-2" />
+                            删除60天前的文章
+                          </Button>
+
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleArticleCleanup({ olderThanDays: 90 })}
+                            disabled={articleCleanupLoading}
+                          >
+                            <Calendar className="w-4 h-4 mr-2" />
+                            删除90天前的文章
+                          </Button>
+                        </div>
+
+                        {/* Feed-specific cleanup */}
+                        <div className="space-y-2">
+                          <h4 className="text-sm font-medium">按 Feed 清理</h4>
+                          <div className="max-h-48 overflow-y-auto border rounded-lg">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Feed</TableHead>
+                                  <TableHead>总计</TableHead>
+                                  <TableHead>已读</TableHead>
+                                  <TableHead>未读</TableHead>
+                                  <TableHead>操作</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {articleCleanupStats.articlesByFeed
+                                  .filter(feed => feed.total > 0)
+                                  .slice(0, 10)
+                                  .map((feed) => {
+                                    const feedInfo = feedStatuses.find(f => f.id === feed.feedId);
+                                    return (
+                                      <TableRow key={feed.feedId}>
+                                        <TableCell className="text-sm max-w-xs truncate">
+                                          {feedInfo?.title || feed.feedId}
+                                        </TableCell>
+                                        <TableCell className="text-sm">{feed.total}</TableCell>
+                                        <TableCell className="text-sm text-blue-600">{feed.read}</TableCell>
+                                        <TableCell className="text-sm text-green-600">{feed.unread}</TableCell>
+                                        <TableCell>
+                                          {feed.read > 0 && (
+                                            <Button
+                                              size="sm"
+                                              variant="ghost"
+                                              onClick={() => handleArticleCleanup({
+                                                feedId: feed.feedId,
+                                                deleteRead: true
+                                              })}
+                                              disabled={articleCleanupLoading}
+                                            >
+                                              <Trash2 className="w-3 h-3" />
+                                            </Button>
+                                          )}
+                                        </TableCell>
+                                      </TableRow>
+                                    );
+                                  })}
+                              </TableBody>
+                            </Table>
                           </div>
                         </div>
                       </CardContent>

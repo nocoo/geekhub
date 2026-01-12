@@ -2,15 +2,14 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { ChevronDown, ChevronRight, Star, Clock, MoreVertical, Plus, Edit, Trash2, Rss, RefreshCw, FileText, ChevronsUpDown, X, Search } from 'lucide-react';
+import { ChevronDown, ChevronRight, Star, Clock, MoreVertical, Plus, Edit, Trash2, Rss, RefreshCw, FileText, FoldVertical, X, Search } from 'lucide-react';
 import { CrawlerTerminal } from './CrawlerTerminal';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { useDeleteCategory, useDeleteFeed, useStarredCount, useLaterCount, useCategories, Category } from '@/hooks/useDatabase';
-import { useFeedFetch } from '@/contexts/FeedFetchContext';
+import { useDeleteCategory, useDeleteFeed, useStarredCount, useLaterCount, useCategories } from '@/hooks/useDatabase';
 import { useFetchFeed } from '@/hooks/useFeedActions';
 import { useAuth } from '@/contexts/AuthContext';
-import { useFeedGroups, useFeedViewModels, useRefreshFeeds } from '@/hooks/useFeedViewModels';
+import { useFeedGroups, useRefreshFeeds } from '@/hooks/useFeedViewModels';
 import { FeedViewModel } from '@/types/feed-view-model';
 import { AddCategoryDialog } from '@/components/manage/AddCategoryDialog';
 import { AddFeedDialog } from '@/components/manage/AddFeedDialog';
@@ -128,6 +127,7 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
   }, [selectedFeed]);
 
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const [hasInitializedCategories, setHasInitializedCategories] = useState(false);
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [showAddFeed, setShowAddFeed] = useState(false);
   const [defaultCategoryId, setDefaultCategoryId] = useState<string | undefined>(undefined);
@@ -144,7 +144,6 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
   // Use new ViewModel hook
   const { data: feedGroups, isLoading: feedsLoading } = useFeedGroups();
   const { data: categories = [] } = useCategories();
-  const { isFeedFetching } = useFeedFetch();
   const fetchFeed = useFetchFeed();
   const { data: starredCount = 0 } = useStarredCount();
   const { data: laterCount = 0 } = useLaterCount();
@@ -219,6 +218,24 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
     fetchFeed.mutate({ feedId, feedTitle });
   }, [fetchFeed]);
 
+  // Handle fetch all feeds
+  const handleFetchAllFeeds = useCallback(() => {
+    if (!feedGroups) return;
+
+    feedGroups.forEach(group => {
+      group.feeds.forEach(feed => {
+        if (!feed.isFetching) {
+          fetchFeed.mutate({ feedId: feed.id, feedTitle: feed.title });
+        }
+      });
+    });
+  }, [feedGroups, fetchFeed]);
+
+  // Check if any feed is currently fetching
+  const isAnyFeedFetching = feedGroups?.some(group =>
+    group.feeds.some(feed => feed.isFetching)
+  ) ?? false;
+
   // Filter feeds
   const getFilteredFeeds = useCallback((feeds: FeedViewModel[]) => {
     if (!feedFilter) return feeds;
@@ -254,12 +271,14 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
   }, [feedGroups, expandedCategories, getFilteredFeeds]);
 
   // Auto-expand categories on load
+  // Auto-expand categories on initial load
   useEffect(() => {
-    if (feedGroups && feedGroups.length > 0 && expandedCategories.size === 0) {
+    if (feedGroups && feedGroups.length > 0 && !hasInitializedCategories) {
       const categoryIds = feedGroups.filter(g => g.category).map(g => g.category!.id);
       setExpandedCategories(new Set(categoryIds));
+      setHasInitializedCategories(true);
     }
-  }, [feedGroups, expandedCategories.size]);
+  }, [feedGroups, hasInitializedCategories]);
 
   // Keyboard handler
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -380,7 +399,7 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
         </div>
 
         {/* Feeds Section */}
-        <div className="flex-1 overflow-y-auto hover-scrollbar p-2 space-y-1">
+        <div className="flex-1 overflow-y-auto scrollbar-hidden p-2 space-y-1 relative">
           {/* Section Header */}
           <div className="flex items-center justify-between px-2 py-1">
             <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -395,7 +414,17 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
                 className="h-5 w-5 text-muted-foreground hover:text-foreground hover:bg-accent/50"
                 title={expandedCategories.size > 0 ? "收起所有分类" : "展开所有分类"}
               >
-                <ChevronsUpDown className="w-3.5 h-3.5" />
+                <FoldVertical className="w-3.5 h-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleFetchAllFeeds}
+                disabled={isAnyFeedFetching || !hasAnyFeeds}
+                className="h-5 w-5 text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                title="抓取全部订阅源"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isAnyFeedFetching ? 'animate-spin' : ''}`} />
               </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -570,6 +599,9 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
               })}
             </>
           )}
+
+          {/* Bottom fade gradient indicator - fixed at bottom of scroll container */}
+          <div className="sticky bottom-[-8px] left-0 right-0 h-[8vh] pointer-events-none bg-gradient-to-t from-sidebar via-sidebar/80 to-transparent z-10" />
         </div>
 
         {/* Crawler Terminal */}

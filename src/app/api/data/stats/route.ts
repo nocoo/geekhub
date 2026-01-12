@@ -1,83 +1,85 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
-
-async function createSupabaseClient() {
-  const cookieStore = await cookies();
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            );
-          } catch {
-            // Ignore if called from Server Component
-          }
-        },
-      },
-    }
-  );
-}
+import { createSmartSupabaseClient } from '@/lib/supabase-server';
 
 // GET /api/data/stats - Get system statistics
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createSupabaseClient();
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
+    const { client: supabase, user } = await createSmartSupabaseClient();
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get feeds
+    // Get all feeds
     const { data: feeds, error: feedsError } = await supabase
       .from('feeds')
-      .select('id, is_active, last_fetched_at, total_articles')
+      .select('id, is_active')
       .eq('user_id', user.id);
 
     if (feedsError) {
       throw feedsError;
     }
 
+    // Get feed IDs for batch query
+    const feedIds = feeds.map(f => f.id);
+
+    // Get fetch status for all feeds
+    let totalArticles = 0;
+    let totalUnread = 0;
+    let todayFetched = 0;
+    let errorFeeds = 0;
+
+    if (feedIds.length > 0) {
+      const { data: fetchStatuses } = await supabase
+        .from('fetch_status')
+        .select('feed_id, total_articles, unread_count, last_fetch_at, last_fetch_status')
+        .in('feed_id', feedIds);
+
+      if (fetchStatuses) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        for (const status of fetchStatuses) {
+          totalArticles += status.total_articles || 0;
+          totalUnread += status.unread_count || 0;
+
+          // Count today's fetches
+          if (status.last_fetch_at) {
+            const lastFetch = new Date(status.last_fetch_at);
+            if (lastFetch >= today) {
+              todayFetched++;
+            }
+          }
+
+          // Count error feeds (fetched but failed)
+          if (status.last_fetch_status === 'error') {
+            errorFeeds++;
+          }
+        }
+      }
+    }
+
     // Calculate feed statistics
     const totalFeeds = feeds.length;
     const activeFeeds = feeds.filter(f => f.is_active).length;
-    const errorFeeds = feeds.filter(f => {
-      if (!f.is_active) return false;
-      if (!f.last_fetched_at) return true;
-      const lastFetch = new Date(f.last_fetched_at);
-      const now = new Date();
-      return (now.getTime() - lastFetch.getTime()) > 24 * 60 * 60 * 1000;
-    }).length;
-    const pausedFeeds = feeds.filter(f => !f.is_active).length;
+    const pausedFeeds = totalFeeds - activeFeeds;
 
-    // Calculate article statistics
-    const totalArticles = feeds.reduce((sum, f) => sum + (f.total_articles || 0), 0);
-
-    // Calculate today's fetch count
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayFetched = feeds.filter(f => {
-      if (!f.last_fetched_at) return false;
-      const lastFetch = new Date(f.last_fetched_at);
-      return lastFetch >= today;
-    }).length;
+    // Get total read count from user_articles
+    const { count: totalRead } = await supabase
+      .from('user_articles')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('is_read', true);
 
     const stats = {
       totalFeeds,
       activeFeeds,
-      errorFeeds,
       pausedFeeds,
+      errorFeeds,
       totalArticles,
+      totalRead: totalRead || 0,
+      totalUnread,
       todayFetched,
-      storageSize: 0, // No longer tracking file system storage
+      storageSize: totalArticles, // Approximate size (article count)
       lastUpdate: new Date().toISOString(),
     };
 

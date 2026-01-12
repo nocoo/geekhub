@@ -1,30 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
-
-async function createSupabaseClient() {
-  const cookieStore = await cookies();
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            );
-          } catch {
-            // Ignore if called from Server Component
-          }
-        },
-      },
-    }
-  );
-}
+import { createSmartSupabaseClient } from '@/lib/supabase-server';
 
 // PUT /api/categories/[id] - 更新分类
 export async function PUT(
@@ -33,12 +8,10 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createSupabaseClient();
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { client: supabase, user } = await createSmartSupabaseClient();
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
     const body = await request.json();
     const { name, color, icon, sort_order } = body;
@@ -79,12 +52,10 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createSupabaseClient();
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { client: supabase, user } = await createSmartSupabaseClient();
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
     // 检查分类下是否有 RSS 源
     const { data: feeds, error: feedsError } = await supabase

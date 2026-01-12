@@ -23,9 +23,15 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Redirect unauthenticated users to login page
+  // DEV MODE: Skip auth check when BOTH conditions are met:
+  // 1. NODE_ENV === 'development'
+  // 2. DEV_MODE_ENABLED === 'true' (must be explicitly set)
+  const isDev = process.env.NODE_ENV === 'development' && process.env.DEV_MODE_ENABLED === 'true'
+
+  // Redirect unauthenticated users to login page (skip in dev mode)
   if (
     !user &&
+    !isDev &&
     !request.nextUrl.pathname.startsWith('/login') &&
     !request.nextUrl.pathname.startsWith('/auth') &&
     !request.nextUrl.pathname.startsWith('/api')

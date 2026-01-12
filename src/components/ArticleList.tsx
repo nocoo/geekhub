@@ -345,7 +345,7 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
       <div className="p-3 border-b border-subtle sticky top-0 bg-card/95 backdrop-blur-sm z-10">
         <div className="flex items-center justify-between gap-2">
           <span className="text-sm font-medium text-foreground">
-            {feedViewModel?.totalArticles ?? filteredArticles.length} 篇文章{hasUnread && <span className="text-muted-foreground ml-1">({unreadCountFromViewModel} 未读)</span>}
+            {feedViewModel?.totalArticles ?? filteredArticles.length} 篇文章{hasUnread && filteredArticles.length > 0 && <span className="text-muted-foreground ml-1">({unreadCount} 未读)</span>}
           </span>
           <div className="flex items-center gap-1">
             <Button
@@ -476,18 +476,6 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
             <div className="text-center text-muted-foreground">
               <p className="text-sm">没有找到文章</p>
               <p className="text-xs mt-1">{showRead ? '该订阅源暂无已读文章' : '该订阅源暂无未读文章'}</p>
-              {feedId && (
-                <Button
-                  onClick={handleRefresh}
-                  disabled={isFeedFetching}
-                  variant="outline"
-                  size="sm"
-                  className="mt-4 gap-2"
-                >
-                  <RefreshCw className={`w-4 h-4 ${isFeedFetching ? 'animate-spin' : ''}`} />
-                  {isFeedFetching ? '正在抓取...' : '立即抓取'}
-                </Button>
-              )}
             </div>
           </div>
         )}

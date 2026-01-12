@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, ReactNode, Dispatch, SetStateAction } from 'react';
 import { useFeedFetchEvents as useSSEEvents } from './SSEContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from './AuthContext';
@@ -14,6 +14,7 @@ import { useAuth } from './AuthContext';
 interface FeedFetchStateContextValue {
   fetchingFeeds: Set<string>;
   isFeedFetching: (feedId: string) => boolean;
+  setFetchingFeeds: Dispatch<SetStateAction<Set<string>>>;
 }
 
 const FeedFetchContext = createContext<FeedFetchStateContextValue | undefined>(undefined);
@@ -22,6 +23,15 @@ export function useFeedFetch() {
   const context = useContext(FeedFetchContext);
   if (!context) {
     throw new Error('useFeedFetch must be used within FeedFetchProvider');
+  }
+  return context;
+}
+
+// Export internal hook for useFeedActions (needs setFetchingFeeds)
+export function useFeedFetchInternal() {
+  const context = useContext(FeedFetchContext);
+  if (!context) {
+    throw new Error('useFeedFetchInternal must be used within FeedFetchProvider');
   }
   return context;
 }
@@ -44,9 +54,8 @@ export function FeedFetchProvider({ children }: ProviderProps) {
         return newSet;
       });
 
-      // Invalidate queries to refresh articles and unread counts
+      // Only invalidate articles query, NOT feedViewModels to preserve optimistic updates
       queryClient.invalidateQueries({ queryKey: ['articles', user?.id, event.feedId] });
-      queryClient.invalidateQueries({ queryKey: ['feedViewModels', user?.id] });
     }, [setFetchingFeeds, queryClient, user]),
   });
 
@@ -57,6 +66,7 @@ export function FeedFetchProvider({ children }: ProviderProps) {
   const value: FeedFetchStateContextValue = {
     fetchingFeeds,
     isFeedFetching,
+    setFetchingFeeds,
   };
 
   return (

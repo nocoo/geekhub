@@ -1,31 +1,12 @@
 import { NextRequest } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { createSmartSupabaseClient } from '@/lib/supabase-server';
 
 // Service role client for reading fetch_logs
 function getServiceClient() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_KEY!
-  );
-}
-
-async function createSupabaseClient() {
-  const cookieStore = await cookies();
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll() {
-          // Read-only for SSE
-        },
-      },
-    }
   );
 }
 
@@ -42,10 +23,9 @@ interface LogLine {
 
 // GET /api/logs/stream - SSE stream for real-time logs
 export async function GET(request: NextRequest) {
-  const supabase = await createSupabaseClient();
+  const { client: supabase, user } = await createSmartSupabaseClient();
 
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) {
+  if (!user) {
     return new Response('Unauthorized', { status: 401 });
   }
 

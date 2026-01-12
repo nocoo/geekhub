@@ -1,37 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { createSmartSupabaseClient } from '@/lib/supabase-server';
 
 // Service role client for reading fetch_logs
 function getServiceClient() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_KEY!
-  );
-}
-
-async function createSupabaseClient() {
-  const cookieStore = await cookies();
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            );
-          } catch {
-            // Ignore if called from Server Component
-          }
-        },
-      },
-    }
   );
 }
 
@@ -97,17 +72,15 @@ async function getLastFetchStatus(feedId: string) {
 // GET /api/data/feeds - Get all feeds detailed status
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createSupabaseClient();
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { client: supabase, user } = await createSmartSupabaseClient();
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
     // Get all feeds
     const { data: feeds, error: feedsError } = await supabase
       .from('feeds')
-      .select('id, title, url, url_hash, is_active, last_fetched_at, total_articles, unread_count')
+      .select('id, title, url, url_hash, is_active')
       .eq('user_id', user.id)
       .order('title');
 
@@ -167,10 +140,10 @@ export async function GET(request: NextRequest) {
           title: feed.title,
           url: feed.url,
           status: currentStatus,
-          lastFetch: fetchStatus?.last_fetch_at || feed.last_fetched_at,
+          lastFetch: fetchStatus?.last_fetch_at,
           successRate,
           errorMessage,
-          articleCount: fetchStatus?.total_articles || feed.total_articles || 0,
+          articleCount: fetchStatus?.total_articles || 0,
           storageSize: 0, // No longer tracking storage size in file system
         };
       })

@@ -1,30 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
-
-async function createSupabaseClient() {
-  const cookieStore = await cookies();
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            );
-          } catch {
-            // Ignore if called from Server Component
-          }
-        },
-      },
-    }
-  );
-}
+import { createSmartSupabaseClient } from '@/lib/supabase-server';
 
 // PUT /api/feeds/[id] - Update RSS feed
 export async function PUT(
@@ -33,12 +8,10 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createSupabaseClient();
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { client: supabase, user } = await createSmartSupabaseClient();
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
     const body = await request.json();
     const { title, description, category_id, is_active, fetch_interval_minutes, auto_translate } = body;
@@ -81,12 +54,10 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createSupabaseClient();
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { client: supabase, user } = await createSmartSupabaseClient();
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
     // Get feed info before deletion
     const { data: feed, error: fetchError } = await supabase
