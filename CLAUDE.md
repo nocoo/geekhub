@@ -12,10 +12,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 The codebase uses a dual-layer storage pattern:
 
-- **Supabase (PostgreSQL)**: User auth, categories, feeds, read status, bookmarks
+- **Supabase (PostgreSQL)**: User auth, categories, feeds, read status, bookmarks, fetch logs
   - Enforced via Row Level Security (RLS) - users can only access their own data
-  - Migrations in `supabase/migrations/`
-  - Key tables: `categories`, `feeds`, `read_articles`, `bookmarked_articles`
+  - Migrations in `supabase/migrations/` (001-016)
+  - Key tables: `categories`, `feeds`, `read_articles`, `bookmarked_articles`, `fetch_logs`
 
 - **File System (`data/`)**: Article content and RSS metadata
   - `data/feeds/{url_hash}/` - Per-feed storage (url_hash = MD5(url)[:12])
@@ -45,11 +45,6 @@ bun start              # Start production server
 # Testing
 bun test               # Run Bun tests
 
-# RSS Scheduler (cron-based feed fetching)
-bun run scheduler                 # Start 15-min interval scheduler
-bun run scheduler -- --trigger    # Trigger immediate fetch
-bun run scheduler -- --cron '*/5 * * * *'  # Custom cron expression
-
 # Linting
 bun run lint           # ESLint
 ```
@@ -77,27 +72,39 @@ src/
 │   ├── Sidebar.tsx      # Category nav + crawler preview terminal
 │   └── SettingsDialog.tsx  # Proxy/AI/RSSHub settings
 ├── contexts/
-│   ├── AuthContext.tsx  # Supabase auth state
-│   └── SSEContext.tsx   # Server-Sent Events for real-time updates
+│   ├── AuthContext.tsx    # Supabase auth state
+│   ├── SSEContext.tsx     # Server-Sent Events for real-time updates
+│   └── FeedFetchContext.tsx  # Feed fetching state management
+├── hooks/                # Custom React hooks
+│   ├── useFeedViewModels.ts  # Feed data management
+│   ├── useFeedActions.ts     # Feed CRUD operations
+│   ├── useArticleActions.ts  # Article read/bookmark actions
+│   └── useDatabase.ts        # Supabase database hooks
 ├── lib/
 │   ├── article-repository.ts      # File system data access
 │   ├── article-view-model.ts      # UI data transformation
+│   ├── article-actions.ts         # Article business logic
 │   ├── feed-fetcher.ts            # RSS fetching with proxy support
+│   ├── feed-actions.ts            # Feed business logic
 │   ├── read-status-service.ts     # Supabase read status management
 │   ├── translation-queue.ts       # AI translation queue with cache
 │   ├── image-proxy.ts             # Image proxy for hotlink protection
 │   ├── rsshub.ts                  # RSSHub route parser
-│   └── settings.ts                # User settings (proxy, AI, RSSHub)
-└── types/               # TypeScript definitions
+│   ├── settings.ts                # User settings (proxy, AI, RSSHub)
+│   ├── rss.ts                     # RSS parsing (rss-parser + cheerio)
+│   └── logger.ts                  # Fetch logging utilities
+├── schemas/              # Database schemas/types
+└── types/                # TypeScript definitions
 ```
 
 ## Key Files to Understand
 
 - `middleware.ts` - Auth guard, redirects unauthenticated users to `/login`
-- `scripts/scheduler.ts` - Standalone RSS fetch scheduler (cron-based)
 - `docs/file-storage-design.md` - Detailed file storage architecture
+- `docs/data-model-layer.md` - Service layer and data model documentation
 - `src/lib/rss.ts` - RSS parsing logic (uses rss-parser + cheerio)
 - `src/lib/fetch-with-settings.ts` - HTTP fetch with proxy/auto-detect
+- `src/lib/feed-fetcher.ts` - RSS feed fetching with proxy support
 
 ## Testing
 
@@ -110,13 +117,12 @@ src/
 
 - **Frontend**: Next.js 16.1 (App Router), React 19.2, TypeScript 5 (strict)
 - **UI**: Radix UI primitives + shadcn/ui + TailwindCSS 3.4
-- **State**: React Context (AuthContext, SSEContext)
+- **State**: React Context (AuthContext, SSEContext, FeedFetchContext)
 - **Data Fetching**: TanStack Query (React Query)
 - **Backend**: Supabase (PostgreSQL + Auth + RLS)
 - **RSS**: rss-parser + cheerio (HTML parsing)
 - **AI**: OpenAI SDK (supports custom API base URL)
 - **Proxy**: undici + https-proxy-agent
-- **Scheduler**: node-cron
 - **Real-time**: Server-Sent Events (SSE)
 
 ## Path Aliases

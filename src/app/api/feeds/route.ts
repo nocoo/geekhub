@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { createSmartSupabaseClient } from '@/lib/supabase-server';
 import Parser from 'rss-parser';
 import crypto from 'crypto';
 import { setGlobalDispatcher, ProxyAgent } from 'undici';
@@ -63,30 +62,6 @@ function checkPort(hostname: string, port: number): Promise<boolean> {
 
     socket.connect(port, hostname);
   });
-}
-
-async function createSupabaseClient() {
-  const cookieStore = await cookies();
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            );
-          } catch {
-            // Ignore if called from Server Component
-          }
-        },
-      },
-    }
-  );
 }
 
 // RSS 解析器 with auto-detect proxy
@@ -189,12 +164,10 @@ async function validateRssUrl(url: string, rsshubConfig?: RssHubConfig) {
 // GET /api/feeds - 获取用户的所有 RSS 源
 export async function GET() {
   try {
-    const supabase = await createSupabaseClient();
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { client: supabase, user } = await createSmartSupabaseClient();
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
     const { data: feeds, error } = await supabase
       .from('feeds')
@@ -239,12 +212,10 @@ interface FetchRequestBody {
 // POST /api/feeds - 添加新的 RSS 源
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createSupabaseClient();
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { client: supabase, user } = await createSmartSupabaseClient();
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
     const body: FetchRequestBody = await request.json();
     const { url, category_id, title: customTitle, description: customDescription, validate_only, rsshub } = body;

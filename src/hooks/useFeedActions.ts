@@ -8,7 +8,7 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
-import { useFeedFetch } from '@/contexts/FeedFetchContext';
+import { useFeedFetch, useFeedFetchInternal } from '@/contexts/FeedFetchContext';
 import { toggleAutoTranslate, fetchFeed, markAllAsRead, markArticleAsRead } from '@/lib/feed-actions';
 import { FeedViewModel } from '@/types/feed-view-model';
 import { toast } from '@/components/ui/sonner';
@@ -57,18 +57,38 @@ export function useToggleAutoTranslate() {
 
 /**
  * Hook to trigger feed fetch
- * Note: This is a fire-and-forget operation, no optimistic update needed
+ * Optimistically updates fetching state for immediate UI feedback
+ * Note: State is removed by SSE fetch-complete event when all articles are saved
  */
 export function useFetchFeed() {
+  const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { setFetchingFeeds } = useFeedFetchInternal();
 
   return useMutation({
     mutationFn: ({ feedId, feedTitle }: { feedId: string; feedTitle?: string }) =>
       fetchFeed(feedId, feedTitle),
+    onMutate: async ({ feedId }) => {
+      // Optimistically add feed to fetching set
+      setFetchingFeeds(prev => {
+        const newSet = new Set(prev);
+        newSet.add(feedId);
+        return newSet;
+      });
+
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['feedViewModels', user?.id] });
+    },
     onSuccess: (_data, { feedTitle }) => {
       toast.success(feedTitle ? `开始抓取「${feedTitle}」` : '正在抓取最新文章...');
     },
-    onError: () => {
+    onError: (_error, { feedId }) => {
+      // Remove from fetching set on error (SSE won't fire)
+      setFetchingFeeds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(feedId);
+        return newSet;
+      });
       toast.error('抓取失败');
     },
   });
@@ -175,17 +195,12 @@ export function useMarkAsRead() {
 
       return { previousArticles, previousFeeds, feedId };
     },
-    onError: (_error, _variables, context) => {
-      if (context?.previousArticles) {
-        queryClient.setQueryData(['articles', user?.id, context.feedId], context.previousArticles);
-      }
-      if (context?.previousFeeds) {
-        queryClient.setQueryData(['feedViewModels', user?.id], context.previousFeeds);
-      }
-    },
     onSettled: (_data, error, { feedId }) => {
+      // Always refetch to ensure unread count is accurate
+      queryClient.invalidateQueries({ queryKey: ['feedViewModels', user?.id] });
       if (error) {
-        queryClient.invalidateQueries({ queryKey: ['feedViewModels', user?.id] });
+        // Only log error, UI already has optimistic update
+        console.error('Mark as read failed:', error);
       }
     },
   });

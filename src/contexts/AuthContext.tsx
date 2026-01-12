@@ -20,8 +20,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
 
+  // DEV MODE: Fixed user for development
+  // Requires BOTH NODE_ENV=development AND DEV_MODE_ENABLED=true
+  const DEV_USER_ID = process.env.NEXT_PUBLIC_DEV_USER_ID || '';
+  const DEV_USER_EMAIL = process.env.NEXT_PUBLIC_DEV_USER_EMAIL || '';
+  const isDev = process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_DEV_MODE_ENABLED === 'true';
+
   useEffect(() => {
-    // Get initial session
+    // DEV MODE: Skip auth and use fixed user
+    if (isDev) {
+      const devUser: User = {
+        id: DEV_USER_ID,
+        email: DEV_USER_EMAIL,
+        app_metadata: { provider: 'dev', providers: ['dev'] },
+        user_metadata: { full_name: 'Dev User', email: DEV_USER_EMAIL },
+        aud: 'authenticated',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      setUser(devUser);
+      setLoading(false);
+      return;
+    }
+
+    // Production: Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
@@ -38,7 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, [supabase]);
+  }, [isDev, supabase]);
 
   const signInWithGoogle = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
