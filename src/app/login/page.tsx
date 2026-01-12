@@ -30,8 +30,23 @@ export default function LoginPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen flex items-center justify-center relative">
+        {/* Base gradient background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900" />
+        {/* Grid pattern overlay */}
+        <div className="absolute inset-0 opacity-10" style={{
+          backgroundImage: `
+            linear-gradient(rgb(16, 185, 129) 1px, transparent 1px),
+            linear-gradient(90deg, rgb(16, 185, 129) 1px, transparent 1px)
+          `,
+          backgroundSize: '20px 20px'
+        }} />
+        {/* Spotlight mask - blocks grid in center, reveals grid at edges */}
+        <div className="absolute inset-0" style={{
+          background: 'radial-gradient(circle at center, rgb(15 23 42) 0%, rgb(15 23 42 / 0.85) 45%, transparent 80%)'
+        }} />
+        {/* Content */}
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin relative z-10" />
       </div>
     );
   }
@@ -41,45 +56,48 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4">
+    <div className="min-h-screen flex items-center justify-center p-4 relative">
+      {/* Base gradient background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900" />
+      {/* Grid pattern overlay */}
+      <div className="absolute inset-0 opacity-10" style={{
+        backgroundImage: `
+          linear-gradient(rgb(16, 185, 129) 1px, transparent 1px),
+          linear-gradient(90deg, rgb(16, 185, 129) 1px, transparent 1px)
+        `,
+        backgroundSize: '20px 20px'
+      }} />
+      {/* Spotlight mask - blocks grid in center, reveals grid at edges */}
+      <div className="absolute inset-0" style={{
+        background: 'radial-gradient(circle at center, rgb(15 23 42) 0%, rgb(15 23 42 / 0.85) 45%, transparent 80%)'
+      }} />
+
       {/* ID Card Style Container */}
-      <div className="relative">
+      <div className="relative z-10">
         {/* Card Shadow/Glow */}
         <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-emerald-500/20 rounded-2xl blur-xl scale-105" />
 
         {/* Main Card */}
-        <div className="relative bg-gradient-to-br from-slate-800/90 to-slate-900/90 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-8 w-96 shadow-2xl">
-          {/* Card Header */}
-          <div className="text-center mb-8">
-            {/* Company Logo Area */}
-            <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4">
+        <div className="relative bg-gradient-to-br from-emerald-950 to-slate-950 backdrop-blur-xl border border-emerald-800/30 rounded-2xl px-8 pt-16 pb-8 w-96 shadow-2xl">
+          {/* Logo Circle */}
+          <div className="flex flex-col items-center mb-10">
+            <div className="w-32 h-32 rounded-full bg-black border-2 border-emerald-700/50 flex items-center justify-center mb-8 p-4">
               <img src="/logo-64.png" alt="GeekHub" className="w-16 h-16" />
             </div>
 
             {/* Company Name */}
-            <div className="space-y-1">
+            <div className="space-y-1 text-center">
               <h1 className="text-xl font-bold text-white tracking-wide">
-                GEEK<span className="text-primary">HUB</span>
+                Geek<span className="text-emerald-400">Hub</span>
               </h1>
-              <p className="text-xs text-slate-400 uppercase tracking-widest">
+              <p className="text-xs text-emerald-200/70 uppercase tracking-widest">
                 RSS READER PLATFORM
               </p>
             </div>
           </div>
 
           {/* Divider Line */}
-          <div className="w-full h-px bg-gradient-to-r from-transparent via-slate-600 to-transparent mb-8" />
-
-          {/* Employee Section */}
-          <div className="text-center mb-8">
-            <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-slate-700 to-slate-800 border-2 border-slate-600 flex items-center justify-center">
-              <span className="text-2xl text-slate-400">👤</span>
-            </div>
-            <div className="space-y-1">
-              <p className="text-sm text-slate-300 font-medium">EMPLOYEE ACCESS</p>
-              <p className="text-xs text-slate-500">Secure Authentication Required</p>
-            </div>
-          </div>
+          <div className="w-full h-px bg-gradient-to-r from-transparent via-emerald-700/50 to-transparent mb-8" />
 
           {/* Access Button */}
           <Button
@@ -115,12 +133,12 @@ export default function LoginPage() {
           </Button>
 
           {/* Card Footer */}
-          <div className="mt-8 pt-6 border-t border-slate-700/50">
-            <div className="flex items-center justify-between text-xs text-slate-500">
+          <div className="mt-8 pt-6 border-t border-emerald-800/30">
+            <div className="flex items-center justify-between text-xs text-emerald-100/50">
               <span>ID: GH-2026</span>
               <span>v1.0.0</span>
             </div>
-            <p className="text-center text-xs text-slate-600 mt-2">
+            <p className="text-center text-xs text-emerald-100/40 mt-2">
               Authorized Personnel Only
             </p>
           </div>
