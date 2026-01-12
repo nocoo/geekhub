@@ -4,16 +4,19 @@ import { createContext, useContext, useState, useCallback, ReactNode } from 'rea
 import { useFeedFetchEvents as useSSEEvents } from './SSEContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from './AuthContext';
-import { fetchFeedWithSettings } from '@/lib/fetch-with-settings';
-import { toast } from 'sonner';
 
-interface FeedFetchContextValue {
+/**
+ * Feed fetch state context - only manages fetching status
+ *
+ * Note: The actual fetch action has been moved to useFetchFeed() hook
+ * which uses React Query mutation for better state management.
+ */
+interface FeedFetchStateContextValue {
   fetchingFeeds: Set<string>;
   isFeedFetching: (feedId: string) => boolean;
-  fetchFeed: (feedId: string, feedTitle?: string) => Promise<void>;
 }
 
-const FeedFetchContext = createContext<FeedFetchContextValue | undefined>(undefined);
+const FeedFetchContext = createContext<FeedFetchStateContextValue | undefined>(undefined);
 
 export function useFeedFetch() {
   const context = useContext(FeedFetchContext);
@@ -40,53 +43,20 @@ export function FeedFetchProvider({ children }: ProviderProps) {
         newSet.delete(event.feedId);
         return newSet;
       });
-      // Unread counts are refreshed via /api/feeds/list on demand
-    }, [setFetchingFeeds]),
+
+      // Invalidate queries to refresh articles and unread counts
+      queryClient.invalidateQueries({ queryKey: ['articles', user?.id, event.feedId] });
+      queryClient.invalidateQueries({ queryKey: ['feedViewModels', user?.id] });
+    }, [setFetchingFeeds, queryClient, user]),
   });
 
   const isFeedFetching = useCallback((feedId: string) => {
     return fetchingFeeds.has(feedId);
   }, [fetchingFeeds]);
 
-  const fetchFeed = useCallback(async (feedId: string, feedTitle?: string) => {
-    if (fetchingFeeds.has(feedId)) {
-      return; // Already fetching
-    }
-
-    setFetchingFeeds(prev => new Set(prev).add(feedId));
-
-    try {
-      const response = await fetchFeedWithSettings(feedId);
-
-      if (response.ok) {
-        toast.success(feedTitle ? `开始抓取「${feedTitle}」` : '正在抓取最新文章...');
-        // Fetching state will be reset when fetch-complete event is received
-      } else {
-        const { error } = await response.json();
-        toast.error(error || '抓取失败');
-        // Reset fetching state on error
-        setFetchingFeeds(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(feedId);
-          return newSet;
-        });
-      }
-    } catch (error) {
-      console.error('Failed to fetch feed:', error);
-      toast.error('抓取失败');
-      // Reset fetching state on error
-      setFetchingFeeds(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(feedId);
-        return newSet;
-      });
-    }
-  }, [fetchingFeeds]);
-
-  const value: FeedFetchContextValue = {
+  const value: FeedFetchStateContextValue = {
     fetchingFeeds,
     isFeedFetching,
-    fetchFeed,
   };
 
   return (

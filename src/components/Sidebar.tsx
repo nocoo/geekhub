@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useDeleteCategory, useDeleteFeed, useStarredCount, useLaterCount, useCategories, Category } from '@/hooks/useDatabase';
 import { useFeedFetch } from '@/contexts/FeedFetchContext';
+import { useFetchFeed } from '@/hooks/useFeedActions';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFeedGroups, useFeedViewModels, useRefreshFeeds } from '@/hooks/useFeedViewModels';
 import { FeedViewModel } from '@/types/feed-view-model';
@@ -143,7 +144,8 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
   // Use new ViewModel hook
   const { data: feedGroups, isLoading: feedsLoading } = useFeedGroups();
   const { data: categories = [] } = useCategories();
-  const { isFeedFetching, fetchFeed } = useFeedFetch();
+  const { isFeedFetching } = useFeedFetch();
+  const fetchFeed = useFetchFeed();
   const { data: starredCount = 0 } = useStarredCount();
   const { data: laterCount = 0 } = useLaterCount();
 
@@ -213,8 +215,8 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
   };
 
   // Handle fetch feed
-  const handleFetchFeed = useCallback(async (feedId: string, feedTitle: string) => {
-    await fetchFeed(feedId, feedTitle);
+  const handleFetchFeed = useCallback((feedId: string, feedTitle: string) => {
+    fetchFeed.mutate({ feedId, feedTitle });
   }, [fetchFeed]);
 
   // Filter feeds
@@ -315,6 +317,13 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
     const handleOpenAddCategory = () => setShowAddCategory(true);
     window.addEventListener('open-add-category', handleOpenAddCategory);
     return () => window.removeEventListener('open-add-category', handleOpenAddCategory);
+  }, []);
+
+  // Listen for article selection to clear keyboard selection
+  useEffect(() => {
+    const handleArticleSelected = () => setSelectedVisibleIndex(-1);
+    window.addEventListener('article-selected', handleArticleSelected);
+    return () => window.removeEventListener('article-selected', handleArticleSelected);
   }, []);
 
   // Calculate total unread for filtering check
@@ -423,6 +432,7 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
                 setFeedFilter(e.target.value);
                 setSelectedVisibleIndex(-1);
               }}
+              onBlur={() => setSelectedVisibleIndex(-1)}
               className="w-full h-7 pl-8 pr-7 text-xs bg-muted/50 border border-transparent rounded-md text-sidebar-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:bg-muted transition-all"
             />
             {feedFilter && (

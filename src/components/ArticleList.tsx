@@ -1,9 +1,9 @@
 import { useEffect, useCallback, useState, useMemo, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Rss, CheckCheck, Eye, EyeOff, RefreshCw, Languages } from 'lucide-react';
-import { Article, useMarkAllAsRead, useMarkAsRead, Feed } from '@/hooks/useDatabase';
+import { Article } from '@/hooks/useDatabase';
+import { useMarkAllAsRead, useMarkAsRead, useToggleAutoTranslate, useFetchFeed, useIsFeedFetching } from '@/hooks/useFeedActions';
 import { useAuth } from '@/contexts/AuthContext';
-import { useFeedFetch } from '@/contexts/FeedFetchContext';
 import { useFeedViewModel } from '@/hooks/useFeedViewModels';
 import { cn } from '@/lib/utils';
 import { useFormatTime } from '@/lib/format-time';
@@ -29,7 +29,9 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
   const { settings } = useSettings();
   const markAllAsRead = useMarkAllAsRead();
   const markAsRead = useMarkAsRead();
-  const { isFeedFetching, fetchFeed } = useFeedFetch();
+  const toggleAutoTranslate = useToggleAutoTranslate();
+  const fetchFeed = useFetchFeed();
+  const isFeedFetching = useIsFeedFetching(feedId);
   const [showRead, setShowRead] = useState(false);
   const [, forceUpdate] = useState({});
 
@@ -135,15 +137,14 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
   }, [feedId, markAsRead, onSelectArticle]);
 
   // Handle refresh
-  const handleRefresh = async () => {
-    if (!feedId || isFeedFetching(feedId)) return;
+  const handleRefresh = useCallback(() => {
+    if (!feedId || isFeedFetching) return;
 
-    // Get current feed title for toast
-    const feeds = queryClient.getQueryData<Feed[]>(['feeds', user?.id]) || [];
-    const currentFeed = feeds.find(f => f.id === feedId);
+    // Get current feed title for toast from ViewModel
+    const feedTitle = feedViewModel?.title;
 
-    await fetchFeed(feedId, currentFeed?.title);
-  };
+    fetchFeed.mutate({ feedId, feedTitle });
+  }, [feedId, isFeedFetching, feedViewModel, fetchFeed]);
 
   // Setup Intersection Observer for visible articles
   useEffect(() => {
@@ -289,37 +290,18 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
   };
 
   // Handle translation toggle
-  const handleTranslate = async () => {
+  const handleTranslate = useCallback(() => {
     if (!feedId || feedId === 'starred' || feedId === 'later') {
-      toast.error('特殊订阅源不支持自动翻译');
+      // Show error toast for special feeds
+      import('sonner').then(({ toast }) => {
+        toast.error('特殊订阅源不支持自动翻译');
+      });
       return;
     }
 
     const newAutoTranslate = !autoTranslate;
-
-    // Optimistically update UI immediately
-    queryClient.setQueryData<Feed[]>(['feeds', user?.id], (old = []) =>
-      old.map(f => f.id === feedId ? { ...f, auto_translate: newAutoTranslate } : f)
-    );
-    forceUpdate({});
-
-    toast.success(newAutoTranslate ? '已开启自动翻译' : '已关闭自动翻译');
-
-    // Update database in background (fire and forget)
-    fetch(`/api/feeds/${feedId}/auto-translate`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ auto_translate: newAutoTranslate }),
-    }).catch((error) => {
-      console.error('Failed to update auto_translate:', error);
-      // Revert on error
-      queryClient.setQueryData<Feed[]>(['feeds', user?.id], (old = []) =>
-        old.map(f => f.id === feedId ? { ...f, auto_translate: autoTranslate } : f)
-      );
-      forceUpdate({});
-      toast.error('更新翻译设置失败');
-    });
-  };
+    toggleAutoTranslate.mutate({ feedId, enabled: newAutoTranslate });
+  }, [feedId, autoTranslate, toggleAutoTranslate]);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     // Ignore if typing in an input/textarea
@@ -392,11 +374,11 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
               variant="ghost"
               size="icon"
               onClick={handleRefresh}
-              disabled={!feedId || isFeedFetching(feedId || '')}
+              disabled={!feedId || isFeedFetching}
               className="h-7 w-7"
               title="刷新文章"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${isFeedFetching(feedId || '') ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-3.5 h-3.5 ${isFeedFetching ? 'animate-spin' : ''}`} />
             </Button>
             <Button
               variant="ghost"
@@ -497,13 +479,13 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
               {feedId && (
                 <Button
                   onClick={handleRefresh}
-                  disabled={isFeedFetching(feedId || '')}
+                  disabled={isFeedFetching}
                   variant="outline"
                   size="sm"
                   className="mt-4 gap-2"
                 >
-                  <RefreshCw className={`w-4 h-4 ${isFeedFetching(feedId || '') ? 'animate-spin' : ''}`} />
-                  {isFeedFetching(feedId || '') ? '正在抓取...' : '立即抓取'}
+                  <RefreshCw className={`w-4 h-4 ${isFeedFetching ? 'animate-spin' : ''}`} />
+                  {isFeedFetching ? '正在抓取...' : '立即抓取'}
                 </Button>
               )}
             </div>

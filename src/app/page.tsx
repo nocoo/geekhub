@@ -43,7 +43,8 @@ export default function Home() {
 
   const handleSelectArticle = (article: Article) => {
     setSelectedArticle(article);
-    // ArticleList 组件负责标记已读逻辑
+    // 通知 sidebar 清除键盘选中状态
+    window.dispatchEvent(new CustomEvent('article-selected'));
   };
 
   if (loading) {
