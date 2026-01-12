@@ -138,9 +138,9 @@ data/
   - [x] 保留 `categories` 和 `feeds` 表（用户配置，不可丢失）
 
 - [ ] 4.2 应用清理 migration
-  - [ ] 执行 `008_cleanup.sql`
+  - [x] 执行 `008_cleanup.sql`
 
-**验证标准**: 旧数据清理完成
+**验证标准**: 旧数据清理完成 ✅ (2026-01-12)
 
 ---
 
@@ -191,33 +191,30 @@ data/
 
 ## Status
 
-**Phase 3 代码切换已完成** ✅
+**Phase 4 清理旧表已完成** ✅
 
 **已完成**：
 - ✅ Phase 1: 创建新表 (006 + 007)
 - ✅ Phase 2: 跳过迁移 (新文章自动写入)
 - ✅ Phase 3: 代码切换 (核心库 + API 路由)
+- ✅ Phase 4: 清理旧表 (008_cleanup.sql 已执行)
 
 **待完成**：
-- Phase 4: 清理旧表
 - Phase 5: 验证
 
 ---
 
 ## Next Action
 
-**Phase 4: 清理旧表（可选）**
-
-创建 `008_cleanup.sql`：
-- 删除 `read_articles` 表
-- 删除 `bookmarked_articles` 表
-- 删除 `read_later_articles` 表
-
 **Phase 5: 验证与测试**
 
 1. 运行 `bun run dev` 启动开发服务器
 2. 测试订阅源抓取
 3. 测试文章列表、阅读状态、收藏功能
+
+**可选优化**（非必须）：
+- 迁移 debug API 使用 `fetch_history` 表
+- 清理 `data/` 目录中的旧数据
 
 ---
 
