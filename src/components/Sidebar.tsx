@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { ChevronDown, ChevronRight, Star, Clock, MoreVertical, Plus, Edit, Trash2, Rss, RefreshCw, FileText, ChevronsUpDown, ChevronsLeftRight } from 'lucide-react';
+import { ChevronDown, ChevronRight, Star, Clock, MoreVertical, Plus, Edit, Trash2, Rss, RefreshCw, FileText, ChevronsUpDown, ChevronsLeftRight, X, Search } from 'lucide-react';
 import { CrawlerTerminal } from './CrawlerTerminal';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -33,6 +33,7 @@ interface FeedItemProps {
   feed: Feed;
   selectedFeed: string | null;
   fetchingFeeds: Set<string>;
+  isKeyboardSelected: boolean;
   onSelectFeed: (feedId: string) => void;
   onFetchFeed: (feedId: string, feedTitle: string) => void;
   onEditFeed: (feed: Feed) => void;
@@ -41,7 +42,7 @@ interface FeedItemProps {
 }
 
 // Extracted feed item component to reduce duplication
-function FeedItem({ feed, selectedFeed, fetchingFeeds, onSelectFeed, onFetchFeed, onEditFeed, onDeleteFeed, onViewLogs }: FeedItemProps) {
+function FeedItem({ feed, selectedFeed, fetchingFeeds, isKeyboardSelected, onSelectFeed, onFetchFeed, onEditFeed, onDeleteFeed, onViewLogs }: FeedItemProps) {
   const handleSelect = useCallback(() => onSelectFeed(feed.id), [feed.id, onSelectFeed]);
 
   return (
@@ -52,7 +53,9 @@ function FeedItem({ feed, selectedFeed, fetchingFeeds, onSelectFeed, onFetchFeed
           "flex-1 flex items-center justify-start gap-1.5 px-2 py-1 rounded-md text-xs transition-colors min-w-0 text-left",
           selectedFeed === feed.id
             ? "bg-accent text-accent-foreground"
-            : "text-sidebar-foreground/80 hover:bg-accent/50"
+            : isKeyboardSelected
+              ? "bg-accent/30 text-foreground ring-1 ring-primary/50"
+              : "text-sidebar-foreground/80 hover:bg-accent/50"
         )}
       >
         {feed.favicon_url ? (
@@ -134,11 +137,39 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
     id: string;
     name: string;
   } | null>(null);
+  const [feedFilter, setFeedFilter] = useState('');
+  const [selectedVisibleIndex, setSelectedVisibleIndex] = useState(-1);
+
+  // 用于键盘导航的项目类型
+  type NavigableItem = { type: 'category' | 'feed'; id: string; data: Category | Feed };
 
   const { data: categories = [], isLoading: categoriesLoading } = useCategories();
   const { data: feeds = [], isLoading: feedsLoading } = useFeeds();
   const { data: starredCount = 0 } = useStarredCount();
   const { data: laterCount = 0 } = useLaterCount();
+
+  // 获取扁平化的过滤后列表（分类 + feeds），用于键盘导航
+  // 与 isFeedVisible 保持一致：无 filter 时只添加展开分类的 feeds
+  const getNavigableItems = useCallback((): NavigableItem[] => {
+    const items: NavigableItem[] = [];
+    categories.forEach(cat => {
+      // 添加分类
+      items.push({ type: 'category', id: cat.id, data: cat });
+      // 只有分类展开时，才添加该分类下的 feeds
+      if (!feedFilter || expandedCategories.has(cat.id)) {
+        const catFeeds = getCategoryFeeds(cat.id);
+        catFeeds.forEach(feed => {
+          items.push({ type: 'feed', id: feed.id, data: feed });
+        });
+      }
+    });
+    // 未分类的 feeds
+    const uncategorized = getUncategorizedFeeds();
+    uncategorized.forEach(feed => {
+      items.push({ type: 'feed', id: feed.id, data: feed });
+    });
+    return items;
+  }, [categories, feedFilter, expandedCategories]);
 
   // Listen for feed fetch completion events to refresh data
   useFeedFetchEvents({
@@ -266,12 +297,25 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
   };
 
   const getCategoryFeeds = (categoryId: string) => {
-    return feeds.filter(f => f.category_id === categoryId);
+    const filtered = feeds.filter(f => f.category_id === categoryId);
+    if (!feedFilter) return filtered;
+    const lowerFilter = feedFilter.toLowerCase();
+    return filtered.filter(f =>
+      f.title.toLowerCase().includes(lowerFilter) ||
+      f.url.toLowerCase().includes(lowerFilter)
+    );
   };
 
   const getUncategorizedFeeds = () => {
-    return feeds.filter(f => !f.category_id);
+    const filtered = feeds.filter(f => !f.category_id);
+    if (!feedFilter) return filtered;
+    const lowerFilter = feedFilter.toLowerCase();
+    return filtered.filter(f =>
+      f.title.toLowerCase().includes(lowerFilter) ||
+      f.url.toLowerCase().includes(lowerFilter)
+    );
   };
+
 
   // 串行抓取所有feed
   const handleFetchAllFeeds = async () => {
@@ -426,83 +470,247 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
             </div>
           </div>
 
+          {/* Feed Filter Input */}
+          <div className="relative px-2 py-1.5">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="过滤订阅源..."
+              value={feedFilter}
+              onChange={(e) => {
+                setFeedFilter(e.target.value);
+                setSelectedVisibleIndex(-1);
+              }}
+              onKeyDown={(e) => {
+                const items = getNavigableItems();
+
+                if (e.key === 'Escape') {
+                  e.preventDefault();
+                  setFeedFilter('');
+                  setSelectedVisibleIndex(-1);
+                } else if (e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  if (items.length > 0) {
+                    // 如果当前索引无效或超出范围，从0开始
+                    const current = selectedVisibleIndex >= 0 && selectedVisibleIndex < items.length
+                      ? selectedVisibleIndex
+                      : -1;
+                    const next = current < items.length - 1 ? current + 1 : 0;
+                    setSelectedVisibleIndex(next);
+                  }
+                } else if (e.key === 'ArrowUp') {
+                  e.preventDefault();
+                  if (items.length > 0) {
+                    // 如果当前索引无效或超出范围，从末尾开始
+                    const current = selectedVisibleIndex >= 0 && selectedVisibleIndex < items.length
+                      ? selectedVisibleIndex
+                      : items.length;
+                    const prev = current > 0 ? current - 1 : items.length - 1;
+                    setSelectedVisibleIndex(prev);
+                  }
+                } else if (e.key === 'ArrowLeft') {
+                  e.preventDefault();
+                  if (selectedVisibleIndex >= 0 && items[selectedVisibleIndex]) {
+                    const item = items[selectedVisibleIndex];
+                    if (item.type === 'category' && expandedCategories.has(item.id)) {
+                      toggleCategory(item.id);
+                    }
+                  }
+                } else if (e.key === 'ArrowRight') {
+                  e.preventDefault();
+                  if (selectedVisibleIndex >= 0 && items[selectedVisibleIndex]) {
+                    const item = items[selectedVisibleIndex];
+                    if (item.type === 'category' && !expandedCategories.has(item.id)) {
+                      toggleCategory(item.id);
+                    }
+                  }
+                } else if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  if (selectedVisibleIndex >= 0 && items[selectedVisibleIndex]) {
+                    const item = items[selectedVisibleIndex];
+                    if (item.type === 'category') {
+                      toggleCategory(item.id);
+                    } else {
+                      onSelectFeed(item.id);
+                    }
+                  }
+                }
+              }}
+              className="w-full h-7 pl-8 pr-7 text-xs bg-muted/50 border border-transparent rounded-md text-sidebar-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:bg-muted transition-all"
+            />
+            {feedFilter && (
+              <button
+                onClick={() => setFeedFilter('')}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
           {isLoading ? (
             <div className="flex items-center justify-center h-32">
               <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
             </div>
-          ) : categories.length === 0 && getUncategorizedFeeds().length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground text-xs px-3">
-              <p>还没有订阅源</p>
-              <p className="text-xs mt-1">点击右上角 + 添加</p>
-            </div>
-          ) : (
-            <>
-              {categories.map((category) => {
-                const categoryFeeds = getCategoryFeeds(category.id);
-                const isExpanded = expandedCategories.has(category.id);
+          ) : (() => {
+            const allFeeds = feeds;
+            const navigableItems = getNavigableItems();
+            const uncategorizedFeeds = getUncategorizedFeeds();
+            const hasMatchingFeeds = categories.some(cat => getCategoryFeeds(cat.id).length > 0) ||
+              uncategorizedFeeds.length > 0;
 
-                return (
-                  <div key={category.id} className="group/category">
+            // 空状态检查
+            if (!feedFilter && categories.length === 0 && uncategorizedFeeds.length === 0) {
+              return (
+                <div className="text-center py-8 text-muted-foreground text-xs px-3">
+                  <p>还没有订阅源</p>
+                  <p className="text-xs mt-1">点击右上角 + 添加</p>
+                </div>
+              );
+            }
+
+            if (feedFilter && !hasMatchingFeeds && allFeeds.length > 0) {
+              return (
+                <div className="text-center py-8 text-muted-foreground text-xs px-3">
+                  <p>没有匹配的订阅源</p>
+                </div>
+              );
+            }
+
+            return (
+              <>
+                {categories.map((category) => {
+                  const categoryFeeds = getCategoryFeeds(category.id);
+                  // 隐藏无匹配的分类
+                  if (feedFilter && categoryFeeds.length === 0) return null;
+                  const isExpanded = expandedCategories.has(category.id);
+                  // 检查分类是否被键盘选中（在 navigableItems 中的索引）
+                  const categoryIndex = navigableItems.findIndex(item => item.type === 'category' && item.id === category.id);
+                  const isCategoryKeyboardSelected = selectedVisibleIndex >= 0 && categoryIndex === selectedVisibleIndex;
+
+                  return (
+                    <div key={category.id} className="group/category">
+                      <div className="flex items-center gap-0.5">
+                        <button
+                          onClick={() => toggleCategory(category.id)}
+                          className={cn(
+                            "flex-1 flex items-center justify-start gap-1.5 px-2 py-1 rounded-md text-xs transition-colors min-w-0 text-left",
+                            isCategoryKeyboardSelected
+                              ? "bg-accent/30 text-foreground ring-1 ring-primary/50"
+                              : "text-sidebar-foreground hover:bg-accent/50"
+                          )}
+                        >
+                          {isExpanded ? (
+                            <ChevronDown className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                          ) : (
+                            <ChevronRight className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                          )}
+                          <span className="text-sm">{category.icon}</span>
+                          <span className="font-medium truncate flex-1">{category.name}</span>
+                        </button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 flex-shrink-0 text-muted-foreground opacity-0 group-hover/category:opacity-100 hover:text-foreground hover:bg-accent/50 transition-all"
+                            >
+                              <MoreVertical className="w-3 h-3" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleAddFeedToCategory(category.id)}>
+                              <Plus className="w-3.5 h-3.5 mr-2" />
+                              添加订阅
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setEditingCategory(category)}>
+                              <Edit className="w-3.5 h-3.5 mr-2" />
+                              编辑
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onClick={() => setDeleteConfirm({
+                                type: 'category',
+                                id: category.id,
+                                name: category.name,
+                              })}
+                            >
+                              <Trash2 className="w-3.5 h-3.5 mr-2" />
+                              删除
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+
+                      {isExpanded && (
+                        <div className="ml-4 mt-0.5 space-y-0.5">
+                          {categoryFeeds.length === 0 ? (
+                            <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                              暂无订阅源
+                            </div>
+                          ) : (
+                            categoryFeeds.map((feed) => {
+                              const feedIndex = navigableItems.findIndex(item => item.type === 'feed' && item.id === feed.id);
+                              const isKeyboardSelected = selectedVisibleIndex >= 0 && feedIndex === selectedVisibleIndex;
+                              return (
+                                <FeedItem
+                                  key={feed.id}
+                                  feed={feed}
+                                  selectedFeed={selectedFeed}
+                                  fetchingFeeds={fetchingFeeds}
+                                  isKeyboardSelected={isKeyboardSelected}
+                                  onSelectFeed={handleSelectFeed}
+                                  onFetchFeed={handleFetchFeed}
+                                  onEditFeed={() => setEditingFeed(feed)}
+                                  onDeleteFeed={() => setDeleteConfirm({
+                                    type: 'feed',
+                                    id: feed.id,
+                                    name: feed.title,
+                                  })}
+                                  onViewLogs={() => setViewingLogsFeed({ id: feed.id, title: feed.title })}
+                                />
+                              );
+                            })
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {/* Uncategorized Feeds */}
+                {uncategorizedFeeds.length > 0 && (
+                  <div className="mt-1">
                     <div className="flex items-center gap-0.5">
                       <button
-                        onClick={() => toggleCategory(category.id)}
-                        className="flex-1 flex items-center justify-start gap-1.5 px-2 py-1 rounded-md text-xs text-sidebar-foreground hover:bg-accent/50 transition-colors min-w-0 text-left"
+                        onClick={() => toggleCategory('uncategorized')}
+                        className="flex-1 flex items-center justify-start gap-1.5 px-2 py-1 rounded-md text-xs text-sidebar-foreground hover:bg-accent/50 transition-colors text-left"
                       >
-                        {isExpanded ? (
+                        {expandedCategories.has('uncategorized') ? (
                           <ChevronDown className="w-3 h-3 text-muted-foreground flex-shrink-0" />
                         ) : (
                           <ChevronRight className="w-3 h-3 text-muted-foreground flex-shrink-0" />
                         )}
-                        <span className="text-sm">{category.icon}</span>
-                        <span className="font-medium truncate flex-1">{category.name}</span>
+                        <span className="text-sm">📁</span>
+                        <span className="font-medium">未分类</span>
+                        <span className="ml-auto text-[10px] font-mono text-muted-foreground">
+                          {uncategorizedFeeds.length}
+                        </span>
                       </button>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 flex-shrink-0 text-muted-foreground opacity-0 group-hover/category:opacity-100 hover:text-foreground hover:bg-accent/50 transition-all"
-                          >
-                            <MoreVertical className="w-3 h-3" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleAddFeedToCategory(category.id)}>
-                            <Plus className="w-3.5 h-3.5 mr-2" />
-                            添加订阅
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setEditingCategory(category)}>
-                            <Edit className="w-3.5 h-3.5 mr-2" />
-                            编辑
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="text-destructive focus:text-destructive"
-                            onClick={() => setDeleteConfirm({
-                              type: 'category',
-                              id: category.id,
-                              name: category.name,
-                            })}
-                          >
-                            <Trash2 className="w-3.5 h-3.5 mr-2" />
-                            删除
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
                     </div>
 
-                    {isExpanded && (
+                    {expandedCategories.has('uncategorized') && (
                       <div className="ml-4 mt-0.5 space-y-0.5">
-                        {categoryFeeds.length === 0 ? (
-                          <div className="px-2 py-1.5 text-xs text-muted-foreground">
-                            暂无订阅源
-                          </div>
-                        ) : (
-                          categoryFeeds.map((feed) => (
+                        {uncategorizedFeeds.map((feed) => {
+                          const feedIndex = navigableItems.findIndex(item => item.type === 'feed' && item.id === feed.id);
+                          const isKeyboardSelected = selectedVisibleIndex >= 0 && feedIndex === selectedVisibleIndex;
+                          return (
                             <FeedItem
                               key={feed.id}
                               feed={feed}
                               selectedFeed={selectedFeed}
                               fetchingFeeds={fetchingFeeds}
+                              isKeyboardSelected={isKeyboardSelected}
                               onSelectFeed={handleSelectFeed}
                               onFetchFeed={handleFetchFeed}
                               onEditFeed={() => setEditingFeed(feed)}
@@ -513,60 +721,15 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
                               })}
                               onViewLogs={() => setViewingLogsFeed({ id: feed.id, title: feed.title })}
                             />
-                          ))
-                        )}
+                          );
+                        })}
                       </div>
                     )}
                   </div>
-                );
-              })}
-
-              {/* Uncategorized Feeds */}
-              {getUncategorizedFeeds().length > 0 && (
-                <div className="mt-1">
-                  <div className="flex items-center gap-0.5">
-                    <button
-                      onClick={() => toggleCategory('uncategorized')}
-                      className="flex-1 flex items-center justify-start gap-1.5 px-2 py-1 rounded-md text-xs text-sidebar-foreground hover:bg-accent/50 transition-colors text-left"
-                    >
-                      {expandedCategories.has('uncategorized') ? (
-                        <ChevronDown className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                      ) : (
-                        <ChevronRight className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                      )}
-                      <span className="text-sm">📁</span>
-                      <span className="font-medium">未分类</span>
-                      <span className="ml-auto text-[10px] font-mono text-muted-foreground">
-                        {getUncategorizedFeeds().length}
-                      </span>
-                    </button>
-                  </div>
-
-                  {expandedCategories.has('uncategorized') && (
-                    <div className="ml-4 mt-0.5 space-y-0.5">
-                      {getUncategorizedFeeds().map((feed) => (
-                        <FeedItem
-                          key={feed.id}
-                          feed={feed}
-                          selectedFeed={selectedFeed}
-                          fetchingFeeds={fetchingFeeds}
-                          onSelectFeed={handleSelectFeed}
-                          onFetchFeed={handleFetchFeed}
-                          onEditFeed={() => setEditingFeed(feed)}
-                          onDeleteFeed={() => setDeleteConfirm({
-                            type: 'feed',
-                            id: feed.id,
-                            name: feed.title,
-                          })}
-                          onViewLogs={() => setViewingLogsFeed({ id: feed.id, title: feed.title })}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </>
-          )}
+                )}
+              </>
+            );
+          })()}
         </div>
 
         {/* Batch Fetch Progress - Above Crawler Terminal */}

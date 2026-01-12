@@ -343,6 +343,9 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
   };
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    // Ignore if typing in an input/textarea
+    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
     if (!filteredArticles.length) return;
 
     const currentIndex = selectedArticle
