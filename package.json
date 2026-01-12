@@ -7,8 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "bun test",
-    "scheduler": "tsx scripts/scheduler.ts"
+    "test": "bun test"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.14",
@@ -36,7 +35,6 @@
     "lucide-react": "^0.462.0",
     "next": "16.1.1",
     "next-themes": "^1.0.0-beta.0",
-    "node-cron": "^4.2.1",
     "openai": "^6.16.0",
     "p-limit": "^7.2.0",
     "react": "19.2.3",
@@ -50,7 +48,6 @@
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.19",
     "@types/node": "^20",
-    "@types/node-cron": "^3.0.11",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "ajv-formats": "^1.4.1",
