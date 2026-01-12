@@ -1,11 +1,10 @@
 import Parser from 'rss-parser';
-import { promises as fs } from 'fs';
-import path from 'path';
 import crypto from 'crypto';
 import { FeedLogger } from './logger';
 import { setGlobalDispatcher, ProxyAgent } from 'undici';
 import net from 'net';
 import { parseRssHubUrl } from './rsshub';
+import { createClient } from '@supabase/supabase-js';
 
 /**
  * Auto-detect proxy server by checking common Clash ports
@@ -207,23 +206,25 @@ async function fetchWithProxy(url: string): Promise<string> {
   return await response.text();
 }
 
+/**
+ * Supabase client for database operations
+ */
+function getSupabaseClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_KEY!
+  );
+}
+
 export class FeedFetcher {
   private logger: FeedLogger;
-  private feedDir: string;
-  private articlesDir: string;
-  private indexFile: string;
-  private cacheFile: string;
 
   constructor(
     private feed: FeedInfo,
-    private dataDir: string = path.join(process.cwd(), 'data'),
+    private dataDir: string = process.cwd(), // Still needed for FeedLogger
     proxyConfig?: ProxyConfig,
     rsshubConfig?: RssHubConfig
   ) {
-    this.feedDir = path.join(this.dataDir, 'feeds', this.feed.url_hash);
-    this.articlesDir = path.join(this.feedDir, 'articles');
-    this.indexFile = path.join(this.feedDir, 'index.json');
-    this.cacheFile = path.join(this.feedDir, 'cache.json');
     this.logger = new FeedLogger(this.feed.url_hash, this.dataDir);
 
     // Set proxy and RssHub config for this fetcher
@@ -236,83 +237,98 @@ export class FeedFetcher {
     return crypto.createHash('md5').update(content).digest('hex');
   }
 
-  private async ensureDirs(): Promise<void> {
-    await fs.mkdir(this.articlesDir, { recursive: true });
+  /**
+   * Check if an article already exists in the database
+   */
+  private async articleExists(hash: string): Promise<boolean> {
+    const supabase = getSupabaseClient();
+    const { data, error } = await supabase
+      .from('articles')
+      .select('id')
+      .eq('feed_id', this.feed.id)
+      .eq('hash', hash)
+      .maybeSingle();
+
+    return !error && !!data;
   }
 
-  private async getArticlePath(hash: string): Promise<string> {
-    await fs.mkdir(this.articlesDir, { recursive: true });
-    return path.join(this.articlesDir, `${hash}.json`);
-  }
-
-  private articleExists(hash: string): Promise<boolean> {
-    return fs.access(path.join(this.articlesDir, hash + '.json'))
-      .then(() => true)
-      .catch(() => false);
-  }
-
+  /**
+   * Save an article to the database
+   */
   private async saveArticle(article: Parser.Item, hash: string): Promise<void> {
-    const articlePath = await this.getArticlePath(hash);
+    const supabase = getSupabaseClient();
     const item = article as Parser.Item & { creator?: string; 'content:encoded'?: string };
 
-    const articleData: ArticleData = {
+    const articleData = {
+      feed_id: this.feed.id,
       hash,
       title: article.title || 'Untitled',
       url: article.link || article.guid || '',
-      link: article.link,
+      link: article.link || undefined,
       author: item.creator || undefined,
-      published_at: article.pubDate || article.isoDate || undefined,
+      published_at: article.pubDate || article.isoDate || null,
       content: item['content:encoded'] || article.content || undefined,
       content_text: article.contentSnippet || undefined,
       summary: article.contentSnippet || undefined,
-      categories: article.categories?.map((c: unknown) => typeof c === 'string' ? c : String(c)),
-      enclosures: article.enclosure ? [{
-        url: article.enclosure.url || '',
-        type: article.enclosure.type,
-        length: article.enclosure.length,
-      }] : undefined,
+      categories: article.categories?.map((c: unknown) => typeof c === 'string' ? c : String(c)) || [],
+      tags: article.categories?.map((c: unknown) => typeof c === 'string' ? c : String(c)) || [],
       fetched_at: new Date().toISOString(),
     };
 
-    await fs.writeFile(articlePath, JSON.stringify(articleData, null, 2), 'utf-8');
+    const { error } = await supabase.from('articles').insert(articleData);
+    if (error) {
+      console.error('Failed to save article:', error);
+      throw error;
+    }
   }
 
-  private async updateIndex(newArticles: ArticleData[]): Promise<void> {
-    let index: { last_updated: string; total_count: number; articles: Array<ArticleData> } = {
-      last_updated: new Date().toISOString(),
-      total_count: 0,
-      articles: [],
+  /**
+   * Update feed_cache after fetch
+   */
+  private async updateFeedCache(result: FetchResult): Promise<void> {
+    const supabase = getSupabaseClient();
+    const now = new Date();
+    const nextFetchAt = new Date(now.getTime() + (this.feed.fetch_interval_minutes || 60) * 60 * 1000);
+
+    // Get current total articles count
+    const { count: totalArticles } = await supabase
+      .from('articles')
+      .select('*', { count: 'exact', head: true })
+      .eq('feed_id', this.feed.id);
+
+    const cacheData = {
+      last_fetch_at: now.toISOString(),
+      last_success_at: result.success ? now.toISOString() : null,
+      last_fetch_status: result.success ? 'success' : 'error',
+      last_fetch_error: result.error || null,
+      last_fetch_duration_ms: parseInt(result.duration) || 0,
+      total_articles: totalArticles || 0,
+      // unread_count is calculated based on user_articles, not updated here
+      next_fetch_at: nextFetchAt.toISOString(),
     };
 
-    try {
-      const content = await fs.readFile(this.indexFile, 'utf-8');
-      index = JSON.parse(content);
-    } catch {
-      // Create new index
-    }
-
-    // Add new articles to the beginning
-    index.articles = [...newArticles, ...index.articles];
-    // Keep only the latest 1000 articles
-    index.articles = index.articles.slice(0, 1000);
-    index.total_count = index.articles.length;
-    index.last_updated = new Date().toISOString();
-
-    await fs.writeFile(this.indexFile, JSON.stringify(index, null, 2), 'utf-8');
+    await supabase
+      .from('feed_cache')
+      .upsert({ feed_id: this.feed.id, ...cacheData }, { onConflict: 'feed_id' });
   }
 
-  private async updateCache(result: FetchResult): Promise<void> {
-    const cache = {
-      last_fetch: new Date().toISOString(),
+  /**
+   * Record fetch history
+   */
+  private async recordFetchHistory(result: FetchResult): Promise<void> {
+    const supabase = getSupabaseClient();
+
+    const historyData = {
+      feed_id: this.feed.id,
+      fetched_at: new Date().toISOString(),
       status: result.success ? 'success' : 'error',
-      error: result.error || null,
-      fetch_duration_ms: result.duration,
+      duration_ms: parseInt(result.duration) || 0,
       articles_found: result.articlesFound,
       articles_new: result.articlesNew,
-      next_fetch: new Date(Date.now() + (this.feed.fetch_interval_minutes || 60) * 60 * 1000).toISOString(),
+      error_message: result.error || null,
     };
 
-    await fs.writeFile(this.cacheFile, JSON.stringify(cache, null, 2), 'utf-8');
+    await supabase.from('fetch_history').insert(historyData);
   }
 
   async fetch(): Promise<FetchResult> {
@@ -331,43 +347,19 @@ export class FeedFetcher {
 
       let articlesNew = 0;
       const articlesUpdated = 0;
-      const newArticlesData: ArticleData[] = [];
 
       for (const item of items) {
         if (!item.title && !item.link) continue;
 
         const hash = this.generateArticleHash(item);
-        const articlePath = await this.getArticlePath(hash);
 
-        try {
-          await fs.access(articlePath);
-          // Article exists
-        } catch {
-          // New article
+        const exists = await this.articleExists(hash);
+        if (!exists) {
+          // New article - save to database
           await this.saveArticle(item, hash);
-
-          const articleData: ArticleData = {
-            hash,
-            title: item.title || 'Untitled',
-            url: item.link || item.guid || '',
-            link: item.link,
-            author: item.creator || item.author || undefined,
-            published_at: item.pubDate || item.isoDate || undefined,
-            summary: item.contentSnippet || undefined,
-            categories: item.categories?.map(c => typeof c === 'string' ? c : String(c)),
-            fetched_at: new Date().toISOString(),
-          };
-          newArticlesData.push(articleData);
-
           articlesNew++;
           await this.logger.success(200, 'NEW', item.title || 'Untitled', '0ms', `Hash: ${hash.slice(0, 8)}...`);
         }
-      }
-
-      // Update index if there are new articles
-      if (newArticlesData.length > 0) {
-        await this.updateIndex(newArticlesData);
-        await this.logger.success(200, 'INDEX', `Updated index with ${newArticlesData.length} new articles`, '0ms');
       }
 
       const duration = `${Date.now() - startTime}ms`;
@@ -382,7 +374,9 @@ export class FeedFetcher {
         duration,
       };
 
-      await this.updateCache(result);
+      // Update feed_cache and record history
+      await this.updateFeedCache(result);
+      await this.recordFetchHistory(result);
 
       return result;
 
@@ -401,7 +395,9 @@ export class FeedFetcher {
         error: errorMessage,
       };
 
-      await this.updateCache(result);
+      // Still update cache and record history on error
+      await this.updateFeedCache(result);
+      await this.recordFetchHistory(result);
 
       return result;
     }

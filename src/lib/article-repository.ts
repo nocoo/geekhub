@@ -1,10 +1,12 @@
-import { readFile, readdir } from 'fs/promises';
-import { join } from 'path';
+import { createClient } from '@supabase/supabase-js';
+import { cookies } from 'next/headers';
+import { createServerClient } from '@supabase/ssr';
 
 /**
- * Raw article data from file system
+ * Raw article data from database
  */
 export interface ArticleRaw {
+  id: string;
   hash: string;
   title: string;
   url: string;
@@ -16,31 +18,17 @@ export interface ArticleRaw {
   summary?: string;
   categories?: string[];
   tags?: string[];
-  enclosures?: Array<{
-    url: string;
-    type?: string;
-    length?: number;
-  }>;
   fetched_at: string;
-  ai_summary?: {
-    content: string;
-    model: string;
-    generated_at: string;
-    usage?: {
-      prompt_tokens: number;
-      completion_tokens: number;
-      total_tokens: number;
-    };
-  };
 }
 
 /**
- * Article index from index.json
+ * Article index (replaces index.json)
  */
 export interface ArticleIndex {
   last_updated: string;
   total_count: number;
   articles: Array<{
+    id: string;
     hash: string;
     title: string;
     url: string;
@@ -48,103 +36,207 @@ export interface ArticleIndex {
     author?: string;
     published_at?: string;
     summary?: string;
-    file_path?: string;
   }>;
 }
 
 /**
- * Repository for article file system operations
+ * Repository for article database operations
  */
 export class ArticleRepository {
-  private feedsDir: string;
+  private supabase: ReturnType<typeof createClient>;
 
-  constructor(dataDir: string = join(process.cwd(), 'data')) {
-    this.feedsDir = join(dataDir, 'feeds');
+  constructor(supabaseClient?: ReturnType<typeof createClient>) {
+    this.supabase = supabaseClient || createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY! // Use service key for admin access
+    );
   }
 
   /**
-   * Get article index for a feed
+   * Create a Supabase client for server-side use
    */
-  async getIndex(urlHash: string): Promise<ArticleIndex | null> {
-    try {
-      const feedDir = join(this.feedsDir, urlHash);
-      const indexFile = join(feedDir, 'index.json');
-      const content = await readFile(indexFile, 'utf-8');
-      return JSON.parse(content);
-    } catch {
-      return null;
-    }
-  }
-
-  /**
-   * Get all article hashes from a feed's index
-   */
-  async getArticleHashes(urlHash: string): Promise<string[]> {
-    const index = await this.getIndex(urlHash);
-    return index?.articles.map(a => a.hash) || [];
-  }
-
-  /**
-   * Get a single article by hash from a feed
-   */
-  async getArticle(urlHash: string, hash: string): Promise<ArticleRaw | null> {
-    try {
-      const feedDir = join(this.feedsDir, urlHash);
-      const articlesDir = join(feedDir, 'articles');
-      const articleFile = join(articlesDir, `${hash}.json`);
-      const content = await readFile(articleFile, 'utf-8');
-      return JSON.parse(content);
-    } catch {
-      return null;
-    }
-  }
-
-  /**
-   * Get multiple articles by their hashes
-   */
-  async getArticles(urlHash: string, hashes: string[]): Promise<ArticleRaw[]> {
-    const articles: ArticleRaw[] = [];
-
-    for (const hash of hashes) {
-      const article = await this.getArticle(urlHash, hash);
-      if (article) {
-        articles.push(article);
+  static async forServer(): Promise<ArticleRepository> {
+    const cookieStore = await cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet) {
+            try {
+              cookiesToSet.forEach(({ name, value, options }) =>
+                cookieStore.set(name, value, options)
+              );
+            } catch {
+              // Ignore if called from Server Component
+            }
+          },
+        },
       }
+    );
+    return new ArticleRepository(supabase as any);
+  }
+
+  /**
+   * Get article index for a feed (replaces index.json)
+   */
+  async getIndex(feedId: string): Promise<ArticleIndex | null> {
+    const { data, error } = await this.supabase
+      .from('articles')
+      .select('id, hash, title, url, link, author, published_at, summary, fetched_at')
+      .eq('feed_id', feedId)
+      .order('published_at', { ascending: false })
+      .limit(1000);
+
+    if (error || !data) {
+      return null;
     }
 
-    return articles;
+    return {
+      last_updated: new Date().toISOString(),
+      total_count: data.length,
+      articles: data.map(a => ({
+        id: a.id,
+        hash: a.hash,
+        title: a.title,
+        url: a.url,
+        link: a.link,
+        author: a.author,
+        published_at: a.published_at,
+        summary: a.summary,
+      }))
+    };
+  }
+
+  /**
+   * Get all article hashes from a feed
+   */
+  async getArticleHashes(feedId: string): Promise<string[]> {
+    const { data, error } = await this.supabase
+      .from('articles')
+      .select('hash')
+      .eq('feed_id', feedId)
+      .order('published_at', { ascending: false });
+
+    if (error || !data) {
+      return [];
+    }
+
+    return data.map(a => a.hash);
+  }
+
+  /**
+   * Get a single article by ID
+   */
+  async getArticle(articleId: string): Promise<ArticleRaw | null> {
+    const { data, error } = await this.supabase
+      .from('articles')
+      .select('*')
+      .eq('id', articleId)
+      .single();
+
+    if (error || !data) {
+      return null;
+    }
+
+    return data as ArticleRaw;
+  }
+
+  /**
+   * Get a single article by hash for a feed
+   */
+  async getArticleByHash(feedId: string, hash: string): Promise<ArticleRaw | null> {
+    const { data, error } = await this.supabase
+      .from('articles')
+      .select('*')
+      .eq('feed_id', feedId)
+      .eq('hash', hash)
+      .single();
+
+    if (error || !data) {
+      return null;
+    }
+
+    return data as ArticleRaw;
+  }
+
+  /**
+   * Get multiple articles by their IDs
+   */
+  async getArticlesByIds(articleIds: string[]): Promise<ArticleRaw[]> {
+    if (articleIds.length === 0) {
+      return [];
+    }
+
+    const { data, error } = await this.supabase
+      .from('articles')
+      .select('*')
+      .in('id', articleIds);
+
+    if (error || !data) {
+      return [];
+    }
+
+    return data as ArticleRaw[];
+  }
+
+  /**
+   * Get multiple articles by their hashes for a feed
+   */
+  async getArticles(feedId: string, hashes: string[]): Promise<ArticleRaw[]> {
+    if (hashes.length === 0) {
+      return [];
+    }
+
+    const { data, error } = await this.supabase
+      .from('articles')
+      .select('*')
+      .eq('feed_id', feedId)
+      .in('hash', hashes);
+
+    if (error || !data) {
+      return [];
+    }
+
+    return data as ArticleRaw[];
   }
 
   /**
    * Get all articles for a feed (with optional limit)
    */
-  async getAllArticles(urlHash: string, limit?: number): Promise<ArticleRaw[]> {
-    const hashes = await this.getArticleHashes(urlHash);
-    const limitedHashes = limit ? hashes.slice(0, limit) : hashes;
-    return this.getArticles(urlHash, limitedHashes);
-  }
+  async getAllArticles(feedId: string, limit?: number): Promise<ArticleRaw[]> {
+    let query = this.supabase
+      .from('articles')
+      .select('*')
+      .eq('feed_id', feedId)
+      .order('published_at', { ascending: false });
 
-  /**
-   * Check if a feed directory exists
-   */
-  async feedExists(urlHash: string): Promise<boolean> {
-    try {
-      const feedDir = join(this.feedsDir, urlHash);
-      await readdir(feedDir);
-      return true;
-    } catch {
-      return false;
+    if (limit) {
+      query = query.limit(limit);
     }
-  }
 
-  /**
-   * List all feed hashes
-   */
-  async listFeeds(): Promise<string[]> {
-    try {
-      return await readdir(this.feedsDir);
-    } catch {
+    const { data, error } = await query;
+
+    if (error || !data) {
       return [];
     }
+
+    return data as ArticleRaw[];
+  }
+
+  /**
+   * Check if a feed has any articles
+   */
+  async feedHasArticles(feedId: string): Promise<boolean> {
+    const { count, error } = await this.supabase
+      .from('articles')
+      .select('*', { count: 'exact', head: true })
+      .eq('feed_id', feedId)
+      .limit(1);
+
+    return !error && (count || 0) > 0;
   }
 }

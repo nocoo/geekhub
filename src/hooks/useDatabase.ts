@@ -213,8 +213,8 @@ export function useMarkAsRead() {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async ({ articleHash, feedId }: { articleHash: string; feedId: string }) => {
-      const response = await fetch(`/api/articles/${articleHash}/read`, {
+    mutationFn: async ({ articleId, feedId }: { articleId: string; feedId: string }) => {
+      const response = await fetch(`/api/articles/${articleId}/read`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ feedId }),
@@ -226,7 +226,7 @@ export function useMarkAsRead() {
 
       return await response.json();
     },
-    onMutate: async ({ articleHash, feedId }) => {
+    onMutate: async ({ articleId, feedId }) => {
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['articles', user?.id] });
       await queryClient.cancelQueries({ queryKey: ['feeds', user?.id] });
@@ -238,7 +238,7 @@ export function useMarkAsRead() {
       // Optimistically update articles
       queryClient.setQueryData<Article[]>(['articles', user?.id, feedId], (old = []) =>
         old.map(article =>
-          article.hash === articleHash ? { ...article, isRead: true } : article
+          article.id === articleId ? { ...article, isRead: true } : article
         )
       );
 
@@ -452,16 +452,14 @@ export function useBookmarkArticle() {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async ({ articleHash, feedId, articleTitle, articleUrl }: {
-      articleHash: string;
-      feedId: string;
-      articleTitle: string;
-      articleUrl: string;
+    mutationFn: async ({ articleId, notes }: {
+      articleId: string;
+      notes?: string;
     }) => {
-      const response = await fetch(`/api/articles/${articleHash}/bookmark`, {
+      const response = await fetch(`/api/articles/${articleId}/bookmark`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ feedId, articleTitle, articleUrl }),
+        body: JSON.stringify({ notes }),
       });
 
       if (!response.ok) {
@@ -471,7 +469,7 @@ export function useBookmarkArticle() {
 
       return await response.json();
     },
-    onMutate: async ({ articleHash }) => {
+    onMutate: async ({ articleId }) => {
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['bookmarks', user?.id] });
       await queryClient.cancelQueries({ queryKey: ['starred-count', user?.id] });
@@ -510,8 +508,8 @@ export function useUnbookmarkArticle() {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async (articleHash: string) => {
-      const response = await fetch(`/api/articles/${articleHash}/bookmark`, {
+    mutationFn: async (articleId: string) => {
+      const response = await fetch(`/api/articles/${articleId}/bookmark`, {
         method: 'DELETE',
       });
 
@@ -522,7 +520,7 @@ export function useUnbookmarkArticle() {
 
       return await response.json();
     },
-    onMutate: async (articleHash) => {
+    onMutate: async (articleId) => {
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['bookmarks', user?.id] });
       await queryClient.cancelQueries({ queryKey: ['starred-count', user?.id] });
@@ -562,16 +560,13 @@ export function useSaveForLater() {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async ({ articleHash, feedId, articleTitle, articleUrl }: {
-      articleHash: string;
-      feedId: string;
-      articleTitle: string;
-      articleUrl: string;
+    mutationFn: async ({ articleId }: {
+      articleId: string;
     }) => {
-      const response = await fetch(`/api/articles/${articleHash}/read-later`, {
+      const response = await fetch(`/api/articles/${articleId}/read-later`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ feedId, articleTitle, articleUrl }),
+        body: JSON.stringify({}),
       });
 
       if (!response.ok) {
@@ -581,7 +576,7 @@ export function useSaveForLater() {
 
       return await response.json();
     },
-    onMutate: async ({ articleHash }) => {
+    onMutate: async ({ articleId }) => {
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['read-later', user?.id] });
       await queryClient.cancelQueries({ queryKey: ['later-count', user?.id] });
@@ -620,8 +615,8 @@ export function useRemoveFromLater() {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async (articleHash: string) => {
-      const response = await fetch(`/api/articles/${articleHash}/read-later`, {
+    mutationFn: async (articleId: string) => {
+      const response = await fetch(`/api/articles/${articleId}/read-later`, {
         method: 'DELETE',
       });
 
@@ -632,7 +627,7 @@ export function useRemoveFromLater() {
 
       return await response.json();
     },
-    onMutate: async (articleHash) => {
+    onMutate: async (articleId) => {
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['read-later', user?.id] });
       await queryClient.cancelQueries({ queryKey: ['later-count', user?.id] });

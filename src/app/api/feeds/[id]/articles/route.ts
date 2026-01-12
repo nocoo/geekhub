@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { ArticleViewModelService } from '@/lib/article-view-model';
-import { ReadStatusService } from '@/lib/read-status-service';
 
 async function createSupabaseClient() {
   const cookieStore = await cookies();
@@ -30,7 +29,7 @@ async function createSupabaseClient() {
 
 // GET /api/feeds/[id]/articles - 获取已抓取的文章列表
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -54,17 +53,28 @@ export async function GET(
       return NextResponse.json({ error: 'Feed not found' }, { status: 404 });
     }
 
-    // Create services
-    const viewModel = new ArticleViewModelService();
-    const readStatusService = new ReadStatusService(user.id);
+    // Get read article IDs
+    const { data: readStatus, error: readError } = await supabase
+      .from('user_articles')
+      .select('article_id')
+      .eq('user_id', user.id)
+      .eq('is_read', true);
 
-    // Get articles with view model
+    if (readError) {
+      console.error('Error fetching read status:', readError);
+    }
+
+    const readArticleIds = new Set(
+      readStatus?.map(rs => rs.article_id) || []
+    );
+
+    // Get articles using view model
+    const viewModel = new ArticleViewModelService(supabase);
     const result = await viewModel.getArticlesForFeed(
       feed.id,
-      feed.url_hash,
       feed.title,
       feed.favicon_url || '',
-      readStatusService
+      readArticleIds
     );
 
     return NextResponse.json(result);

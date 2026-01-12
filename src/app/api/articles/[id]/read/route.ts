@@ -32,7 +32,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
+    const { id: articleId } = await params;
     const supabase = await createSupabaseClient();
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -40,27 +40,26 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get feedId from request body
-    const body = await request.json().catch(() => ({}));
-    const { feedId } = body;
-
-    if (!feedId) {
-      return NextResponse.json({ error: 'feedId is required' }, { status: 400 });
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(articleId)) {
+      return NextResponse.json({ error: 'Invalid article ID format' }, { status: 400 });
     }
 
-    // Mark article as read in the database
-    const { error: insertError } = await supabase
-      .from('read_articles')
-      .insert({
+    // Mark as read in user_articles using articleId directly
+    const { error: upsertError } = await supabase
+      .from('user_articles')
+      .upsert({
         user_id: user.id,
-        article_hash: id,
-        feed_id: feedId,
+        article_id: articleId,
+        is_read: true,
         read_at: new Date().toISOString(),
+      }, {
+        onConflict: 'user_id,article_id'
       });
 
-    // Ignore duplicate key errors (article already marked as read)
-    if (insertError && insertError.code !== '23505') {
-      console.error('Error marking article as read:', insertError);
+    if (upsertError) {
+      console.error('Error marking article as read:', upsertError);
       return NextResponse.json({ error: 'Failed to mark as read' }, { status: 500 });
     }
 

@@ -28,27 +28,36 @@ async function createSupabaseClient() {
 
 // POST /api/articles/[id]/unread - Mark article as unread
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
-    const supabase = await createSupabaseClient();
+    const { id: articleId } = await params;
 
+    const supabase = await createSupabaseClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Remove read status
-    const { error: deleteError } = await supabase
-      .from('read_articles')
-      .delete()
-      .eq('user_id', user.id)
-      .eq('article_hash', id);
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(articleId)) {
+      return NextResponse.json({ error: 'Invalid article ID format' }, { status: 400 });
+    }
 
-    if (deleteError) {
-      console.error('Error marking article as unread:', deleteError);
+    // Mark as unread in user_articles using articleId directly
+    const { error: updateError } = await supabase
+      .from('user_articles')
+      .update({
+        is_read: false,
+        read_at: null,
+      })
+      .eq('user_id', user.id)
+      .eq('article_id', articleId);
+
+    if (updateError) {
+      console.error('Error marking article as unread:', updateError);
       return NextResponse.json({ error: 'Failed to mark as unread' }, { status: 500 });
     }
 

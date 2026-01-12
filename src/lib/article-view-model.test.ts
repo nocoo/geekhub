@@ -1,7 +1,7 @@
 /**
  * ArticleViewModelService Tests
  *
- * Tests the view model layer that combines file system data and database status.
+ * Tests the view model layer that combines database data.
  *
  * Run: bun test -- article-view-model.test.ts
  */
@@ -11,33 +11,47 @@ import { ArticleViewModelService } from './article-view-model';
 
 describe('ArticleViewModelService', () => {
   describe('constructor', () => {
-    it('should initialize with data directory', () => {
-      const viewModel = new ArticleViewModelService('/custom/data');
-      expect(viewModel).toBeInstanceOf(ArticleViewModelService);
-    });
+    it('should initialize with Supabase client', () => {
+      // Create a mock Supabase client
+      const mockSupabase = {
+        from: () => ({
+          select: () => ({
+            eq: () => ({
+              order: () => ({
+                limit: () => Promise.resolve({ data: [], error: null }),
+              }),
+            }),
+          }),
+        }),
+      } as any;
 
-    it('should use default data directory when not specified', () => {
-      const viewModel = new ArticleViewModelService();
+      const viewModel = new ArticleViewModelService(mockSupabase);
       expect(viewModel).toBeInstanceOf(ArticleViewModelService);
     });
   });
 
   describe('getArticlesForFeed', () => {
-    it('should return Promise when called', async () => {
-      const viewModel = new ArticleViewModelService('/test/data');
+    it('should return result structure with empty articles', async () => {
+      const mockSupabase = {
+        from: () => ({
+          select: () => ({
+            eq: () => ({
+              order: () => ({
+                limit: () => Promise.resolve({ data: [], error: null }),
+              }),
+            }),
+          }),
+        }),
+      } as any;
 
-      // Create a mock read status service
-      const mockReadStatus = {
-        getReadHashes: async () => new Set<string>(),
-        userId: 'test-user',
-      };
+      const viewModel = new ArticleViewModelService(mockSupabase);
+      const readArticleIds = new Set<string>();
 
       const result = await viewModel.getArticlesForFeed(
         'feed-id',
-        'feed-hash',
         'Test Feed',
         'https://example.com/icon.png',
-        mockReadStatus as any
+        readArticleIds
       );
 
       // Should return a valid result structure
@@ -46,67 +60,151 @@ describe('ArticleViewModelService', () => {
       expect(result).toHaveProperty('total');
       expect(result).toHaveProperty('lastUpdated');
       expect(result.articles).toBeArray();
+      expect(result.feed.id).toBe('feed-id');
+      expect(result.feed.title).toBe('Test Feed');
     });
 
-    it('should return empty articles for non-existent feed', async () => {
-      const viewModel = new ArticleViewModelService('/nonexistent');
+    it('should return empty articles when no data', async () => {
+      const mockSupabase = {
+        from: () => ({
+          select: () => ({
+            eq: () => ({
+              order: () => ({
+                limit: () => Promise.resolve({ data: [], error: null }),
+              }),
+            }),
+          }),
+        }),
+      } as any;
 
-      const mockReadStatus = {
-        getReadHashes: async () => new Set<string>(),
-        userId: 'test-user',
-      };
+      const viewModel = new ArticleViewModelService(mockSupabase);
+      const readArticleIds = new Set<string>();
 
       const result = await viewModel.getArticlesForFeed(
         'feed-id',
-        'nonexistent-hash',
         'Test Feed',
         '',
-        mockReadStatus as any
+        readArticleIds
       );
 
-      expect(result.articles).toBeArray();
+      expect(result.articles).toEqual([]);
       expect(result.total).toBe(0);
     });
-  });
 
-  describe('getArticle', () => {
-    it('should return Promise when called', async () => {
-      const viewModel = new ArticleViewModelService('/test/data');
+    it('should handle articles with data', async () => {
+      const mockArticles = [
+        {
+          id: 'article-uuid-1',
+          feed_id: 'feed-123',
+          title: 'Test Article',
+          url: 'https://example.com/article1',
+          link: 'https://example.com/article1',
+          author: 'Test Author',
+          published_at: new Date().toISOString(),
+          content: '<p>Test content</p>',
+          content_text: 'Test content',
+          summary: 'Test summary',
+          hash: 'abc123',
+        },
+      ];
 
-      const mockReadStatus = {
-        getReadHashes: async () => new Set<string>(),
-        userId: 'test-user',
-      };
+      const mockSupabase = {
+        from: () => ({
+          select: () => ({
+            eq: () => ({
+              order: () => ({
+                limit: () => Promise.resolve({ data: mockArticles, error: null }),
+              }),
+            }),
+          }),
+        }),
+      } as any;
 
-      const result = await viewModel.getArticle(
-        'feed-hash',
-        'article-hash',
-        'feed-id',
+      const viewModel = new ArticleViewModelService(mockSupabase);
+      const readArticleIds = new Set<string>();
+
+      const result = await viewModel.getArticlesForFeed(
+        'feed-123',
         'Test Feed',
-        'https://example.com/icon.png',
-        mockReadStatus as any
+        '',
+        readArticleIds
       );
 
-      // Should return null for non-existent article
-      expect(result).toBeNull();
+      expect(result.articles.length).toBe(1);
+      expect(result.articles[0].id).toBe('article-uuid-1');
+      expect(result.articles[0].title).toBe('Test Article');
+      expect(result.articles[0].isRead).toBe(false);
+    });
+
+    it('should mark articles as read based on readArticleIds', async () => {
+      const mockArticles = [
+        {
+          id: 'article-uuid-1',
+          feed_id: 'feed-123',
+          title: 'Test Article',
+          url: 'https://example.com/article1',
+          link: 'https://example.com/article1',
+          author: 'Test Author',
+          published_at: new Date().toISOString(),
+          content: '<p>Test content</p>',
+          content_text: 'Test content',
+          summary: 'Test summary',
+          hash: 'abc123',
+        },
+      ];
+
+      const mockSupabase = {
+        from: () => ({
+          select: () => ({
+            eq: () => ({
+              order: () => ({
+                limit: () => Promise.resolve({ data: mockArticles, error: null }),
+              }),
+            }),
+          }),
+        }),
+      } as any;
+
+      const viewModel = new ArticleViewModelService(mockSupabase);
+
+      // Article is read
+      const readArticleIds = new Set<string>(['article-uuid-1']);
+
+      const result = await viewModel.getArticlesForFeed(
+        'feed-123',
+        'Test Feed',
+        '',
+        readArticleIds
+      );
+
+      expect(result.articles.length).toBe(1);
+      expect(result.articles[0].isRead).toBe(true);
+      expect(result.articles[0].id).toBe('article-uuid-1');
     });
   });
 
   describe('result structure', () => {
     it('should have correct feed structure in result', async () => {
-      const viewModel = new ArticleViewModelService('/test/data');
+      const mockSupabase = {
+        from: () => ({
+          select: () => ({
+            eq: () => ({
+              order: () => ({
+                limit: () => Promise.resolve({ data: [], error: null }),
+              }),
+            }),
+          }),
+        }),
+      } as any;
 
-      const mockReadStatus = {
-        getReadHashes: async () => new Set<string>(),
-        userId: 'test-user',
-      };
+      const viewModel = new ArticleViewModelService(mockSupabase);
+      const readArticleIds = new Set<string>();
 
       const result = await viewModel.getArticlesForFeed(
         'feed-123',
-        'hash-123',
         'My Feed',
         'https://example.com/favicon.ico',
-        mockReadStatus as any
+        readArticleIds
       );
 
       expect(result.feed).toEqual({
@@ -117,33 +215,56 @@ describe('ArticleViewModelService', () => {
     });
 
     it('should have correct article structure when article exists', async () => {
-      // This test verifies the ArticleViewModel interface structure
-      // Full integration test would require actual file system data
-      const viewModel = new ArticleViewModelService('/test/data');
+      const mockArticles = [
+        {
+          id: 'article-uuid-1',
+          feed_id: 'feed-123',
+          title: 'Test Article',
+          url: 'https://example.com/article1',
+          link: 'https://example.com/article1',
+          author: 'Test Author',
+          published_at: new Date().toISOString(),
+          content: '<p>Test content</p>',
+          content_text: 'Test content',
+          summary: 'Test summary',
+          hash: 'abc123',
+        },
+      ];
 
-      const mockReadStatus = {
-        getReadHashes: async () => new Set<string>(['read-hash']),
-        userId: 'test-user',
-      };
+      const mockSupabase = {
+        from: () => ({
+          select: () => ({
+            eq: () => ({
+              order: () => ({
+                limit: () => Promise.resolve({ data: mockArticles, error: null }),
+              }),
+            }),
+          }),
+        }),
+      } as any;
 
-      // The method should handle the read status correctly
+      const viewModel = new ArticleViewModelService(mockSupabase);
+      const readArticleIds = new Set<string>();
+
       const result = await viewModel.getArticlesForFeed(
         'feed-123',
-        'hash-123',
         'Test Feed',
         '',
-        mockReadStatus as any
+        readArticleIds
       );
 
-      // Verify the result can contain articles with isRead property
-      if (result.articles.length > 0) {
-        const article = result.articles[0];
-        expect(article).toHaveProperty('id');
-        expect(article).toHaveProperty('title');
-        expect(article).toHaveProperty('isRead');
-        expect(article).toHaveProperty('feedId');
-        expect(article).toHaveProperty('feedName');
-      }
+      // Verify the result contains articles with correct properties
+      expect(result.articles.length).toBe(1);
+      const article = result.articles[0];
+      expect(article).toHaveProperty('id');
+      expect(article).toHaveProperty('title');
+      expect(article).toHaveProperty('url');
+      expect(article).toHaveProperty('isRead');
+      expect(article).toHaveProperty('feedId');
+      expect(article).toHaveProperty('feedName');
+      expect(article).toHaveProperty('hash');
+      expect(article.id).toBe('article-uuid-1');
+      expect(article.hash).toBe('abc123');
     });
   });
 });

@@ -45,9 +45,9 @@ export default function Home() {
     setSelectedArticle(article);
 
     // 标记文章为已读（后台执行，不阻塞 UI）
-    if (article.hash && !article.isRead) {
+    if (article.id && !article.isRead) {
       markAsRead.mutate({
-        articleHash: article.hash,
+        articleId: article.id,
         feedId: article.feedId,
       });
     }

@@ -103,7 +103,7 @@ export function ReaderView({ article }: ReaderViewProps) {
 
   // Update bookmark and read later status when article changes or cache updates
   useEffect(() => {
-    if (!article?.hash || !user) {
+    if (!article?.id || !user) {
       setIsBookmarked(false);
       setIsReadLater(false);
       return;
@@ -112,12 +112,12 @@ export function ReaderView({ article }: ReaderViewProps) {
     const updateStatus = () => {
       // Check if article is bookmarked by looking at starred articles cache
       const starredArticles = queryClient.getQueryData<Article[]>(['articles', user.id, 'starred']);
-      const isCurrentlyBookmarked = starredArticles?.some(a => a.hash === article.hash) || false;
+      const isCurrentlyBookmarked = starredArticles?.some(a => a.id === article.id) || false;
       setIsBookmarked(isCurrentlyBookmarked);
 
       // Check if article is in read later by looking at later articles cache
       const laterArticles = queryClient.getQueryData<Article[]>(['articles', user.id, 'later']);
-      const isCurrentlyReadLater = laterArticles?.some(a => a.hash === article.hash) || false;
+      const isCurrentlyReadLater = laterArticles?.some(a => a.id === article.id) || false;
       setIsReadLater(isCurrentlyReadLater);
     };
 
@@ -145,7 +145,7 @@ export function ReaderView({ article }: ReaderViewProps) {
       unsubscribeStarred();
       unsubscribeLater();
     };
-  }, [article?.hash, user?.id, queryClient]);
+  }, [article?.id, user?.id, queryClient]);
 
   // Handle bookmark toggle
   const handleBookmark = useCallback(() => {
@@ -155,7 +155,7 @@ export function ReaderView({ article }: ReaderViewProps) {
       setIsBookmarked(false);
       toast.success('已取消收藏');
 
-      unbookmarkArticle.mutate(article.hash || '', {
+      unbookmarkArticle.mutate(article.id, {
         onError: () => {
           setIsBookmarked(true);
           toast.error('操作失败，已回滚');
@@ -166,10 +166,8 @@ export function ReaderView({ article }: ReaderViewProps) {
       toast.success('已收藏');
 
       bookmarkArticle.mutate({
-        articleHash: article.hash || '',
-        feedId: article.feedId,
-        articleTitle: article.title,
-        articleUrl: article.url,
+        articleId: article.id,
+        notes: undefined,
       }, {
         onError: () => {
           setIsBookmarked(false);
@@ -187,7 +185,7 @@ export function ReaderView({ article }: ReaderViewProps) {
       setIsReadLater(false);
       toast.success('已从稍后阅读移除');
 
-      removeFromLater.mutate(article.hash || '', {
+      removeFromLater.mutate(article.id, {
         onError: () => {
           setIsReadLater(true);
           toast.error('操作失败，已回滚');
@@ -198,10 +196,7 @@ export function ReaderView({ article }: ReaderViewProps) {
       toast.success('已添加到稍后阅读');
 
       saveForLater.mutate({
-        articleHash: article.hash || '',
-        feedId: article.feedId,
-        articleTitle: article.title,
-        articleUrl: article.url,
+        articleId: article.id,
       }, {
         onError: () => {
           setIsReadLater(false);
@@ -606,7 +601,7 @@ export function ReaderView({ article }: ReaderViewProps) {
           onClose={() => setShowAISummary(false)}
           title={article.title}
           content={displayContent || ''}
-          articleId={article.hash}
+          articleId={article.id}
           feedId={article.feedId}
           urlHash={article.urlHash}
         />

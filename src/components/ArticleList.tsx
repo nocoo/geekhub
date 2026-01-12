@@ -57,7 +57,7 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
   }, [articles, autoTranslate]);
 
   // Track articles read in current feed session (cleared when switching feeds)
-  const sessionReadHashesRef = useRef<Set<string>>(new Set());
+  const sessionReadIdsRef = useRef<Set<string>>(new Set());
 
   // Ref for the article list container and selected article
   const listContainerRef = useRef<HTMLDivElement>(null);
@@ -66,9 +66,9 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
   const visibleArticlesRef = useRef<Set<string>>(new Set());
   const translateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Clear session read hashes when feed changes
+  // Clear session read IDs when feed changes
   useEffect(() => {
-    sessionReadHashesRef.current.clear();
+    sessionReadIdsRef.current.clear();
   }, [feedId]);
 
   // Scroll selected article into view
@@ -104,7 +104,7 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
 
   // Check if article should be displayed as read (including session read)
   const isArticleRead = useCallback((article: Article) => {
-    return article.isRead || (article.hash && sessionReadHashesRef.current.has(article.hash));
+    return article.isRead || (article.id && sessionReadIdsRef.current.has(article.id));
   }, [forceUpdate]); // Add forceUpdate as dependency to trigger re-render
 
   // Filter articles: show if unread OR was just read in this session
@@ -120,16 +120,16 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
     }
 
     // Show articles that are unread OR were read in this session
-    return articlesWithCachedTranslations.filter(a => !a.isRead || (a.hash && sessionReadHashesRef.current.has(a.hash)));
+    return articlesWithCachedTranslations.filter(a => !a.isRead || (a.id && sessionReadIdsRef.current.has(a.id)));
   }, [articlesWithCachedTranslations, showRead, feedId]);
 
   // Handle article selection - mark as read and track in session
   const handleSelectArticle = useCallback((article: Article) => {
-    if (!article.isRead && article.hash && feedId) {
-      // Add to session read hashes to keep it visible
-      sessionReadHashesRef.current.add(article.hash);
+    if (!article.isRead && article.id && feedId) {
+      // Add to session read IDs to keep it visible
+      sessionReadIdsRef.current.add(article.id);
       // Mark as read in database
-      markAsRead.mutate({ articleHash: article.hash, feedId });
+      markAsRead.mutate({ articleId: article.id, feedId });
     }
     onSelectArticle(article);
   }, [feedId, markAsRead, onSelectArticle]);
@@ -284,12 +284,12 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
   const handleMarkAllAsRead = () => {
     if (feedId && hasUnread) {
       // Get all unread articles
-      const unreadArticles = articles.filter(a => !a.isRead && a.hash);
+      const unreadArticles = articles.filter(a => !a.isRead && a.id);
 
-      // Optimistically add to session read hashes for immediate UI update
+      // Optimistically add to session read IDs for immediate UI update
       unreadArticles.forEach(article => {
-        if (article.hash) {
-          sessionReadHashesRef.current.add(article.hash);
+        if (article.id) {
+          sessionReadIdsRef.current.add(article.id);
         }
       });
 

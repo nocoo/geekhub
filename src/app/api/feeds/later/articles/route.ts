@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import { ArticleRepository } from '@/lib/article-repository';
-import { ReadStatusService } from '@/lib/read-status-service';
 
 async function createSupabaseClient() {
   const cookieStore = await cookies();
@@ -38,15 +36,19 @@ export async function GET(_request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get read later articles with feed info
+    // Get user_articles with is_read_later = true, joined with articles and feeds
     const { data: readLater, error: readLaterError } = await supabase
-      .from('read_later_articles')
+      .from('user_articles')
       .select(`
         *,
-        feed:feeds(id, title, url, url_hash, favicon_url)
+        article:articles(
+          id, title, url, link, author, published_at, content, content_text, summary, fetched_at,
+          feed:feeds(id, title, url, favicon_url)
+        )
       `)
       .eq('user_id', user.id)
-      .order('saved_at', { ascending: false });
+      .eq('is_read_later', true)
+      .order('read_later_at', { ascending: false });
 
     if (readLaterError) {
       console.error('[ReadLaterArticles] DB Error:', readLaterError);
@@ -55,86 +57,43 @@ export async function GET(_request: NextRequest) {
 
     if (!readLater || readLater.length === 0) {
       return NextResponse.json({
-        feed: {
-          id: 'later',
-          title: '稍后阅读',
-          url: '',
-        },
+        feed: { id: 'later', title: '稍后阅读', url: '' },
         articles: [],
         total: 0,
         lastUpdated: null,
       });
     }
 
-    // Create services
-    const articleRepo = new ArticleRepository();
-    const readStatusService = new ReadStatusService(user.id);
-
-    // Process each read later article
-    const articles = await Promise.all(
-      readLater.map(async (item: any) => {
-        const feed = item.feed;
-        if (!feed) return null;
-
-        // Get read hashes for this feed
-        const readHashes = await readStatusService.getReadHashes(feed.id);
-
-        // Try to load article from file system
-        let firstImage: string | null = null;
-        let content: string | undefined = undefined;
-        let publishedAt: Date | null = null;
-        let ai_summary: any = undefined;
-
-        if (feed.url_hash) {
-          try {
-            const fullArticle = await articleRepo.getArticle(feed.url_hash, item.article_hash);
-            if (fullArticle) {
-              if (fullArticle.content) {
-                firstImage = extractFirstImage(fullArticle.content);
-                content = fullArticle.content;
-              }
-              if (fullArticle.published_at) {
-                publishedAt = new Date(fullArticle.published_at);
-              }
-              if (fullArticle.ai_summary) {
-                ai_summary = fullArticle.ai_summary;
-              }
-            }
-          } catch {
-            // Ignore errors, use read_later data
-          }
-        }
-
+    // Process articles
+    const articles = readLater
+      .filter((item: any) => item.article)
+      .map((item: any) => {
+        const article = item.article;
+        const feed = article.feed;
         return {
-          id: item.article_hash,
-          feedId: feed.id,
-          title: item.article_title,
-          url: item.article_url,
-          description: '',
-          author: '',
-          publishedAt,
-          feedName: feed.title,
-          feedIcon: feed.favicon_url || '',
-          isRead: readHashes.has(item.article_hash),
-          hash: item.article_hash,
-          image: firstImage,
-          content,
-          ai_summary,
+          id: article.id,
+          articleId: article.id,
+          hash: article.hash,
+          feedId: feed?.id || '',
+          title: article.title,
+          url: article.url,
+          link: article.link || article.url,
+          description: article.summary || '',
+          author: article.author || '',
+          publishedAt: article.published_at ? new Date(article.published_at).toISOString() : null,
+          feedName: feed?.title || '',
+          feedIcon: feed?.favicon_url || '',
+          isRead: item.is_read,
+          image: extractFirstImage(article.content || ''),
+          content: article.content,
+          ai_summary: undefined, // Not stored in new schema
         };
-      })
-    );
-
-    // Filter out nulls
-    const validArticles = articles.filter(a => a !== null);
+      });
 
     return NextResponse.json({
-      feed: {
-        id: 'later',
-        title: '稍后阅读',
-        url: '',
-      },
-      articles: validArticles,
-      total: validArticles.length,
+      feed: { id: 'later', title: '稍后阅读', url: '' },
+      articles,
+      total: articles.length,
       lastUpdated: new Date().toISOString(),
     });
   } catch (error) {

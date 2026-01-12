@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import { ArticleRepository } from '@/lib/article-repository';
-import { ReadStatusService } from '@/lib/read-status-service';
 
 async function createSupabaseClient() {
   const cookieStore = await cookies();
@@ -38,14 +36,18 @@ export async function GET(_request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get bookmarked articles with feed info
+    // Get user_articles with is_bookmarked = true, joined with articles and feeds
     const { data: bookmarked, error: bookmarkedError } = await supabase
-      .from('bookmarked_articles')
+      .from('user_articles')
       .select(`
         *,
-        feed:feeds(id, title, url, url_hash, favicon_url)
+        article:articles(
+          id, title, url, link, author, published_at, content, content_text, summary, fetched_at,
+          feed:feeds(id, title, url, favicon_url)
+        )
       `)
       .eq('user_id', user.id)
+      .eq('is_bookmarked', true)
       .order('bookmarked_at', { ascending: false });
 
     if (bookmarkedError) {
@@ -55,86 +57,43 @@ export async function GET(_request: NextRequest) {
 
     if (!bookmarked || bookmarked.length === 0) {
       return NextResponse.json({
-        feed: {
-          id: 'starred',
-          title: '已收藏',
-          url: '',
-        },
+        feed: { id: 'starred', title: '已收藏', url: '' },
         articles: [],
         total: 0,
         lastUpdated: null,
       });
     }
 
-    // Create services
-    const articleRepo = new ArticleRepository();
-    const readStatusService = new ReadStatusService(user.id);
-
-    // Process each bookmarked article
-    const articles = await Promise.all(
-      bookmarked.map(async (bookmark: any) => {
-        const feed = bookmark.feed;
-        if (!feed) return null;
-
-        // Get read hashes for this feed
-        const readHashes = await readStatusService.getReadHashes(feed.id);
-
-        // Try to load article from file system
-        let firstImage: string | null = null;
-        let content: string | undefined = undefined;
-        let publishedAt: Date | null = null;
-        let ai_summary: any = undefined;
-
-        if (feed.url_hash) {
-          try {
-            const fullArticle = await articleRepo.getArticle(feed.url_hash, bookmark.article_hash);
-            if (fullArticle) {
-              if (fullArticle.content) {
-                firstImage = extractFirstImage(fullArticle.content);
-                content = fullArticle.content;
-              }
-              if (fullArticle.published_at) {
-                publishedAt = new Date(fullArticle.published_at);
-              }
-              if (fullArticle.ai_summary) {
-                ai_summary = fullArticle.ai_summary;
-              }
-            }
-          } catch {
-            // Ignore errors, use bookmark data
-          }
-        }
-
+    // Process articles
+    const articles = bookmarked
+      .filter((item: any) => item.article)
+      .map((item: any) => {
+        const article = item.article;
+        const feed = article.feed;
         return {
-          id: bookmark.article_hash,
-          feedId: feed.id,
-          title: bookmark.article_title,
-          url: bookmark.article_url,
-          description: '',
-          author: '',
-          publishedAt,
-          feedName: feed.title,
-          feedIcon: feed.favicon_url || '',
-          isRead: readHashes.has(bookmark.article_hash),
-          hash: bookmark.article_hash,
-          image: firstImage,
-          content,
-          ai_summary,
+          id: article.id,
+          articleId: article.id,
+          hash: article.hash,
+          feedId: feed?.id || '',
+          title: article.title,
+          url: article.url,
+          link: article.link || article.url,
+          description: article.summary || '',
+          author: article.author || '',
+          publishedAt: article.published_at ? new Date(article.published_at).toISOString() : null,
+          feedName: feed?.title || '',
+          feedIcon: feed?.favicon_url || '',
+          isRead: item.is_read,
+          image: extractFirstImage(article.content || ''),
+          content: article.content,
+          ai_summary: undefined, // Not stored in new schema
         };
-      })
-    );
-
-    // Filter out nulls
-    const validArticles = articles.filter(a => a !== null);
+      });
 
     return NextResponse.json({
-      feed: {
-        id: 'starred',
-        title: '已收藏',
-        url: '',
-      },
-      articles: validArticles,
-      total: validArticles.length,
+      feed: { id: 'starred', title: '已收藏', url: '' },
+      articles,
+      total: articles.length,
       lastUpdated: new Date().toISOString(),
     });
   } catch (error) {

@@ -26,15 +26,14 @@ async function createSupabaseClient() {
   );
 }
 
-// POST /api/articles/[id]/read-later - 添加到稍后阅读
+// POST /api/articles/[id]/read-later - Toggle read later
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
+    const { id: articleId } = await params;
     const body = await request.json();
-    const { feedId, articleTitle, articleUrl } = body;
 
     const supabase = await createSupabaseClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -43,50 +42,59 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // 检查是否已存在
-    const { data: existing } = await supabase
-      .from('read_later_articles')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('article_hash', id)
-      .maybeSingle();
-
-    if (existing) {
-      return NextResponse.json({ error: 'Already in read later' }, { status: 409 });
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(articleId)) {
+      return NextResponse.json({ error: 'Invalid article ID format' }, { status: 400 });
     }
 
-    // 添加到稍后阅读
-    const { data, error } = await supabase
-      .from('read_later_articles')
-      .insert({
+    // Check current read_later status
+    const { data: existing } = await supabase
+      .from('user_articles')
+      .select('is_read_later, read_later_at')
+      .eq('user_id', user.id)
+      .eq('article_id', articleId)
+      .maybeSingle();
+
+    const newStatus = !existing?.is_read_later;
+    const now = new Date().toISOString();
+
+    // Toggle read_later
+    const { error } = await supabase
+      .from('user_articles')
+      .upsert({
         user_id: user.id,
-        feed_id: feedId,
-        article_hash: id,
-        article_title: articleTitle,
-        article_url: articleUrl,
-      })
-      .select()
-      .single();
+        article_id: articleId,
+        is_read_later: newStatus,
+        read_later_at: newStatus ? now : null,
+      }, {
+        onConflict: 'user_id,article_id'
+      });
 
     if (error) throw error;
 
-    return NextResponse.json({ success: true, article: data });
+    return NextResponse.json({
+      success: true,
+      readLater: newStatus,
+      readLaterAt: newStatus ? now : null,
+    });
   } catch (error) {
     console.error('[ReadLater] Error:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to save article' },
+      { error: error instanceof Error ? error.message : 'Failed to toggle read later' },
       { status: 500 }
     );
   }
 }
 
-// DELETE /api/articles/[id]/read-later - 从稍后阅读移除
+// DELETE /api/articles/[id]/read-later - Remove from read later
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
+    const { id: articleId } = await params;
+    const body = await request.json().catch(() => ({}));
 
     const supabase = await createSupabaseClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -95,11 +103,21 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(articleId)) {
+      return NextResponse.json({ error: 'Invalid article ID format' }, { status: 400 });
+    }
+
+    // Remove read_later
     const { error } = await supabase
-      .from('read_later_articles')
-      .delete()
+      .from('user_articles')
+      .update({
+        is_read_later: false,
+        read_later_at: null,
+      })
       .eq('user_id', user.id)
-      .eq('article_hash', id);
+      .eq('article_id', articleId);
 
     if (error) throw error;
 
@@ -107,7 +125,7 @@ export async function DELETE(
   } catch (error) {
     console.error('[ReadLater] Error:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to remove article' },
+      { error: error instanceof Error ? error.message : 'Failed to remove from read later' },
       { status: 500 }
     );
   }

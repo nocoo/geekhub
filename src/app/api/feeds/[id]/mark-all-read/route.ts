@@ -40,10 +40,10 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get feed info to get url_hash
+    // Verify feed belongs to user
     const { data: feed } = await supabase
       .from('feeds')
-      .select('url_hash')
+      .select('id')
       .eq('id', id)
       .eq('user_id', user.id)
       .single();
@@ -52,44 +52,54 @@ export async function POST(
       return NextResponse.json({ error: 'Feed not found' }, { status: 404 });
     }
 
-    // Get all articles from index
-    const { readFile } = await import('fs/promises');
-    const { join } = await import('path');
-    const indexFile = join(process.cwd(), 'data', 'feeds', feed.url_hash, 'index.json');
-
-    let hashes: string[] = [];
-    try {
-      const content = await readFile(indexFile, 'utf-8');
-      const index = JSON.parse(content);
-      hashes = index.articles?.map((a: any) => a.hash) || [];
-    } catch {
-      // No articles found
-    }
-
-    // Filter out already read articles
-    const { data: readArticles } = await supabase
-      .from('read_articles')
-      .select('article_hash')
+    // Get all article IDs from this feed
+    const { data: articles, error: articlesError } = await supabase
+      .from('articles')
+      .select('id')
       .eq('feed_id', id);
 
-    const readHashes = new Set(readArticles?.map(ra => ra.article_hash) || []);
-    const newHashes = hashes.filter(h => !readHashes.has(h));
-
-    if (newHashes.length === 0) {
-      return NextResponse.json({ success: true, marked: 0, alreadyRead: hashes.length });
+    if (articlesError) {
+      return NextResponse.json({ error: articlesError.message }, { status: 500 });
     }
 
-    // Bulk insert read records
-    const records = newHashes.map(hash => ({
+    if (!articles || articles.length === 0) {
+      return NextResponse.json({ success: true, marked: 0, alreadyRead: 0 });
+    }
+
+    const articleIds = articles.map(a => a.id);
+
+    // Get already read articles
+    const { data: readStatus } = await supabase
+      .from('user_articles')
+      .select('article_id, is_read')
+      .eq('user_id', user.id)
+      .in('article_id', articleIds);
+
+    const readArticleIds = new Set(
+      readStatus?.filter(rs => rs.is_read).map(rs => rs.article_id) || []
+    );
+
+    const newArticleIds = articleIds.filter(id => !readArticleIds.has(id));
+
+    if (newArticleIds.length === 0) {
+      return NextResponse.json({ success: true, marked: 0, alreadyRead: articleIds.length });
+    }
+
+    // Bulk upsert read records
+    const now = new Date().toISOString();
+    const records = newArticleIds.map(articleId => ({
       user_id: user.id,
-      feed_id: id,
-      article_hash: hash,
-      read_at: new Date().toISOString(),
+      article_id: articleId,
+      is_read: true,
+      read_at: now,
     }));
 
     const { error } = await supabase
-      .from('read_articles')
-      .insert(records);
+      .from('user_articles')
+      .upsert(records, {
+        onConflict: 'user_id,article_id',
+        ignoreDuplicates: false
+      });
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
@@ -97,8 +107,8 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      marked: newHashes.length,
-      alreadyRead: hashes.length,
+      marked: newArticleIds.length,
+      alreadyRead: readArticleIds.size,
     });
   } catch (error) {
     console.error('Error marking all as read:', error);

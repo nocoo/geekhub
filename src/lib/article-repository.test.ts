@@ -1,202 +1,305 @@
 /**
  * ArticleRepository Tests
  *
- * Tests the file system layer that reads article data.
+ * Tests the database layer for article storage.
  *
  * Run: bun test -- article-repository.test.ts
  */
 
-import { ArticleRepository, ArticleRaw } from './article-repository';
-import { writeFile, mkdir, rm } from 'fs/promises';
-import { join } from 'path';
+import { describe, it, expect } from 'bun:test';
+import { ArticleRepository } from './article-repository';
 
-// Test data directory
-const TEST_DATA_DIR = join(process.cwd(), 'data', 'test');
-const TEST_FEED_HASH = 'test123456789';
-const TEST_FEED_DIR = join(TEST_DATA_DIR, 'feeds', TEST_FEED_HASH);
-const TEST_ARTICLES_DIR = join(TEST_FEED_DIR, 'articles');
-
-// Mock article data
-const mockArticle: ArticleRaw = {
-  hash: 'abc123',
-  title: 'Test Article',
-  url: 'https://example.com/test',
-  link: 'https://example.com/test',
-  author: 'Test Author',
-  published_at: '2026-01-10T00:00:00Z',
-  content: '<p>Test content</p>',
-  content_text: 'Test content',
-  summary: 'Test summary',
-  categories: ['Tech', 'Test'],
-  fetched_at: '2026-01-10T00:00:00Z',
-};
-
-const mockIndex = {
-  last_updated: '2026-01-10T00:00:00Z',
-  total_count: 1,
-  articles: [
-    {
-      hash: 'abc123',
-      title: 'Test Article',
-      url: 'https://example.com/test',
-      link: 'https://example.com/test',
-      author: 'Test Author',
-      published_at: '2026-01-10T00:00:00Z',
-      summary: 'Test summary',
+// Mock Supabase client
+const createMockSupabase = () => {
+  return {
+    from: (table: string) => {
+      return {
+        select: (columns?: string) => ({
+          eq: (column: string, value: any) => ({
+            order: (column: string, options?: { ascending: boolean }) => ({
+              limit: (count: number) => Promise.resolve({ data: [], error: null }),
+            }),
+            in: (column: string, values: any[]) => ({
+              order: (column: string, options?: { ascending: boolean }) => Promise.resolve({ data: [], error: null }),
+            }),
+            single: () => Promise.resolve({ data: null, error: null }),
+          }),
+          in: (column: string, values: any[]) => ({
+            order: (column: string, options?: { ascending: boolean }) => Promise.resolve({ data: [], error: null }),
+          }),
+        }),
+        insert: (rows: any) => Promise.resolve({ data: null, error: null }),
+        upsert: (rows: any, options?: any) => Promise.resolve({ error: null }),
+        update: (updates: any) => ({
+          eq: (column: string, value: any) => Promise.resolve({ error: null }),
+        }),
+        delete: () => ({
+          eq: (column: string, value: any) => Promise.resolve({ error: null }),
+        }),
+      };
     },
-  ],
+  };
 };
 
 describe('ArticleRepository', () => {
-  let repo: ArticleRepository;
-
-  beforeAll(async () => {
-    // Create test directory structure
-    await mkdir(TEST_ARTICLES_DIR, { recursive: true });
-
-    // Write test files
-    await writeFile(
-      join(TEST_FEED_DIR, 'index.json'),
-      JSON.stringify(mockIndex, null, 2)
-    );
-    await writeFile(
-      join(TEST_ARTICLES_DIR, 'abc123.json'),
-      JSON.stringify(mockArticle, null, 2)
-    );
-
-    repo = new ArticleRepository(TEST_DATA_DIR);
-  });
-
-  afterAll(async () => {
-    // Clean up test directory
-    await rm(TEST_DATA_DIR, { recursive: true, force: true });
+  describe('constructor', () => {
+    it('should initialize with Supabase client', () => {
+      const mockSupabase = createMockSupabase();
+      const repo = new ArticleRepository(mockSupabase as any);
+      expect(repo).toBeInstanceOf(ArticleRepository);
+    });
   });
 
   describe('getIndex', () => {
-    it('should return index data for existing feed', async () => {
-      const index = await repo.getIndex(TEST_FEED_HASH);
+    it('should return index structure for existing feed', async () => {
+      const mockSupabase = createMockSupabase();
+
+      // Mock the articles query
+      (mockSupabase as any).from = (table: string) => {
+        if (table === 'articles') {
+          return {
+            select: () => ({
+              eq: () => ({
+                order: () => ({
+                  limit: () => Promise.resolve({
+                    data: [
+                      {
+                        id: 'article-1',
+                        hash: 'abc123',
+                        title: 'Test Article 1',
+                        url: 'https://example.com/1',
+                        link: 'https://example.com/1',
+                        author: 'Author 1',
+                        published_at: '2024-01-01T00:00:00Z',
+                        summary: 'Summary 1',
+                      },
+                    ],
+                    error: null,
+                  }),
+                }),
+              }),
+            }),
+          };
+        }
+        return { select: () => ({ eq: () => ({ order: () => ({ limit: () => Promise.resolve({ data: [], error: null }) }) }) }) };
+      };
+
+      const repo = new ArticleRepository(mockSupabase as any);
+      const index = await repo.getIndex('feed-123');
 
       expect(index).not.toBeNull();
-      expect(index?.total_count).toBe(1);
-      expect(index?.articles).toHaveLength(1);
-      expect(index?.articles[0].hash).toBe('abc123');
+      expect(index).toHaveProperty('last_updated');
+      expect(index).toHaveProperty('total_count');
+      expect(index).toHaveProperty('articles');
+      expect(Array.isArray(index?.articles)).toBe(true);
     });
 
     it('should return null for non-existent feed', async () => {
+      const mockSupabase = createMockSupabase();
+
+      // Mock empty result with error to simulate non-existent feed
+      (mockSupabase as any).from = () => ({
+        select: () => ({
+          eq: () => ({
+            order: () => ({
+              limit: () => Promise.resolve({ data: [], error: { message: 'not found' } }),
+            }),
+          }),
+        }),
+      });
+
+      const repo = new ArticleRepository(mockSupabase as any);
       const index = await repo.getIndex('nonexistent');
+
       expect(index).toBeNull();
     });
   });
 
   describe('getArticleHashes', () => {
     it('should return array of article hashes', async () => {
-      const hashes = await repo.getArticleHashes(TEST_FEED_HASH);
+      const mockSupabase = createMockSupabase();
 
-      expect(hashes).toEqual(['abc123']);
+      (mockSupabase as any).from = () => ({
+        select: () => ({
+          eq: () => ({
+            order: () => Promise.resolve({
+              data: [
+                { hash: 'hash1' },
+                { hash: 'hash2' },
+              ],
+              error: null,
+            }),
+          }),
+        }),
+      });
+
+      const repo = new ArticleRepository(mockSupabase as any);
+      const hashes = await repo.getArticleHashes('feed-123');
+
+      expect(Array.isArray(hashes)).toBe(true);
+      expect(hashes.length).toBe(2);
     });
 
     it('should return empty array for non-existent feed', async () => {
+      const mockSupabase = createMockSupabase();
+
+      (mockSupabase as any).from = () => ({
+        select: () => ({
+          eq: () => ({
+            order: () => Promise.resolve({ data: [], error: null }),
+          }),
+        }),
+      });
+
+      const repo = new ArticleRepository(mockSupabase as any);
       const hashes = await repo.getArticleHashes('nonexistent');
+
       expect(hashes).toEqual([]);
     });
   });
 
   describe('getArticle', () => {
     it('should return article data for existing article', async () => {
-      const article = await repo.getArticle(TEST_FEED_HASH, 'abc123');
+      const mockSupabase = createMockSupabase();
+
+      const mockArticle = {
+        id: 'article-1',
+        feed_id: 'feed-123',
+        hash: 'abc123',
+        title: 'Test Article',
+        url: 'https://example.com/article',
+        link: 'https://example.com/article',
+        author: 'Test Author',
+        published_at: '2024-01-01T00:00:00Z',
+        content: '<p>Test content</p>',
+        content_text: 'Test content',
+        summary: 'Test summary',
+      };
+
+      (mockSupabase as any).from = () => ({
+        select: () => ({
+          eq: () => ({
+            single: () => Promise.resolve({ data: mockArticle, error: null }),
+          }),
+        }),
+      });
+
+      const repo = new ArticleRepository(mockSupabase as any);
+      const article = await repo.getArticle('article-1');
 
       expect(article).not.toBeNull();
+      expect(article?.id).toBe('article-1');
       expect(article?.title).toBe('Test Article');
-      expect(article?.url).toBe('https://example.com/test');
-      expect(article?.author).toBe('Test Author');
-      expect(article?.content).toBe('<p>Test content</p>');
     });
 
     it('should return null for non-existent article', async () => {
-      const article = await repo.getArticle(TEST_FEED_HASH, 'nonexistent');
-      expect(article).toBeNull();
-    });
+      const mockSupabase = createMockSupabase();
 
-    it('should return null for non-existent feed', async () => {
-      const article = await repo.getArticle('nonexistent', 'abc123');
+      (mockSupabase as any).from = () => ({
+        select: () => ({
+          eq: () => ({
+            single: () => Promise.resolve({ data: null, error: { message: 'Not found' } }),
+          }),
+        }),
+      });
+
+      const repo = new ArticleRepository(mockSupabase as any);
+      const article = await repo.getArticle('nonexistent');
+
       expect(article).toBeNull();
     });
   });
 
   describe('getArticles', () => {
     it('should return multiple articles by hashes', async () => {
-      // Create another test article
-      const mockArticle2: ArticleRaw = {
-        ...mockArticle,
-        hash: 'def456',
-        title: 'Test Article 2',
-      };
-      await writeFile(
-        join(TEST_ARTICLES_DIR, 'def456.json'),
-        JSON.stringify(mockArticle2, null, 2)
-      );
+      const mockSupabase = createMockSupabase();
 
-      const articles = await repo.getArticles(TEST_FEED_HASH, ['abc123', 'def456']);
+      const mockArticles = [
+        { id: '1', hash: 'hash1', title: 'Article 1', url: 'https://example.com/1', link: 'https://example.com/1', author: 'Author 1', published_at: '2024-01-01T00:00:00Z', summary: 'Summary 1' },
+        { id: '2', hash: 'hash2', title: 'Article 2', url: 'https://example.com/2', link: 'https://example.com/2', author: 'Author 2', published_at: '2024-01-02T00:00:00Z', summary: 'Summary 2' },
+      ];
 
-      expect(articles).toHaveLength(2);
-      expect(articles[0].hash).toBe('abc123');
-      expect(articles[1].hash).toBe('def456');
+      (mockSupabase as any).from = () => ({
+        select: () => ({
+          eq: () => ({
+            eq: () => ({
+              in: () => Promise.resolve({ data: mockArticles, error: null }),
+            }),
+            in: () => Promise.resolve({ data: mockArticles, error: null }),
+          }),
+        }),
+      });
+
+      const repo = new ArticleRepository(mockSupabase as any);
+      const articles = await repo.getArticles('feed-123', ['hash1', 'hash2']);
+
+      expect(articles.length).toBe(2);
     });
 
-    it('should skip non-existent articles', async () => {
-      const articles = await repo.getArticles(TEST_FEED_HASH, ['abc123', 'nonexistent']);
+    it('should return empty array for non-existent articles', async () => {
+      const mockSupabase = createMockSupabase();
 
-      expect(articles).toHaveLength(1);
-      expect(articles[0].hash).toBe('abc123');
+      (mockSupabase as any).from = () => ({
+        select: () => ({
+          eq: () => ({
+            eq: () => ({
+              in: () => Promise.resolve({ data: [], error: null }),
+            }),
+            in: () => Promise.resolve({ data: [], error: null }),
+          }),
+        }),
+      });
+
+      const repo = new ArticleRepository(mockSupabase as any);
+      const articles = await repo.getArticles('feed-123', ['nonexistent']);
+
+      expect(articles).toEqual([]);
     });
   });
 
   describe('getAllArticles', () => {
     it('should return all articles without limit', async () => {
-      const articles = await repo.getAllArticles(TEST_FEED_HASH);
+      const mockSupabase = createMockSupabase();
 
-      expect(articles.length).toBeGreaterThanOrEqual(1);
+      const mockArticles = [
+        { id: '1', hash: 'hash1', title: 'Article 1', url: 'https://example.com/1', link: 'https://example.com/1', author: 'Author 1', published_at: '2024-01-01T00:00:00Z', summary: 'Summary 1' },
+      ];
+
+      (mockSupabase as any).from = () => ({
+        select: () => ({
+          eq: () => ({
+            order: () => Promise.resolve({ data: mockArticles, error: null }),
+          }),
+        }),
+      });
+
+      const repo = new ArticleRepository(mockSupabase as any);
+      const articles = await repo.getAllArticles('feed-123');
+
+      expect(articles.length).toBe(1);
     });
 
     it('should return limited articles with limit parameter', async () => {
-      // Add more articles to index
-      const extendedIndex = {
-        ...mockIndex,
-        total_count: 3,
-        articles: [
-          mockIndex.articles[0],
-          { ...mockIndex.articles[0], hash: 'def456' },
-          { ...mockIndex.articles[0], hash: 'ghi789' },
-        ],
-      };
-      await writeFile(
-        join(TEST_FEED_DIR, 'index.json'),
-        JSON.stringify(extendedIndex, null, 2)
-      );
+      const mockSupabase = createMockSupabase();
 
-      const articles = await repo.getAllArticles(TEST_FEED_HASH, 2);
+      const mockArticles = [
+        { id: '1', hash: 'hash1', title: 'Article 1', url: 'https://example.com/1', link: 'https://example.com/1', author: 'Author 1', published_at: '2024-01-01T00:00:00Z', summary: 'Summary 1' },
+      ];
 
-      expect(articles).toHaveLength(2);
-    });
-  });
+      (mockSupabase as any).from = () => ({
+        select: () => ({
+          eq: () => ({
+            order: () => ({
+              limit: () => Promise.resolve({ data: mockArticles, error: null }),
+            }),
+          }),
+        }),
+      });
 
-  describe('feedExists', () => {
-    it('should return true for existing feed', async () => {
-      const exists = await repo.feedExists(TEST_FEED_HASH);
-      expect(exists).toBe(true);
-    });
+      const repo = new ArticleRepository(mockSupabase as any);
+      const articles = await repo.getAllArticles('feed-123', 10);
 
-    it('should return false for non-existent feed', async () => {
-      const exists = await repo.feedExists('nonexistent');
-      expect(exists).toBe(false);
-    });
-  });
-
-  describe('listFeeds', () => {
-    it('should return list of feed hashes', async () => {
-      const feeds = await repo.listFeeds();
-
-      expect(feeds).toContain(TEST_FEED_HASH);
+      expect(articles.length).toBe(1);
     });
   });
 });

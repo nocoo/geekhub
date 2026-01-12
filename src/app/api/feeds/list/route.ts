@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import { readFile } from 'fs/promises';
-import { join } from 'path';
 
 async function createSupabaseClient() {
   const cookieStore = await cookies();
@@ -52,36 +50,61 @@ export async function GET() {
       return NextResponse.json({ error: feedsError.message }, { status: 500 });
     }
 
-    // Calculate unread count for each feed
-    const feedsWithCounts = await Promise.all(
-      (feeds || []).map(async (feed: any) => {
-        // Get total articles from index file
-        let totalArticles = 0;
-        try {
-          const indexFile = join(process.cwd(), 'data', 'feeds', feed.url_hash, 'index.json');
-          const content = await readFile(indexFile, 'utf-8');
-          const index = JSON.parse(content);
-          totalArticles = index.total_count || 0;
-        } catch {
-          // Index file doesn't exist
-        }
+    // Get feed_cache and unread counts for all feeds
+    const feedIds = (feeds || []).map(f => f.id);
 
-        // Get read articles count from database
-        const { data: readArticles } = await supabase
-          .from('read_articles')
-          .select('article_hash')
-          .eq('feed_id', feed.id);
+    // Get all cache data
+    const { data: cacheData } = await supabase
+      .from('feed_cache')
+      .select('*')
+      .in('feed_id', feedIds);
 
-        const readCount = readArticles?.length || 0;
-        const unreadCount = Math.max(0, totalArticles - readCount);
+    // Get unread counts from user_articles (count where is_read = false)
+    // We need to calculate this by counting total articles per feed and subtracting read ones
+    const { data: articlesData } = await supabase
+      .from('articles')
+      .select('id, feed_id')
+      .in('feed_id', feedIds);
 
-        return {
-          ...feed,
-          total_articles: totalArticles,
-          unread_count: unreadCount,
-        };
-      })
-    );
+    const { data: readStatusData } = await supabase
+      .from('user_articles')
+      .select('article_id, is_read')
+      .in('article_id', articlesData?.map(a => a.id) || []);
+
+    // Build a map of feed_id -> unread_count
+    const feedArticleIds = new Map<string, string[]>();
+    for (const article of articlesData || []) {
+      if (article.feed_id && article.id) {
+        const ids = feedArticleIds.get(article.feed_id) || [];
+        ids.push(article.id);
+        feedArticleIds.set(article.feed_id, ids);
+      }
+    }
+
+    const feedUnreadCount = new Map<string, number>();
+    for (const feedId of feedIds) {
+      const articleIds = feedArticleIds.get(feedId) || [];
+      const readCount = readStatusData?.filter(
+        rs => rs.article_id && articleIds.includes(rs.article_id) && rs.is_read
+      ).length || 0;
+      feedUnreadCount.set(feedId, Math.max(0, articleIds.length - readCount));
+    }
+
+    // Build cache map
+    const cacheMap = new Map(cacheData?.map(c => [c.feed_id, c]) || []);
+
+    // Combine data
+    const feedsWithCounts = (feeds || []).map((feed: any) => {
+      const cache = cacheMap.get(feed.id);
+      return {
+        ...feed,
+        total_articles: cache?.total_articles || feedUnreadCount.get(feed.id) || 0,
+        unread_count: feedUnreadCount.get(feed.id) || 0,
+        last_fetch_at: cache?.last_fetch_at || null,
+        last_fetch_status: cache?.last_fetch_status || null,
+        next_fetch_at: cache?.next_fetch_at || null,
+      };
+    });
 
     return NextResponse.json({ feeds: feedsWithCounts });
   } catch (error) {

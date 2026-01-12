@@ -26,15 +26,15 @@ async function createSupabaseClient() {
   );
 }
 
-// POST /api/articles/[id]/bookmark - 添加收藏
+// POST /api/articles/[id]/bookmark - Toggle bookmark
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
+    const { id: articleId } = await params;
     const body = await request.json();
-    const { feedId, articleTitle, articleUrl } = body;
+    const { notes } = body;
 
     const supabase = await createSupabaseClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -43,50 +43,60 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // 检查是否已收藏
-    const { data: existing } = await supabase
-      .from('bookmarked_articles')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('article_hash', id)
-      .maybeSingle();
-
-    if (existing) {
-      return NextResponse.json({ error: 'Already bookmarked' }, { status: 409 });
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(articleId)) {
+      return NextResponse.json({ error: 'Invalid article ID format' }, { status: 400 });
     }
 
-    // 添加收藏
-    const { data, error } = await supabase
-      .from('bookmarked_articles')
-      .insert({
+    // Check current bookmark status
+    const { data: existing } = await supabase
+      .from('user_articles')
+      .select('is_bookmarked, bookmarked_at, notes')
+      .eq('user_id', user.id)
+      .eq('article_id', articleId)
+      .maybeSingle();
+
+    const newStatus = !existing?.is_bookmarked;
+    const now = new Date().toISOString();
+
+    // Toggle bookmark
+    const { error } = await supabase
+      .from('user_articles')
+      .upsert({
         user_id: user.id,
-        feed_id: feedId,
-        article_hash: id,
-        article_title: articleTitle,
-        article_url: articleUrl,
-      })
-      .select()
-      .single();
+        article_id: articleId,
+        is_bookmarked: newStatus,
+        bookmarked_at: newStatus ? now : null,
+        notes: newStatus ? notes : null,
+      }, {
+        onConflict: 'user_id,article_id'
+      });
 
     if (error) throw error;
 
-    return NextResponse.json({ success: true, bookmark: data });
+    return NextResponse.json({
+      success: true,
+      bookmarked: newStatus,
+      bookmarkedAt: newStatus ? now : null,
+    });
   } catch (error) {
     console.error('[Bookmark] Error:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to bookmark article' },
+      { error: error instanceof Error ? error.message : 'Failed to toggle bookmark' },
       { status: 500 }
     );
   }
 }
 
-// DELETE /api/articles/[id]/bookmark - 取消收藏
+// DELETE /api/articles/[id]/bookmark - Remove bookmark
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
+    const { id: articleId } = await params;
+    const body = await request.json().catch(() => ({}));
 
     const supabase = await createSupabaseClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -95,11 +105,21 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(articleId)) {
+      return NextResponse.json({ error: 'Invalid article ID format' }, { status: 400 });
+    }
+
+    // Remove bookmark
     const { error } = await supabase
-      .from('bookmarked_articles')
-      .delete()
+      .from('user_articles')
+      .update({
+        is_bookmarked: false,
+        bookmarked_at: null,
+      })
       .eq('user_id', user.id)
-      .eq('article_hash', id);
+      .eq('article_id', articleId);
 
     if (error) throw error;
 
