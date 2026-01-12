@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import { readFile } from 'fs/promises';
-import { join } from 'path';
+
+// Service role client for reading fetch_logs
+function getServiceClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_KEY!
+  );
+}
 
 async function createSupabaseClient() {
   const cookieStore = await cookies();
@@ -28,7 +35,7 @@ async function createSupabaseClient() {
   );
 }
 
-interface ParsedLogLine {
+interface LogLine {
   timestamp: string;
   level: string;
   status?: number;
@@ -36,29 +43,10 @@ interface ParsedLogLine {
   url: string;
   duration?: string;
   message?: string;
+  feedTitle?: string;
 }
 
-function parseLogLine(line: string): ParsedLogLine | null {
-  // Expected format: [timestamp] LEVEL [STATUS] ACTION URL (duration) - message
-  const regex = /^\[([^\]]+)\]\s+(\w+)\s+(?:\[(\d+)\]\s+)?(\w+)\s+(.+?)(?:\s+\((\d+ms)\))?(?:\s+-\s+(.+))?$/;
-  const match = line.match(regex);
-
-  if (!match) return null;
-
-  const [, timestamp, level, status, action, url, duration, message] = match;
-
-  return {
-    timestamp,
-    level,
-    status: status ? parseInt(status, 10) : undefined,
-    action,
-    url,
-    duration,
-    message,
-  };
-}
-
-// GET /api/logs - Get recent fetch logs across all user's feeds
+// GET /api/logs - Get recent fetch logs across all user's feeds from database
 export async function GET(_request: NextRequest) {
   try {
     const supabase = await createSupabaseClient();
@@ -71,7 +59,7 @@ export async function GET(_request: NextRequest) {
     // Get user's feeds
     const { data: feeds, error: feedsError } = await supabase
       .from('feeds')
-      .select('id, url_hash, title')
+      .select('id, title')
       .eq('user_id', user.id)
       .eq('is_active', true);
 
@@ -79,36 +67,32 @@ export async function GET(_request: NextRequest) {
       return NextResponse.json({ logs: [] });
     }
 
-    const dataDir = join(process.cwd(), 'data', 'feeds');
-    const allLogs: ParsedLogLine[] = [];
+    const feedIds = feeds.map(f => f.id);
+    const feedTitleMap = new Map(feeds.map(f => [f.id, f.title]));
 
-    // Read logs from each feed
-    for (const feed of feeds) {
-      try {
-        const logPath = join(dataDir, feed.url_hash, 'fetch.log');
-        const content = await readFile(logPath, 'utf-8');
-        const lines = content.split('\n').filter(line => line.trim());
+    // Read logs from database
+    const supabaseAdmin = getServiceClient();
+    const { data: logs } = await supabaseAdmin
+      .from('fetch_logs')
+      .select('fetched_at, level, status, action, url, duration_ms, message, feed_id')
+      .in('feed_id', feedIds)
+      .order('fetched_at', { ascending: false })
+      .limit(50);
 
-        for (const line of lines) {
-          const parsed = parseLogLine(line);
-          if (parsed) {
-            // Add feed title to context
-            (parsed as any).feedTitle = feed.title;
-            allLogs.push(parsed);
-          }
-        }
-      } catch {
-        // Feed has no logs yet, skip
-      }
-    }
+    const formattedLogs: LogLine[] = (logs || []).map(log => ({
+      timestamp: new Date(log.fetched_at).toISOString(),
+      level: log.level,
+      status: log.status,
+      action: log.action,
+      url: log.url,
+      duration: log.duration_ms ? `(${log.duration_ms}ms)` : undefined,
+      message: log.message,
+      feedTitle: feedTitleMap.get(log.feed_id),
+    }));
 
-    // Sort by timestamp descending and get latest 50
-    const sortedLogs = allLogs
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-      .slice(0, 50);
-
-    return NextResponse.json({ logs: sortedLogs });
+    return NextResponse.json({ logs: formattedLogs });
   } catch (error) {
+    console.error('Logs error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

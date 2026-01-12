@@ -1,12 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { promises as fs } from 'fs';
-import path from 'path';
+import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 
+// Service role client for updating articles
+function getServiceClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_KEY!
+  );
+}
+
+async function createSupabaseClient() {
+  const cookieStore = await cookies();
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          } catch {
+            // Ignore if called from Server Component
+          }
+        },
+      },
+    }
+  );
+}
+
+// POST /api/ai/summarize - Generate AI summary for an article
 export async function POST(request: NextRequest) {
   let baseUrl = '';
   try {
-    const { title, content, aiSettings, articleId, feedId, urlHash } = await request.json();
+    const { title, content, aiSettings, articleId, feedId, articleHash } = await request.json();
     baseUrl = aiSettings.baseUrl || '';
 
     // Validate AI settings
@@ -36,6 +70,13 @@ export async function POST(request: NextRequest) {
         { success: false, error: '标题和内容不能为空' },
         { status: 400 }
       );
+    }
+
+    // Authenticate user
+    const supabase = await createSupabaseClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Initialize OpenAI client with custom settings
@@ -72,7 +113,7 @@ ${content}
           content: prompt
         }
       ],
-      max_completion_tokens: 4000,  // Increase for reasoning models
+      max_completion_tokens: 4000,
       temperature: 0.3,
     });
 
@@ -95,26 +136,21 @@ ${content}
 
     const summaryText = summary.trim();
 
-    // Save summary to article JSON if articleId and urlHash are provided
-    if (articleId && urlHash) {
+    // Save summary to database if articleId and feedId are provided
+    if (articleId && feedId) {
       try {
-        const dataDir = path.join(process.cwd(), 'data');
-        const articlePath = path.join(dataDir, 'feeds', urlHash, 'articles', `${articleId}.json`);
+        const supabaseAdmin = getServiceClient();
+        const { error: updateError } = await supabaseAdmin
+          .from('articles')
+          .update({
+            summary: summaryText,
+          })
+          .eq('id', articleId)
+          .eq('feed_id', feedId);
 
-        // Read existing article data
-        const articleContent = await fs.readFile(articlePath, 'utf-8');
-        const articleData = JSON.parse(articleContent);
-
-        // Add AI summary with timestamp
-        articleData.ai_summary = {
-          content: summaryText,
-          model: aiSettings.model || 'gpt-4o-mini',
-          generated_at: new Date().toISOString(),
-          usage: completion.usage,
-        };
-
-        // Write back to file
-        await fs.writeFile(articlePath, JSON.stringify(articleData, null, 2), 'utf-8');
+        if (updateError) {
+          console.error('[AI Summarize] Failed to save summary to database:', updateError);
+        }
       } catch (saveError) {
         console.error('[AI Summarize] Failed to save summary:', saveError);
         // Don't fail the request if saving fails

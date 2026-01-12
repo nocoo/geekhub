@@ -5,14 +5,14 @@ import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
 import { AuthButton } from '@/components/AuthButton';
 import { SettingsDialog } from '@/components/SettingsDialog';
-import { DebugPanel } from '@/components/DebugPanel';
+import { DataManagerPanel } from '@/components/DataManagerPanel';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
 export function Header() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
-  const [showDebugPanel, setShowDebugPanel] = useState(false);
+  const [showDataManager, setShowDataManager] = useState(false);
 
   // useEffect only runs on the client, so now we can safely show the UI
   useEffect(() => {
@@ -51,9 +51,9 @@ export function Header() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setShowDebugPanel(true)}
+            onClick={() => setShowDataManager(true)}
             className="h-9 w-9 text-muted-foreground hover:text-foreground"
-            title="Debug Panel"
+            title="Data Manager"
           >
             <Bug className="h-4 w-4" />
           </Button>
@@ -62,10 +62,10 @@ export function Header() {
         </div>
       </header>
 
-      {/* Debug Panel */}
-      <DebugPanel
-        open={showDebugPanel}
-        onOpenChange={setShowDebugPanel}
+      {/* Data Manager Panel */}
+      <DataManagerPanel
+        open={showDataManager}
+        onOpenChange={setShowDataManager}
       />
     </>
   );

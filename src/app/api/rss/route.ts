@@ -131,7 +131,6 @@ export async function GET(request: NextRequest) {
       success: true,
       cached: result.cached,
       fetchedAt: result.fetchedAt,
-      fileName: result.fileName,
       feed: result.feed,
     });
   } catch (error) {

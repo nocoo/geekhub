@@ -44,9 +44,9 @@ export interface ArticlesResult {
  * to properly handle async cookies in Next.js
  */
 export class ArticleViewModelService {
-  private supabase: ReturnType<typeof createClient>;
+  private supabase: any;
 
-  constructor(supabaseClient: ReturnType<typeof createClient>) {
+  constructor(supabaseClient: any) {
     this.supabase = supabaseClient;
   }
 

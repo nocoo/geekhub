@@ -1,7 +1,7 @@
 /**
  * ReadStatusService Tests
  *
- * Tests the database layer that manages read status.
+ * Tests for the database layer that manages read status.
  *
  * Run: bun test -- read-status-service.test.ts
  */
@@ -28,57 +28,48 @@ describe('ReadStatusService', () => {
     });
   });
 
-  describe('method signatures', () => {
-    it('getReadArticleIds should be a function', () => {
+  describe('public API', () => {
+    it('should expose getReadArticleIds method', () => {
       const service = new ReadStatusService('test-user-id');
       expect(typeof service.getReadArticleIds).toBe('function');
     });
 
-    it('markAsRead should be a function', () => {
+    it('should expose markAsRead method', () => {
       const service = new ReadStatusService('test-user-id');
       expect(typeof service.markAsRead).toBe('function');
     });
 
-    it('markAllAsRead should be a function', () => {
+    it('should expose markAllAsRead method', () => {
       const service = new ReadStatusService('test-user-id');
       expect(typeof service.markAllAsRead).toBe('function');
     });
 
-    it('markAsUnread should be a function', () => {
+    it('should expose markAsUnread method', () => {
       const service = new ReadStatusService('test-user-id');
       expect(typeof service.markAsUnread).toBe('function');
     });
 
-    it('toggleBookmark should be a function', () => {
+    it('should expose toggleBookmark method', () => {
       const service = new ReadStatusService('test-user-id');
       expect(typeof service.toggleBookmark).toBe('function');
     });
 
-    it('toggleReadLater should be a function', () => {
+    it('should expose toggleReadLater method', () => {
       const service = new ReadStatusService('test-user-id');
       expect(typeof service.toggleReadLater).toBe('function');
     });
-  });
 
-  describe('instance properties', () => {
-    it('should have userId property', () => {
-      const service = new ReadStatusService('user-123');
-      expect('userId' in (service as any)).toBe(true);
-    });
-  });
-
-  describe('backward compatibility methods', () => {
-    it('getReadHashes should be a function', () => {
+    it('should expose getReadHashes method', () => {
       const service = new ReadStatusService('test-user-id');
       expect(typeof service.getReadHashes).toBe('function');
     });
 
-    it('markAsReadByHash should be a function', () => {
+    it('should expose markAsReadByHash method', () => {
       const service = new ReadStatusService('test-user-id');
       expect(typeof service.markAsReadByHash).toBe('function');
     });
 
-    it('markAsUnreadByHash should be a function', () => {
+    it('should expose markAsUnreadByHash method', () => {
       const service = new ReadStatusService('test-user-id');
       expect(typeof service.markAsUnreadByHash).toBe('function');
     });

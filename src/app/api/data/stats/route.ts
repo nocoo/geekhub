@@ -26,7 +26,7 @@ async function createSupabaseClient() {
   );
 }
 
-// GET /api/debug/stats - 获取系统统计信息
+// GET /api/data/stats - Get system statistics
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createSupabaseClient();
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // 获取Feed统计
+    // Get feeds
     const { data: feeds, error: feedsError } = await supabase
       .from('feeds')
       .select('id, is_active, last_fetched_at, total_articles')
@@ -46,11 +46,10 @@ export async function GET(request: NextRequest) {
       throw feedsError;
     }
 
-    // 计算Feed状态统计
+    // Calculate feed statistics
     const totalFeeds = feeds.length;
     const activeFeeds = feeds.filter(f => f.is_active).length;
     const errorFeeds = feeds.filter(f => {
-      // 如果超过24小时没有抓取且是活跃的，认为是错误状态
       if (!f.is_active) return false;
       if (!f.last_fetched_at) return true;
       const lastFetch = new Date(f.last_fetched_at);
@@ -59,10 +58,10 @@ export async function GET(request: NextRequest) {
     }).length;
     const pausedFeeds = feeds.filter(f => !f.is_active).length;
 
-    // 计算文章统计
+    // Calculate article statistics
     const totalArticles = feeds.reduce((sum, f) => sum + (f.total_articles || 0), 0);
 
-    // 计算今日抓取数量（简化版，实际应该从日志中统计）
+    // Calculate today's fetch count
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const todayFetched = feeds.filter(f => {
@@ -71,9 +70,6 @@ export async function GET(request: NextRequest) {
       return lastFetch >= today;
     }).length;
 
-    // 计算存储大小（需要读取文件系统，这里先用估算）
-    const estimatedStorageSize = totalArticles * 2048; // 假设每篇文章平均2KB
-
     const stats = {
       totalFeeds,
       activeFeeds,
@@ -81,13 +77,13 @@ export async function GET(request: NextRequest) {
       pausedFeeds,
       totalArticles,
       todayFetched,
-      storageSize: estimatedStorageSize,
+      storageSize: 0, // No longer tracking file system storage
       lastUpdate: new Date().toISOString(),
     };
 
     return NextResponse.json(stats);
   } catch (error) {
-    console.error('Debug stats error:', error);
+    console.error('Data stats error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

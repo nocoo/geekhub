@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { ArticleViewModelService } from '@/lib/article-view-model';
@@ -27,7 +28,15 @@ async function createSupabaseClient() {
   );
 }
 
-// GET /api/feeds/[id]/articles - 获取已抓取的文章列表
+// Create a service role client for view model operations
+function getServiceClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_KEY!
+  );
+}
+
+// GET /api/feeds/[id]/articles - Get articles for a feed
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -68,8 +77,8 @@ export async function GET(
       readStatus?.map(rs => rs.article_id) || []
     );
 
-    // Get articles using view model
-    const viewModel = new ArticleViewModelService(supabase);
+    // Get articles using view model with service role client
+    const viewModel = new ArticleViewModelService(getServiceClient());
     const result = await viewModel.getArticlesForFeed(
       feed.id,
       feed.title,

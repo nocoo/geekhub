@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import { rm } from 'fs/promises';
-import { join } from 'path';
 
 async function createSupabaseClient() {
   const cookieStore = await cookies();
@@ -28,7 +26,7 @@ async function createSupabaseClient() {
   );
 }
 
-// PUT /api/feeds/[id] - 更新 RSS 源
+// PUT /api/feeds/[id] - Update RSS feed
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -64,7 +62,7 @@ export async function PUT(
       .single();
 
     if (error) {
-      if (error.code === 'PGRST116') { // no rows returned
+      if (error.code === 'PGRST116') {
         return NextResponse.json({ error: 'Feed not found' }, { status: 404 });
       }
       return NextResponse.json({ error: error.message }, { status: 500 });
@@ -76,7 +74,7 @@ export async function PUT(
   }
 }
 
-// DELETE /api/feeds/[id] - 删除 RSS 源
+// DELETE /api/feeds/[id] - Delete RSS feed (database only, no file cleanup)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -90,7 +88,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // 获取要删除的 feed 信息（用于清理文件）
+    // Get feed info before deletion
     const { data: feed, error: fetchError } = await supabase
       .from('feeds')
       .select('url_hash')
@@ -105,11 +103,11 @@ export async function DELETE(
       return NextResponse.json({ error: fetchError.message }, { status: 500 });
     }
 
-    // 删除相关的已读记录和收藏记录
+    // Delete related records (RLS will ensure user ownership)
     await supabase.from('read_articles').delete().eq('feed_id', id);
     await supabase.from('bookmarked_articles').delete().eq('feed_id', id);
 
-    // 删除 RSS 源
+    // Delete the feed (cascades to articles, fetch_logs, fetch_status due to FK)
     const { error } = await supabase
       .from('feeds')
       .delete()
@@ -118,16 +116,6 @@ export async function DELETE(
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    // 清理文件系统中的数据文件
-    try {
-      const feedDataDir = join(process.cwd(), 'data', 'feeds', feed.url_hash);
-      await rm(feedDataDir, { recursive: true, force: true });
-      console.log(`Cleaned up feed data directory: ${feedDataDir}`);
-    } catch (fileError) {
-      // 文件清理失败不影响删除操作，只记录日志
-      console.warn(`Failed to clean up feed data directory for ${feed.url_hash}:`, fileError);
     }
 
     return NextResponse.json({ success: true, url_hash: feed.url_hash });

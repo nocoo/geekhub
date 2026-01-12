@@ -98,7 +98,7 @@ export class ArticleRepository {
     return {
       last_updated: new Date().toISOString(),
       total_count: data.length,
-      articles: data.map(a => ({
+      articles: (data as any[]).map(a => ({
         id: a.id,
         hash: a.hash,
         title: a.title,
@@ -125,7 +125,7 @@ export class ArticleRepository {
       return [];
     }
 
-    return data.map(a => a.hash);
+    return (data as any[]).map(a => a.hash);
   }
 
   /**

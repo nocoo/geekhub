@@ -1,8 +1,15 @@
 import { NextRequest } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import { readFile } from 'fs/promises';
-import { join } from 'path';
+
+// Service role client for reading fetch_logs
+function getServiceClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_KEY!
+  );
+}
 
 async function createSupabaseClient() {
   const cookieStore = await cookies();
@@ -22,7 +29,7 @@ async function createSupabaseClient() {
   );
 }
 
-interface ParsedLogLine {
+interface LogLine {
   timestamp: string;
   level: string;
   status?: number;
@@ -30,25 +37,7 @@ interface ParsedLogLine {
   url: string;
   duration?: string;
   message?: string;
-}
-
-function parseLogLine(line: string): ParsedLogLine | null {
-  const regex = /^\[([^\]]+)\]\s+(\w+)\s+(?:\[(\d+)\]\s+)?(\w+)\s+(.+?)(?:\s+\((\d+ms)\))?(?:\s+-\s+(.+))?$/;
-  const match = line.match(regex);
-
-  if (!match) return null;
-
-  const [, timestamp, level, status, action, url, duration, message] = match;
-
-  return {
-    timestamp,
-    level,
-    status: status ? parseInt(status, 10) : undefined,
-    action,
-    url,
-    duration,
-    message,
-  };
+  feedTitle?: string;
 }
 
 // GET /api/logs/stream - SSE stream for real-time logs
@@ -63,17 +52,26 @@ export async function GET(request: NextRequest) {
   // Get user's feeds
   const { data: feeds } = await supabase
     .from('feeds')
-    .select('id, url_hash, title, last_fetched_at')
+    .select('id, title')
     .eq('user_id', user.id)
     .eq('is_active', true);
 
-  if (!feeds) {
+  if (!feeds || feeds.length === 0) {
     return new Response('No feeds found', { status: 404 });
   }
 
-  // Store initial last_fetched_at for each feed to detect changes
+  const feedIds = feeds.map(f => f.id);
+  const feedTitleMap = new Map(feeds.map(f => [f.id, f.title]));
+
+  // Store last fetched timestamp for each feed to detect changes
+  const supabaseAdmin = getServiceClient();
+  const { data: fetchStatuses } = await supabaseAdmin
+    .from('fetch_status')
+    .select('feed_id, last_fetch_at')
+    .in('feed_id', feedIds);
+
   const feedFetchTimestamps = new Map<string, string>(
-    feeds.map(f => [f.id, f.last_fetched_at || ''])
+    fetchStatuses?.map(s => [s.feed_id, s.last_fetch_at || '']) || []
   );
 
   const encoder = new TextEncoder();
@@ -86,107 +84,82 @@ export async function GET(request: NextRequest) {
         controller.enqueue(encoder.encode(message));
       };
 
-      // Flag to skip first check (avoid sending events for initial data)
       let isFirstCheck = true;
 
       // Send initial connection message
       sendEvent({ type: 'connected', message: 'Connected to log stream' }, 'system');
 
-      // Fetch and send initial logs
-      const dataDir = join(process.cwd(), 'data', 'feeds');
-      const allLogs: ParsedLogLine[] = [];
+      // Fetch and send initial logs from database
+      const { data: logs } = await supabaseAdmin
+        .from('fetch_logs')
+        .select('fetched_at, level, status, action, url, duration_ms, message, feed_id')
+        .in('feed_id', feedIds)
+        .order('fetched_at', { ascending: true })
+        .limit(50);
 
-      for (const feed of feeds) {
-        try {
-          const logPath = join(dataDir, feed.url_hash, 'fetch.log');
-          const content = await readFile(logPath, 'utf-8');
-          const lines = content.split('\n').filter(line => line.trim());
+      const formattedLogs: LogLine[] = (logs || []).map(log => ({
+        timestamp: new Date(log.fetched_at).toISOString(),
+        level: log.level,
+        status: log.status,
+        action: log.action,
+        url: log.url,
+        duration: log.duration_ms ? `(${log.duration_ms}ms)` : undefined,
+        message: log.message,
+        feedTitle: feedTitleMap.get(log.feed_id),
+      }));
 
-          for (const line of lines) {
-            const parsed = parseLogLine(line);
-            if (parsed) {
-              (parsed as any).feedTitle = feed.title;
-              allLogs.push(parsed);
-            }
-          }
-        } catch {
-          // Feed has no logs yet, skip
-        }
-      }
+      sendEvent({ logs: formattedLogs }, 'init');
 
-      // Sort by timestamp and send
-      const sortedLogs = allLogs
-        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-        .slice(-50); // Only send latest 50
-
-      sendEvent({ logs: sortedLogs }, 'init');
-
-      // Set up file watching interval
+      // Set up polling interval for new logs
       const interval = setInterval(async () => {
-        const newLogs: ParsedLogLine[] = [];
+        // Get latest logs for each feed
+        const { data: newLogs } = await supabaseAdmin
+          .from('fetch_logs')
+          .select('fetched_at, level, status, action, url, duration_ms, message, feed_id')
+          .in('feed_id', feedIds)
+          .order('fetched_at', { ascending: false })
+          .limit(10);
 
-        for (const feed of feeds) {
-          try {
-            const logPath = join(dataDir, feed.url_hash, 'fetch.log');
-            const content = await readFile(logPath, 'utf-8');
-            const lines = content.split('\n').filter(line => line.trim());
+        if (newLogs && newLogs.length > 0) {
+          const formattedNewLogs: LogLine[] = newLogs.map(log => ({
+            timestamp: new Date(log.fetched_at).toISOString(),
+            level: log.level,
+            status: log.status,
+            action: log.action,
+            url: log.url,
+            duration: log.duration_ms ? `(${log.duration_ms}ms)` : undefined,
+            message: log.message,
+            feedTitle: feedTitleMap.get(log.feed_id),
+          })).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
-            // Get last 5 lines only
-            const recentLines = lines.slice(-5);
-            for (const line of recentLines) {
-              const parsed = parseLogLine(line);
-              if (parsed) {
-                (parsed as any).feedTitle = feed.title;
-                newLogs.push(parsed);
-              }
-            }
-          } catch {
-            // Feed has no logs yet, skip
-          }
+          sendEvent({ logs: formattedNewLogs }, 'update');
         }
 
-        if (newLogs.length > 0) {
-          // Sort by timestamp and send
-          const sorted = newLogs.sort((a, b) =>
-            new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-          );
-          sendEvent({ logs: sorted }, 'update');
-        }
+        // Check for feed fetch completion
+        const { data: updatedStatuses } = await supabaseAdmin
+          .from('fetch_status')
+          .select('feed_id, last_fetch_at, total_articles')
+          .in('feed_id', feedIds);
 
-        // Check for feed fetch completion by monitoring last_fetched_at changes
-        const { data: updatedFeeds } = await supabase
-          .from('feeds')
-          .select('id, last_fetched_at, total_articles')
-          .eq('user_id', user.id)
-          .eq('is_active', true);
+        if (updatedStatuses) {
+          for (const updated of updatedStatuses) {
+            const previousTimestamp = feedFetchTimestamps.get(updated.feed_id) || '';
+            const currentTimestamp = updated.last_fetch_at || '';
 
-        if (updatedFeeds) {
-          for (const updatedFeed of updatedFeeds) {
-            const previousTimestamp = feedFetchTimestamps.get(updatedFeed.id);
-            const currentTimestamp = updatedFeed.last_fetched_at || '';
-
-            // Normalize both to empty string for comparison (handle null/undefined)
-            const normalizedPrevious = previousTimestamp || '';
-            const normalizedCurrent = currentTimestamp || '';
-
-            // Skip first check to avoid sending events for initial data
-            if (!isFirstCheck && normalizedPrevious !== normalizedCurrent) {
-              // Feed was updated, send fetch-complete event
+            if (!isFirstCheck && previousTimestamp !== currentTimestamp) {
               sendEvent({
-                feedId: updatedFeed.id,
-                lastFetchedAt: updatedFeed.last_fetched_at,
-                totalArticles: updatedFeed.total_articles,
+                feedId: updated.feed_id,
+                lastFetchedAt: updated.last_fetch_at,
+                totalArticles: updated.total_articles,
               }, 'fetch-complete');
             }
 
-            // Update stored timestamp
-            feedFetchTimestamps.set(updatedFeed.id, normalizedCurrent);
+            feedFetchTimestamps.set(updated.feed_id, currentTimestamp);
           }
         }
 
-        // Mark first check as complete
         isFirstCheck = false;
-      }, 3000); // Check every 3 seconds
+      }, 3000);
 
       // Keep connection alive
       const keepAlive = setInterval(() => {

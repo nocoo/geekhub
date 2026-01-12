@@ -225,7 +225,8 @@ export class FeedFetcher {
     proxyConfig?: ProxyConfig,
     rsshubConfig?: RssHubConfig
   ) {
-    this.logger = new FeedLogger(this.feed.url_hash, this.dataDir);
+    // Initialize logger with feedId and urlHash
+    this.logger = new FeedLogger(this.feed.id, this.feed.url_hash, this.dataDir);
 
     // Set proxy and RssHub config for this fetcher
     setProxyConfig(proxyConfig);
@@ -404,7 +405,12 @@ export class FeedFetcher {
   }
 
   async getLogs(): Promise<string[]> {
-    return this.logger.getRecentLogs(100);
+    const logs = await this.logger.getRecentLogs(100);
+    return logs.map(log => {
+      const timestamp = new Date(log.timestamp).toISOString().slice(0, 19).replace('T', ' ');
+      const duration = log.duration_ms ? `(${log.duration_ms}ms)` : '';
+      return `[${timestamp}] ${log.level} [${log.status || ''}] ${log.action} ${log.url} ${duration} - ${log.message || ''}`;
+    });
   }
 
   getFeedInfo(): FeedInfo {

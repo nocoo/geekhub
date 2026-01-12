@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import { readFile, readdir, stat } from 'fs/promises';
-import { join } from 'path';
+
+// Service role client for reading fetch_logs and articles
+function getServiceClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_KEY!
+  );
+}
 
 async function createSupabaseClient() {
   const cookieStore = await cookies();
@@ -28,7 +35,7 @@ async function createSupabaseClient() {
   );
 }
 
-// GET /api/feeds/[id]/logs - 获取RSS抓取日志和文件信息
+// GET /api/feeds/[id]/logs - Get RSS fetch logs and articles from database
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -42,7 +49,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // 获取feed信息
+    // Get feed info
     const { data: feed, error: feedError } = await supabase
       .from('feeds')
       .select('*')
@@ -54,62 +61,48 @@ export async function GET(
       return NextResponse.json({ error: 'Feed not found' }, { status: 404 });
     }
 
-    const dataDir = join(process.cwd(), 'data', 'feeds', feed.url_hash);
+    // Get fetch logs from database
+    const supabaseAdmin = getServiceClient();
+    const { data: fetchLogs } = await supabaseAdmin
+      .from('fetch_logs')
+      .select('fetched_at, level, action, url, duration_ms, message')
+      .eq('feed_id', id)
+      .order('fetched_at', { ascending: false })
+      .limit(100);
 
-    // 读取抓取日志
-    let logs: string[] = [];
-    try {
-      const logPath = join(dataDir, 'fetch.log');
-      const logContent = await readFile(logPath, 'utf-8');
-      logs = logContent.split('\n').filter(line => line.trim());
-    } catch {
-      logs = ['No logs available yet'];
+    // Format logs as strings
+    const logs: string[] = (fetchLogs || []).reverse().map(log => {
+      const timestamp = new Date(log.fetched_at).toISOString().slice(0, 19).replace('T', ' ');
+      const duration = log.duration_ms ? `(${log.duration_ms}ms)` : '';
+      const parts = [log.action, log.url, duration, log.message].filter(Boolean);
+      return `[${timestamp}] ${log.level} ${parts.join(' ')}`;
+    });
+
+    if (logs.length === 0) {
+      logs.push('No logs available yet');
     }
 
-    // 读取已抓取的文件列表
-    let articles: Array<{
-      path: string;
-      title: string;
-      date: string;
-      size: number;
-    }> = [];
+    // Get articles from database
+    const { data: articles } = await supabaseAdmin
+      .from('articles')
+      .select('title, url, published_at, fetched_at')
+      .eq('feed_id', id)
+      .order('published_at', { ascending: false })
+      .limit(100);
 
-    try {
-      const articlesDir = join(dataDir, 'articles');
-      const years = await readdir(articlesDir);
+    const formattedArticles = (articles || []).map(article => ({
+      path: article.url,
+      title: article.title || 'Untitled',
+      date: article.published_at || article.fetched_at,
+      size: 0, // Size not stored in database
+    }));
 
-      for (const year of years) {
-        const monthsPath = join(articlesDir, year);
-        const months = await readdir(monthsPath);
-
-        for (const month of months) {
-          const monthPath = join(monthsPath, month);
-          const files = await readdir(monthPath);
-
-          for (const file of files) {
-            const filePath = join(monthPath, file);
-            const stats = await stat(filePath);
-
-            try {
-              const content = JSON.parse(await readFile(filePath, 'utf-8'));
-              articles.push({
-                path: `${year}/${month}/${file}`,
-                title: content.title || 'Untitled',
-                date: content.date || content.pubDate || new Date(stats.mtime).toISOString(),
-                size: stats.size,
-              });
-            } catch {
-              // 忽略解析失败的文件
-            }
-          }
-        }
-      }
-    } catch {
-      articles = [];
-    }
-
-    // 按日期排序
-    articles.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    // Get fetch status
+    const { data: fetchStatus } = await supabaseAdmin
+      .from('fetch_status')
+      .select('last_fetch_at, total_articles')
+      .eq('feed_id', id)
+      .single();
 
     return NextResponse.json({
       feed: {
@@ -117,17 +110,18 @@ export async function GET(
         title: feed.title,
         url: feed.url,
         url_hash: feed.url_hash,
-        last_fetched_at: feed.last_fetched_at,
-        total_articles: feed.total_articles,
+        last_fetched_at: fetchStatus?.last_fetch_at || feed.last_fetched_at,
+        total_articles: fetchStatus?.total_articles || feed.total_articles,
       },
-      logs: logs.slice(-100), // 只返回最近100条
-      articles,
+      logs,
+      articles: formattedArticles,
       stats: {
-        totalArticles: articles.length,
-        totalSize: articles.reduce((sum, a) => sum + a.size, 0),
+        totalArticles: formattedArticles.length,
+        totalSize: 0, // No longer tracking file size
       },
     });
   } catch (error) {
+    console.error('Feed logs error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

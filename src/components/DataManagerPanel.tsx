@@ -96,6 +96,23 @@ interface DataFile {
   feedTitle?: string;
 }
 
+interface DatabaseTableInfo {
+  table_name: string;
+  row_count: number;
+  size_bytes: number;
+}
+
+interface DatabaseStorageData {
+  tables: DatabaseTableInfo[];
+  summary: {
+    totalFeeds: number;
+    totalArticles: number;
+    totalLogs: number;
+    recentFetches24h: number;
+    storageType: string;
+  };
+}
+
 interface SystemHealth {
   database: 'connected' | 'error' | 'slow';
   proxy: 'connected' | 'disconnected' | 'error';
@@ -105,18 +122,23 @@ interface SystemHealth {
 }
 
 interface CleanupResult {
-  orphanedDirectories: string[];
-  oldCacheFiles: string[];
-  totalSizeFreed: number;
+  cleanupNeeded: {
+    oldLogs: number;
+    recommendation: string;
+  };
+}
+
+interface CleanupExecuteResult {
+  deletedLogs: number;
   errors: string[];
 }
 
-interface DebugPanelProps {
+interface DataManagerPanelProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function DebugPanel({ open, onOpenChange }: DebugPanelProps) {
+export function DataManagerPanel({ open, onOpenChange }: DataManagerPanelProps) {
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -126,61 +148,61 @@ export function DebugPanel({ open, onOpenChange }: DebugPanelProps) {
   const [systemStats, setSystemStats] = useState<SystemStats | null>(null);
   const [feedStatuses, setFeedStatuses] = useState<FeedStatus[]>([]);
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [dataFiles, setDataFiles] = useState<DataFile[]>([]);
+  const [dbStorage, setDbStorage] = useState<DatabaseStorageData | null>(null);
   const [systemHealth, setSystemHealth] = useState<SystemHealth | null>(null);
   const [cleanupData, setCleanupData] = useState<CleanupResult | null>(null);
   const [cleanupLoading, setCleanupLoading] = useState(false);
 
-  // Load all debug data
-  const loadDebugData = useCallback(async () => {
+  // Load all data manager data
+  const loadDataManagerData = useCallback(async () => {
     if (!open) return;
 
     setLoading(true);
     try {
       // Load system stats
-      const statsResponse = await fetch('/api/debug/stats');
+      const statsResponse = await fetch('/api/data/stats');
       if (statsResponse.ok) {
         const stats = await statsResponse.json();
         setSystemStats(stats);
       }
 
       // Load feed statuses
-      const feedsResponse = await fetch('/api/debug/feeds');
+      const feedsResponse = await fetch('/api/data/feeds');
       if (feedsResponse.ok) {
         const feeds = await feedsResponse.json();
         setFeedStatuses(feeds);
       }
 
       // Load aggregated logs
-      const logsResponse = await fetch('/api/debug/logs');
+      const logsResponse = await fetch('/api/data/logs');
       if (logsResponse.ok) {
         const logsData = await logsResponse.json();
         setLogs(logsData);
       }
 
-      // Load data files
-      const filesResponse = await fetch('/api/debug/files');
+      // Load database storage info
+      const filesResponse = await fetch('/api/data/files');
       if (filesResponse.ok) {
-        const files = await filesResponse.json();
-        setDataFiles(files);
+        const storageData = await filesResponse.json();
+        setDbStorage(storageData);
       }
 
       // Load system health
-      const healthResponse = await fetch('/api/debug/health');
+      const healthResponse = await fetch('/api/data/health');
       if (healthResponse.ok) {
         const health = await healthResponse.json();
         setSystemHealth(health);
       }
 
       // Load cleanup data
-      const cleanupResponse = await fetch('/api/debug/cleanup');
+      const cleanupResponse = await fetch('/api/data/cleanup');
       if (cleanupResponse.ok) {
         const cleanup = await cleanupResponse.json();
         setCleanupData(cleanup);
       }
     } catch (error) {
-      console.error('Failed to load debug data:', error);
-      toast.error('加载调试数据失败');
+      console.error('Failed to load data manager data:', error);
+      toast.error('加载数据管理数据失败');
     } finally {
       setLoading(false);
     }
@@ -188,13 +210,13 @@ export function DebugPanel({ open, onOpenChange }: DebugPanelProps) {
 
   // Auto-refresh data
   useEffect(() => {
-    loadDebugData();
+    loadDataManagerData();
 
     if (open) {
-      const interval = setInterval(loadDebugData, 10000); // Refresh every 10s
+      const interval = setInterval(loadDataManagerData, 10000); // Refresh every 10s
       return () => clearInterval(interval);
     }
-  }, [open, loadDebugData]);
+  }, [open, loadDataManagerData]);
 
   // Format bytes
   const formatBytes = (bytes: number): string => {
@@ -233,13 +255,12 @@ export function DebugPanel({ open, onOpenChange }: DebugPanelProps) {
 
   // Handle cleanup operations
   const handleCleanup = async (options: {
-    cleanOrphanedDirectories?: boolean;
-    cleanOldCacheFiles?: boolean;
-    specificPaths?: string[];
+    deleteOldLogs?: boolean;
+    olderThanDays?: number;
   }) => {
     setCleanupLoading(true);
     try {
-      const response = await fetch('/api/debug/cleanup', {
+      const response = await fetch('/api/data/cleanup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(options),
@@ -248,14 +269,14 @@ export function DebugPanel({ open, onOpenChange }: DebugPanelProps) {
       if (response.ok) {
         const result = await response.json();
 
-        if (result.errors.length > 0) {
+        if (result.errors && result.errors.length > 0) {
           toast.error(`清理完成，但有 ${result.errors.length} 个错误`);
         } else {
-          toast.success(`清理完成！释放了 ${formatBytes(result.totalSizeFreed)} 空间`);
+          toast.success('清理完成！');
         }
 
         // 重新加载数据
-        loadDebugData();
+        loadDataManagerData();
       } else {
         const { error } = await response.json();
         toast.error(error || '清理失败');
@@ -274,10 +295,10 @@ export function DebugPanel({ open, onOpenChange }: DebugPanelProps) {
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2 text-xl">
             <Bug className="w-5 h-5 text-primary" />
-            Debug Panel - GeekHub System Monitor
+            Data Manager - GeekHub System Monitor
           </DialogTitle>
           <DialogDescription>
-            系统级调试面板，监控所有Feed抓取状态、日志和数据文件
+            数据管理中心，监控所有Feed抓取状态、日志和存储数据
           </DialogDescription>
         </DialogHeader>
 
@@ -434,7 +455,7 @@ export function DebugPanel({ open, onOpenChange }: DebugPanelProps) {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <h3 className="text-lg font-semibold">Feed状态监控</h3>
-                    <Button size="sm" onClick={loadDebugData} disabled={loading}>
+                    <Button size="sm" onClick={loadDataManagerData} disabled={loading}>
                       <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                       刷新
                     </Button>
@@ -509,7 +530,7 @@ export function DebugPanel({ open, onOpenChange }: DebugPanelProps) {
                         <Download className="w-4 h-4 mr-2" />
                         导出
                       </Button>
-                      <Button size="sm" onClick={loadDebugData} disabled={loading}>
+                      <Button size="sm" onClick={loadDataManagerData} disabled={loading}>
                         <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                         刷新
                       </Button>
@@ -572,125 +593,118 @@ export function DebugPanel({ open, onOpenChange }: DebugPanelProps) {
               <TabsContent value="files" className="flex-1 overflow-y-auto mt-4">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold">数据文件浏览器</h3>
+                    <h3 className="text-lg font-semibold">数据库存储</h3>
                     <div className="flex items-center gap-2">
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => handleCleanup({ cleanOldCacheFiles: true })}
-                        disabled={cleanupLoading}
+                        onClick={() => handleCleanup({ deleteOldLogs: true })}
+                        disabled={cleanupLoading || !cleanupData?.cleanupNeeded.oldLogs}
                       >
                         <Trash2 className="w-4 h-4 mr-2" />
-                        清理缓存
+                        清理旧日志
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleCleanup({ cleanOrphanedDirectories: true })}
-                        disabled={cleanupLoading}
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        清理孤立目录
-                      </Button>
-                      <Button size="sm" onClick={loadDebugData} disabled={loading}>
+                      <Button size="sm" onClick={loadDataManagerData} disabled={loading}>
                         <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                         刷新
                       </Button>
                     </div>
                   </div>
 
-                  {/* Cleanup Status */}
-                  {cleanupData && (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <Card>
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-sm">孤立目录</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="text-2xl font-bold text-orange-600">
-                            {cleanupData.orphanedDirectories.length}
+                  {/* Cleanup recommendation */}
+                  {cleanupData && cleanupData.cleanupNeeded.oldLogs > 0 && (
+                    <Card className="border-orange-200 dark:border-orange-800">
+                      <CardContent className="pt-4">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-full bg-orange-100 dark:bg-orange-900">
+                            <Trash2 className="w-4 h-4 text-orange-600" />
                           </div>
-                          <p className="text-xs text-muted-foreground">
-                            数据库中不存在的Feed目录
-                          </p>
-                        </CardContent>
-                      </Card>
-
-                      <Card>
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-sm">旧缓存文件</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="text-2xl font-bold text-blue-600">
-                            {cleanupData.oldCacheFiles.length}
+                          <div>
+                            <p className="font-medium">{cleanupData.cleanupNeeded.recommendation}</p>
+                            <p className="text-sm text-muted-foreground">
+                              删除超过30天的抓取日志以释放空间
+                            </p>
                           </div>
-                          <p className="text-xs text-muted-foreground">
-                            超过7天的RSS缓存文件
-                          </p>
-                        </CardContent>
-                      </Card>
-
-                      <Card>
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-sm">可释放空间</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="text-2xl font-bold text-green-600">
-                            {formatBytes(cleanupData.totalSizeFreed)}
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            清理后可释放的存储空间
-                          </p>
-                        </CardContent>
-                      </Card>
-                    </div>
+                        </div>
+                      </CardContent>
+                    </Card>
                   )}
 
-                  <div className="border rounded-lg">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>文件路径</TableHead>
-                          <TableHead>类型</TableHead>
-                          <TableHead>Feed</TableHead>
-                          <TableHead>大小</TableHead>
-                          <TableHead>修改时间</TableHead>
-                          <TableHead>操作</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {dataFiles.slice(0, 100).map((file, i) => (
-                          <TableRow key={i}>
-                            <TableCell>
-                              <code className="text-xs bg-muted px-1 py-0.5 rounded">
-                                {file.path}
-                              </code>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="outline" className="text-xs">
-                                {file.type}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-sm max-w-32 truncate">
-                              {file.feedTitle || '-'}
-                            </TableCell>
-                            <TableCell className="text-sm">{formatBytes(file.size)}</TableCell>
-                            <TableCell className="text-sm">{formatDate(file.modified)}</TableCell>
-                            <TableCell>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => handleCleanup({ specificPaths: [file.path] })}
-                                disabled={cleanupLoading}
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
+                  {dbStorage && (
+                    <div className="space-y-4">
+                      {/* Storage summary */}
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                        <Card>
+                          <CardHeader className="pb-2">
+                            <CardTitle className="text-xs text-muted-foreground">Feeds</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="text-xl font-bold">{dbStorage.summary.totalFeeds}</div>
+                          </CardContent>
+                        </Card>
+                        <Card>
+                          <CardHeader className="pb-2">
+                            <CardTitle className="text-xs text-muted-foreground">Articles</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="text-xl font-bold">{dbStorage.summary.totalArticles}</div>
+                          </CardContent>
+                        </Card>
+                        <Card>
+                          <CardHeader className="pb-2">
+                            <CardTitle className="text-xs text-muted-foreground">Logs</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="text-xl font-bold">{dbStorage.summary.totalLogs}</div>
+                          </CardContent>
+                        </Card>
+                        <Card>
+                          <CardHeader className="pb-2">
+                            <CardTitle className="text-xs text-muted-foreground">Fetches (24h)</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="text-xl font-bold">{dbStorage.summary.recentFetches24h}</div>
+                          </CardContent>
+                        </Card>
+                        <Card>
+                          <CardHeader className="pb-2">
+                            <CardTitle className="text-xs text-muted-foreground">Storage</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="text-xl font-bold text-blue-600">{dbStorage.summary.storageType}</div>
+                          </CardContent>
+                        </Card>
+                      </div>
+
+                      {/* Database tables */}
+                      <div className="border rounded-lg">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Table Name</TableHead>
+                              <TableHead>Rows</TableHead>
+                              <TableHead>Size</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {dbStorage.tables.map((table, i) => (
+                              <TableRow key={i}>
+                                <TableCell>
+                                  <code className="text-xs bg-muted px-1 py-0.5 rounded">
+                                    {table.table_name}
+                                  </code>
+                                </TableCell>
+                                <TableCell className="text-sm">{table.row_count.toLocaleString()}</TableCell>
+                                <TableCell className="text-sm text-muted-foreground">
+                                  Managed by Supabase
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </TabsContent>
 
