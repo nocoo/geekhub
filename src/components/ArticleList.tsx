@@ -1,16 +1,15 @@
 import { useEffect, useCallback, useState, useMemo, useRef } from 'react';
-import { flushSync } from 'react-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { Rss, CheckCheck, Eye, EyeOff, RefreshCw, Languages } from 'lucide-react';
 import { Article, useMarkAllAsRead, useMarkAsRead, Feed } from '@/hooks/useDatabase';
 import { useAuth } from '@/contexts/AuthContext';
-import { useFeedFetchEvents } from '@/contexts/SSEContext';
+import { useFeedFetch } from '@/contexts/FeedFetchContext';
+import { useFeedViewModel } from '@/hooks/useFeedViewModels';
 import { cn } from '@/lib/utils';
 import { useFormatTime } from '@/lib/format-time';
 import { useSettings } from '@/lib/settings';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/sonner';
-import { fetchFeedWithSettings } from '@/lib/fetch-with-settings';
 import { getProxyImageUrl, getRefererFromUrl } from '@/lib/image-proxy';
 import { getTranslationFromCache } from '@/lib/translation-cache';
 import { getTranslationQueue } from '@/lib/translation-queue';
@@ -30,18 +29,19 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
   const { settings } = useSettings();
   const markAllAsRead = useMarkAllAsRead();
   const markAsRead = useMarkAsRead();
+  const { isFeedFetching, fetchFeed } = useFeedFetch();
   const [showRead, setShowRead] = useState(false);
-  const [fetching, setFetching] = useState(false);
   const [, forceUpdate] = useState({});
 
-  // Get current feed's auto_translate status
-  const feeds = queryClient.getQueryData<Feed[]>(['feeds', user?.id]) || [];
-  const currentFeed = feeds.find(f => f.id === feedId);
-  const autoTranslate = currentFeed?.auto_translate || false;
+  // Get current feed's ViewModel for unread count and auto_translate
+  const feedViewModel = useFeedViewModel(feedId);
+  const unreadCountFromViewModel = feedViewModel?.unreadCount ?? 0;
+  const autoTranslate = feedViewModel?.autoTranslate ?? false;
+  const effectiveAutoTranslate = autoTranslate;
 
   // Apply cached translations to articles to prevent flash on initial render
   const articlesWithCachedTranslations = useMemo(() => {
-    if (!autoTranslate) return articles;
+    if (!effectiveAutoTranslate) return articles;
 
     return articles.map(article => {
       const cached = getTranslationFromCache(article.id);
@@ -136,24 +136,13 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
 
   // Handle refresh
   const handleRefresh = async () => {
-    if (!feedId || fetching) return;
+    if (!feedId || isFeedFetching(feedId)) return;
 
-    setFetching(true);
-    try {
-      const response = await fetchFeedWithSettings(feedId);
-      if (response.ok) {
-        toast.success('正在抓取最新文章...');
-        // Fetching state will be reset when fetch-complete event is received
-      } else {
-        const { error } = await response.json();
-        toast.error(error || '抓取失败');
-        setFetching(false);
-      }
-    } catch (error) {
-      console.error('Failed to fetch feed:', error);
-      toast.error('抓取失败');
-      setFetching(false);
-    }
+    // Get current feed title for toast
+    const feeds = queryClient.getQueryData<Feed[]>(['feeds', user?.id]) || [];
+    const currentFeed = feeds.find(f => f.id === feedId);
+
+    await fetchFeed(feedId, currentFeed?.title);
   };
 
   // Setup Intersection Observer for visible articles
@@ -246,7 +235,7 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
 
   // Re-observe when filteredArticles change
   useEffect(() => {
-    if (!intersectionObserverRef.current || !autoTranslate) {
+    if (!intersectionObserverRef.current || !effectiveAutoTranslate) {
       return;
     }
 
@@ -258,27 +247,17 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
 
     // Re-observe
     articleElements?.forEach((el) => observer.observe(el));
-  }, [filteredArticles.length, autoTranslate]);
+  }, [filteredArticles.length, effectiveAutoTranslate]);
 
-  // Listen for feed fetch completion events
-  useFeedFetchEvents({
-    onFetchComplete: useCallback((event: { feedId: string }) => {
-      // Only handle events for the current feed
-      if (event.feedId === feedId) {
-        setFetching(false);
-        // Refresh articles and feeds
-        queryClient.invalidateQueries({ queryKey: ['articles', user?.id, feedId] });
-        queryClient.invalidateQueries({ queryKey: ['feeds', user?.id] });
-        toast.success('抓取完成');
-      }
-    }, [feedId, queryClient, user?.id]),
-  });
+  // Unread count: primary from ViewModel, fallback to local calculation
+  const unreadCount = useMemo(() => {
+    if (unreadCountFromViewModel > 0) {
+      return unreadCountFromViewModel;
+    }
+    // Fallback: count from local articles
+    return articles.filter(a => !isArticleRead(a)).length;
+  }, [articles, isArticleRead, unreadCountFromViewModel]);
 
-  // Count unread from current articles (excluding session read)
-  const unreadCount = useMemo(() =>
-    articles.filter(a => !isArticleRead(a)).length,
-    [articles, isArticleRead]
-  );
   const hasUnread = unreadCount > 0;
 
   const handleMarkAllAsRead = () => {
@@ -384,7 +363,7 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
       <div className="p-3 border-b border-subtle sticky top-0 bg-card/95 backdrop-blur-sm z-10">
         <div className="flex items-center justify-between gap-2">
           <span className="text-sm font-medium text-foreground">
-            {filteredArticles.length} 篇文章{hasUnread && <span className="text-muted-foreground ml-1">({unreadCount} 未读)</span>}
+            {feedViewModel?.totalArticles ?? filteredArticles.length} 篇文章{hasUnread && <span className="text-muted-foreground ml-1">({unreadCountFromViewModel} 未读)</span>}
           </span>
           <div className="flex items-center gap-1">
             <Button
@@ -413,11 +392,11 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
               variant="ghost"
               size="icon"
               onClick={handleRefresh}
-              disabled={!feedId || fetching}
+              disabled={!feedId || isFeedFetching(feedId || '')}
               className="h-7 w-7"
               title="刷新文章"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${fetching ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-3.5 h-3.5 ${isFeedFetching(feedId || '') ? 'animate-spin' : ''}`} />
             </Button>
             <Button
               variant="ghost"
@@ -511,20 +490,20 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
 
         {/* Empty state */}
         {filteredArticles.length === 0 && (
-          <div className="flex items-center justify-center py-20">
+          <div className="flex items-center justify-center min-h-[calc(100vh-8rem)]">
             <div className="text-center text-muted-foreground">
               <p className="text-sm">没有找到文章</p>
               <p className="text-xs mt-1">{showRead ? '该订阅源暂无已读文章' : '该订阅源暂无未读文章'}</p>
               {feedId && (
                 <Button
                   onClick={handleRefresh}
-                  disabled={fetching}
+                  disabled={isFeedFetching(feedId || '')}
                   variant="outline"
                   size="sm"
                   className="mt-4 gap-2"
                 >
-                  <RefreshCw className={`w-4 h-4 ${fetching ? 'animate-spin' : ''}`} />
-                  {fetching ? '正在抓取...' : '立即抓取'}
+                  <RefreshCw className={`w-4 h-4 ${isFeedFetching(feedId || '') ? 'animate-spin' : ''}`} />
+                  {isFeedFetching(feedId || '') ? '正在抓取...' : '立即抓取'}
                 </Button>
               )}
             </div>

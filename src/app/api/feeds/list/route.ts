@@ -50,44 +50,47 @@ export async function GET() {
       return NextResponse.json({ error: feedsError.message }, { status: 500 });
     }
 
-    // Get fetch_status and unread counts for all feeds
+    if (!feeds || feeds.length === 0) {
+      return NextResponse.json({ feeds: [] });
+    }
+
     const feedIds = (feeds || []).map(f => f.id);
 
-    // Get all cache data
+    // Get total articles count per feed
+    const { data: articlesData } = await supabase
+      .from('articles')
+      .select('feed_id, id')
+      .in('feed_id', feedIds);
+
+    // Get read article counts per feed (user_articles where is_read = true)
+    const articleIds = (articlesData || []).map(a => a.id);
+    const { data: readData } = articleIds.length > 0
+      ? await supabase
+          .from('user_articles')
+          .select('article_id, is_read')
+          .in('article_id', articleIds)
+          .eq('is_read', true)
+      : { data: [] };
+
+    // Get fetch_status for all feeds
     const { data: cacheData } = await supabase
       .from('fetch_status')
       .select('*')
       .in('feed_id', feedIds);
 
-    // Get unread counts from user_articles (count where is_read = false)
-    // We need to calculate this by counting total articles per feed and subtracting read ones
-    const { data: articlesData } = await supabase
-      .from('articles')
-      .select('id, feed_id')
-      .in('feed_id', feedIds);
-
-    const { data: readStatusData } = await supabase
-      .from('user_articles')
-      .select('article_id, is_read')
-      .in('article_id', articlesData?.map(a => a.id) || []);
-
-    // Build a map of feed_id -> unread_count
-    const feedArticleIds = new Map<string, string[]>();
-    for (const article of articlesData || []) {
-      if (article.feed_id && article.id) {
-        const ids = feedArticleIds.get(article.feed_id) || [];
-        ids.push(article.id);
-        feedArticleIds.set(article.feed_id, ids);
-      }
+    // Build articles count map
+    const articlesCountMap = new Map<string, number>();
+    for (const a of articlesData || []) {
+      articlesCountMap.set(a.feed_id, (articlesCountMap.get(a.feed_id) || 0) + 1);
     }
 
-    const feedUnreadCount = new Map<string, number>();
-    for (const feedId of feedIds) {
-      const articleIds = feedArticleIds.get(feedId) || [];
-      const readCount = readStatusData?.filter(
-        rs => rs.article_id && articleIds.includes(rs.article_id) && rs.is_read
-      ).length || 0;
-      feedUnreadCount.set(feedId, Math.max(0, articleIds.length - readCount));
+    // Build read count map
+    const readCountMap = new Map<string, number>();
+    for (const r of readData || []) {
+      const article = articlesData?.find(a => a.id === r.article_id);
+      if (article) {
+        readCountMap.set(article.feed_id, (readCountMap.get(article.feed_id) || 0) + 1);
+      }
     }
 
     // Build cache map
@@ -96,10 +99,12 @@ export async function GET() {
     // Combine data
     const feedsWithCounts = (feeds || []).map((feed: any) => {
       const cache = cacheMap.get(feed.id);
+      const totalArticles = articlesCountMap.get(feed.id) || 0;
+      const readCount = readCountMap.get(feed.id) || 0;
       return {
         ...feed,
-        total_articles: cache?.total_articles || feedUnreadCount.get(feed.id) || 0,
-        unread_count: feedUnreadCount.get(feed.id) || 0,
+        total_articles: totalArticles,
+        unread_count: totalArticles - readCount,
         last_fetch_at: cache?.last_fetch_at || null,
         last_fetch_status: cache?.last_fetch_status || null,
         next_fetch_at: cache?.next_fetch_at || null,

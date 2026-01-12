@@ -318,17 +318,8 @@ export class FeedFetcher {
   private async recordFetchHistory(result: FetchResult): Promise<void> {
     const supabase = getSupabaseClient();
 
-    const historyData = {
-      feed_id: this.feed.id,
-      fetched_at: new Date().toISOString(),
-      status: result.success ? 'success' : 'error',
-      duration_ms: parseInt(result.duration) || 0,
-      articles_found: result.articlesFound,
-      articles_new: result.articlesNew,
-      error_message: result.error || null,
-    };
-
-    await supabase.from('fetch_history').insert(historyData);
+    // Statistics already logged via logger.success() with articles_found and articles_new
+    // No separate history table needed - fetch_logs captures all this info
   }
 
   async fetch(): Promise<FetchResult> {

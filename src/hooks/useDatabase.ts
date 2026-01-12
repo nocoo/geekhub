@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase-browser';
 import { useAuth } from '@/contexts/AuthContext';
+import { FeedViewModel } from '@/types/feed-view-model';
 
 const supabase = createClient();
 
@@ -148,6 +149,7 @@ export function useFeeds() {
       return feeds as Feed[];
     },
     enabled: !!user,
+    staleTime: 5 * 1000, // 5 seconds - allow quick refresh on invalidate
   });
 
   return result;
@@ -182,7 +184,7 @@ export function useCreateFeed() {
       return data as Feed;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['feeds', user?.id] });
+      // Unread counts are refreshed via /api/feeds/list on demand
     },
   });
 }
@@ -244,11 +246,10 @@ export function useMarkAsRead() {
     onMutate: async ({ articleId, feedId }) => {
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['articles', user?.id] });
-      await queryClient.cancelQueries({ queryKey: ['feeds', user?.id] });
 
       // Snapshot previous values
       const previousArticles = queryClient.getQueryData<Article[]>(['articles', user?.id, feedId]);
-      const previousFeeds = queryClient.getQueryData<Feed[]>(['feeds', user?.id]);
+      const previousFeeds = queryClient.getQueryData<FeedViewModel[]>(['feedViewModels', user?.id]);
 
       // Optimistically update articles
       queryClient.setQueryData<Article[]>(['articles', user?.id, feedId], (old = []) =>
@@ -257,11 +258,11 @@ export function useMarkAsRead() {
         )
       );
 
-      // Optimistically update feed unread count
-      queryClient.setQueryData<Feed[]>(['feeds', user?.id], (old = []) =>
-        old.map(feed =>
+      // Optimistically update feedViewModels unread count (used by Sidebar)
+      queryClient.setQueryData<FeedViewModel[]>(['feedViewModels', user?.id], (old = []) =>
+        (old || []).map(feed =>
           feed.id === feedId
-            ? { ...feed, unread_count: Math.max(0, (feed.unread_count || 0) - 1) }
+            ? { ...feed, unreadCount: Math.max(0, (feed.unreadCount || 0) - 1) }
             : feed
         )
       );
@@ -275,13 +276,15 @@ export function useMarkAsRead() {
         queryClient.setQueryData(['articles', user?.id, context.feedId], context.previousArticles);
       }
       if (context?.previousFeeds) {
-        queryClient.setQueryData(['feeds', user?.id], context.previousFeeds);
+        queryClient.setQueryData(['feedViewModels', user?.id], context.previousFeeds);
       }
     },
-    onSettled: (_data, _error, { feedId }) => {
-      // Refetch to ensure server state
-      queryClient.invalidateQueries({ queryKey: ['articles', user?.id, feedId] });
-      queryClient.invalidateQueries({ queryKey: ['feeds', user?.id] });
+    onSettled: (_data, error, { feedId }) => {
+      // Only refresh feedViewModels on error to restore optimistic update
+      // On success, the optimistic update is already correct
+      if (error) {
+        queryClient.invalidateQueries({ queryKey: ['feedViewModels', user?.id] });
+      }
     },
   });
 }
@@ -305,21 +308,21 @@ export function useMarkAllAsRead() {
     onMutate: async (feedId) => {
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['articles', user?.id] });
-      await queryClient.cancelQueries({ queryKey: ['feeds', user?.id] });
+      await queryClient.cancelQueries({ queryKey: ['feedViewModels', user?.id] });
 
       // Snapshot previous values
       const previousArticles = queryClient.getQueryData<Article[]>(['articles', user?.id, feedId]);
-      const previousFeeds = queryClient.getQueryData<Feed[]>(['feeds', user?.id]);
+      const previousFeeds = queryClient.getQueryData<FeedViewModel[]>(['feedViewModels', user?.id]);
 
       // Optimistically update all articles as read
       queryClient.setQueryData<Article[]>(['articles', user?.id, feedId], (old = []) =>
         old.map(article => ({ ...article, isRead: true }))
       );
 
-      // Optimistically update feed unread count to 0
-      queryClient.setQueryData<Feed[]>(['feeds', user?.id], (old = []) =>
-        old.map(feed =>
-          feed.id === feedId ? { ...feed, unread_count: 0 } : feed
+      // Optimistically update feedViewModels unread count to 0 (used by Sidebar)
+      queryClient.setQueryData<FeedViewModel[]>(['feedViewModels', user?.id], (old = []) =>
+        (old || []).map(feed =>
+          feed.id === feedId ? { ...feed, unreadCount: 0 } : feed
         )
       );
 
@@ -332,13 +335,15 @@ export function useMarkAllAsRead() {
         queryClient.setQueryData(['articles', user?.id, feedId], context.previousArticles);
       }
       if (context?.previousFeeds) {
-        queryClient.setQueryData(['feeds', user?.id], context.previousFeeds);
+        queryClient.setQueryData(['feedViewModels', user?.id], context.previousFeeds);
       }
     },
-    onSettled: (_data, _error, feedId) => {
-      // Refetch to ensure server state
-      queryClient.invalidateQueries({ queryKey: ['articles', user?.id, feedId] });
-      queryClient.invalidateQueries({ queryKey: ['feeds', user?.id] });
+    onSettled: (_data, error, feedId) => {
+      // Only refresh feedViewModels on error to restore optimistic update
+      // On success, the optimistic update is already correct
+      if (error) {
+        queryClient.invalidateQueries({ queryKey: ['feedViewModels', user?.id] });
+      }
     },
   });
 }
@@ -390,7 +395,7 @@ export function useUpdateCategory() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories', user?.id] });
-      queryClient.invalidateQueries({ queryKey: ['feeds', user?.id] });
+      // Unread counts are refreshed via /api/feeds/list on demand
     },
   });
 }
@@ -411,7 +416,7 @@ export function useDeleteCategory() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories', user?.id] });
-      queryClient.invalidateQueries({ queryKey: ['feeds', user?.id] });
+      // Unread counts are refreshed via /api/feeds/list on demand
     },
   });
 }
@@ -437,7 +442,7 @@ export function useUpdateFeed() {
       return data as Feed;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['feeds', user?.id] });
+      // Unread counts are refreshed via /api/feeds/list on demand
     },
   });
 }
@@ -457,7 +462,7 @@ export function useDeleteFeed() {
       return id;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['feeds', user?.id] });
+      // Unread counts are refreshed via /api/feeds/list on demand
     },
   });
 }
@@ -725,6 +730,7 @@ export function useBlogs(params: {
   search?: string;
   page?: number;
   limit?: number;
+  enabled?: boolean;
 } = {}) {
   return useQuery({
     queryKey: ['blogs', params],
@@ -752,7 +758,7 @@ export function useBlogs(params: {
         };
       };
     },
-    enabled: true,
+    enabled: params.enabled !== false,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }

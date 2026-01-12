@@ -43,14 +43,7 @@ export default function Home() {
 
   const handleSelectArticle = (article: Article) => {
     setSelectedArticle(article);
-
-    // 标记文章为已读（后台执行，不阻塞 UI）
-    if (article.id && !article.isRead) {
-      markAsRead.mutate({
-        articleId: article.id,
-        feedId: article.feedId,
-      });
-    }
+    // ArticleList 组件负责标记已读逻辑
   };
 
   if (loading) {

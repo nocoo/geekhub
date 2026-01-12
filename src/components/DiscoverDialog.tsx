@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { useBlogs, useCategories, useCreateFeed } from '@/hooks/useDatabase';
+import { useBlogs } from '@/hooks/useDatabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/dialog';
 import { ExternalLink, Plus, Search, Star, ArrowUpDown, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { SelectCategoryDialog } from '@/components/SelectCategoryDialog';
 
 type SortOption = 'score' | 'updated' | 'name';
 
@@ -40,6 +41,8 @@ export function DiscoverDialog({ open, onOpenChange }: DiscoverDialogProps) {
   const [selectedTag, setSelectedTag] = useState<string>('');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [showSelectCategory, setShowSelectCategory] = useState(false);
+  const [pendingBlog, setPendingBlog] = useState<{ name: string; feed: string } | null>(null);
 
   const { data, isLoading, error } = useBlogs({
     sort,
@@ -47,39 +50,21 @@ export function DiscoverDialog({ open, onOpenChange }: DiscoverDialogProps) {
     search: search || undefined,
     page,
     limit: 30,
+    enabled: open, // Only fetch when dialog is open
   });
-
-  const { data: categories } = useCategories();
-  const createFeed = useCreateFeed();
 
   const blogs = data?.blogs || [];
   const tags = data?.tags || [];
   const pagination = data?.pagination;
 
-  const handleAddFeed = async (blog: { name: string; feed?: string | null; url: string }) => {
+  const handleAddFeed = (blog: { name: string; feed?: string | null; url: string }) => {
     if (!blog.feed) {
       toast.error('该博客没有 RSS Feed 地址');
       return;
     }
 
-    if (!categories || categories.length === 0) {
-      toast.error('请先创建一个分类');
-      return;
-    }
-
-    const categoryId = categories[0]?.id;
-
-    try {
-      await createFeed.mutateAsync({
-        title: blog.name,
-        url: blog.feed,
-        category_id: categoryId,
-      });
-
-      toast.success(`已添加「${blog.name}」到订阅源`);
-    } catch (error: any) {
-      toast.error(error.message || '添加失败');
-    }
+    setPendingBlog({ name: blog.name, feed: blog.feed });
+    setShowSelectCategory(true);
   };
 
   const handleSearch = (value: string) => {
@@ -109,18 +94,19 @@ export function DiscoverDialog({ open, onOpenChange }: DiscoverDialogProps) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
-        <DialogHeader className="px-6 pt-6">
-          <DialogTitle>发现博客</DialogTitle>
-          <DialogDescription>
-            浏览和订阅中文独立博客
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
+          <DialogHeader className="px-6 pt-6">
+            <DialogTitle>发现博客</DialogTitle>
+            <DialogDescription>
+              浏览和订阅中文独立博客
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="flex-1 overflow-auto px-6">
-          {/* Filters */}
-          <div className="mb-4 space-y-3">
+          <div className="flex-1 overflow-auto px-6">
+            {/* Filters */}
+            <div className="mb-4 space-y-3">
             {/* Search */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -244,7 +230,7 @@ export function DiscoverDialog({ open, onOpenChange }: DiscoverDialogProps) {
                       variant="ghost"
                       className="h-7 px-2"
                       onClick={() => handleAddFeed(blog)}
-                      disabled={!blog.feed || createFeed.isPending}
+                      disabled={!blog.feed}
                       title="订阅"
                     >
                       <Plus className="h-3 w-3" />
@@ -282,5 +268,14 @@ export function DiscoverDialog({ open, onOpenChange }: DiscoverDialogProps) {
         </div>
       </DialogContent>
     </Dialog>
+
+    {/* Select Category Dialog */}
+    <SelectCategoryDialog
+      open={showSelectCategory}
+      onOpenChange={setShowSelectCategory}
+      blogName={pendingBlog?.name || ''}
+      blogFeed={pendingBlog?.feed || ''}
+    />
+  </>
   );
 }
