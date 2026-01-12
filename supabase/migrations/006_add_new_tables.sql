@@ -36,9 +36,9 @@ CREATE INDEX IF NOT EXISTS idx_articles_fetched_at ON articles(fetched_at DESC);
 CREATE INDEX IF NOT EXISTS idx_articles_feed_published ON articles(feed_id, published_at DESC);
 
 -- ============================================
--- 2. feed_cache table (抓取状态缓存)
+-- 2. fetch_status table (抓取状态缓存)
 -- ============================================
-CREATE TABLE IF NOT EXISTS feed_cache (
+CREATE TABLE IF NOT EXISTS fetch_status (
   feed_id                 UUID PRIMARY KEY REFERENCES feeds(id) ON DELETE CASCADE,
 
   -- Fetch status
@@ -56,8 +56,8 @@ CREATE TABLE IF NOT EXISTS feed_cache (
   next_fetch_at           TIMESTAMPTZ
 );
 
--- Indexes for feed_cache
-CREATE INDEX IF NOT EXISTS idx_feed_cache_next_fetch ON feed_cache(next_fetch_at) WHERE next_fetch_at IS NOT NULL;
+-- Indexes for fetch_status
+CREATE INDEX IF NOT EXISTS idx_fetch_status_next_fetch ON fetch_status(next_fetch_at) WHERE next_fetch_at IS NOT NULL;
 
 -- ============================================
 -- 3. fetch_history table (抓取历史)
@@ -131,13 +131,13 @@ CREATE POLICY "Users can view articles from their feeds" ON articles
     )
   );
 
--- RLS policies for feed_cache
--- Users can view cache for their own feeds
-CREATE POLICY "Users can view cache for their feeds" ON feed_cache
+-- RLS policies for fetch_status
+-- Users can view fetch status for their own feeds
+CREATE POLICY "Users can view fetch status for their feeds" ON fetch_status
   FOR SELECT USING (
     EXISTS (
       SELECT 1 FROM feeds
-      WHERE feeds.id = feed_cache.feed_id
+      WHERE feeds.id = fetch_status.feed_id
       AND feeds.user_id = auth.uid()
     )
   );
@@ -181,6 +181,6 @@ CREATE TRIGGER update_user_articles_updated_at
 -- ============================================
 
 COMMENT ON TABLE articles IS 'Article content fetched from RSS feeds';
-COMMENT ON TABLE feed_cache IS 'Fetch status and statistics cache for feeds';
+COMMENT ON TABLE fetch_status IS 'Fetch status and statistics cache for feeds';
 COMMENT ON TABLE fetch_history IS 'Historical record of fetch operations';
 COMMENT ON TABLE user_articles IS 'Unified table for user interactions with articles (read, bookmarked, read later)';

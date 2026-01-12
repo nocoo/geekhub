@@ -283,7 +283,7 @@ export class FeedFetcher {
   }
 
   /**
-   * Update feed_cache after fetch
+   * Update fetch_status after fetch
    */
   private async updateFeedCache(result: FetchResult): Promise<void> {
     const supabase = getSupabaseClient();
@@ -308,7 +308,7 @@ export class FeedFetcher {
     };
 
     await supabase
-      .from('feed_cache')
+      .from('fetch_status')
       .upsert({ feed_id: this.feed.id, ...cacheData }, { onConflict: 'feed_id' });
   }
 
@@ -374,7 +374,7 @@ export class FeedFetcher {
         duration,
       };
 
-      // Update feed_cache and record history
+      // Update fetch_status and record history
       await this.updateFeedCache(result);
       await this.recordFetchHistory(result);
 
@@ -395,7 +395,7 @@ export class FeedFetcher {
         error: errorMessage,
       };
 
-      // Still update cache and record history on error
+      // Still update fetch_status and record history on error
       await this.updateFeedCache(result);
       await this.recordFetchHistory(result);
 

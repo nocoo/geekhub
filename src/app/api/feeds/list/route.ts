@@ -50,12 +50,12 @@ export async function GET() {
       return NextResponse.json({ error: feedsError.message }, { status: 500 });
     }
 
-    // Get feed_cache and unread counts for all feeds
+    // Get fetch_status and unread counts for all feeds
     const feedIds = (feeds || []).map(f => f.id);
 
     // Get all cache data
     const { data: cacheData } = await supabase
-      .from('feed_cache')
+      .from('fetch_status')
       .select('*')
       .in('feed_id', feedIds);
 
