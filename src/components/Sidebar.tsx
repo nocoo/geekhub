@@ -119,7 +119,7 @@ function FeedItem({ feed, selectedFeed, isKeyboardSelected, onSelectFeed, onFetc
   );
 }
 
-export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
+export function Sidebar({ selectedFeed, onSelectFeed, className }: SidebarProps & { className?: string }) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const selectedFeedRef = useRef(selectedFeed);
@@ -361,7 +361,7 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
 
   return (
     <>
-      <aside className="w-64 flex-shrink-0 border-r border-subtle h-[calc(100vh-3.5rem)] flex flex-col bg-sidebar">
+      <aside className={cn("flex-shrink-0 border-r border-subtle h-[calc(100vh-3.5rem)] flex flex-col bg-sidebar w-full md:w-64 transition-all", className)}>
         {/* Special Categories - Starred & Later */}
         <div className="p-2 space-y-0.5 border-b border-border/40">
           <button

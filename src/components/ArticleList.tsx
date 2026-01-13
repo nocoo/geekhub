@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useState, useMemo, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Rss, CheckCheck, Eye, EyeOff, RefreshCw, Languages } from 'lucide-react';
+import { Rss, CheckCheck, Eye, EyeOff, RefreshCw, Languages, ChevronRight } from 'lucide-react';
 import { Article } from '@/hooks/useDatabase';
 import { useMarkAllAsRead, useMarkAsRead, useToggleAutoTranslate, useFetchFeed, useIsFeedFetching } from '@/hooks/useFeedActions';
 import { useAuth } from '@/contexts/AuthContext';
@@ -21,9 +21,11 @@ interface ArticleListProps {
   onSelectArticle: (article: Article) => void;
   isLoading?: boolean;
   feedId: string | null;
+  className?: string;
+  onBack?: () => void;
 }
 
-export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoading, feedId }: ArticleListProps) {
+export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoading, feedId, className, onBack }: ArticleListProps) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const formatTime = useFormatTime();
@@ -341,13 +343,26 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
   return (
     <div
       ref={listContainerRef}
-      className="w-96 flex-shrink-0 border-r border-subtle h-[calc(100vh-3.5rem)] overflow-y-auto hover-scrollbar bg-card/50"
+      className={cn("flex-shrink-0 border-r border-subtle h-[calc(100vh-3.5rem)] overflow-y-auto hover-scrollbar bg-card/50 w-full md:w-96 transition-all", className)}
     >
       <div className="p-3 border-b border-subtle sticky top-0 bg-card/95 backdrop-blur-sm z-10">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-sm font-medium text-foreground">
-            {feedViewModel?.totalArticles ?? filteredArticles.length} 篇文章{hasUnread && filteredArticles.length > 0 && <span className="text-muted-foreground ml-1">({unreadCount} 未读)</span>}
-          </span>
+          <div className="flex items-center gap-2">
+            {onBack && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onBack}
+                className="h-7 w-7 md:hidden -ml-1"
+                title="返回订阅列表"
+              >
+                <ChevronRight className="w-4 h-4 rotate-180" />
+              </Button>
+            )}
+            <span className="text-sm font-medium text-foreground">
+              {feedViewModel?.totalArticles ?? filteredArticles.length} 篇文章{hasUnread && filteredArticles.length > 0 && <span className="text-muted-foreground ml-1">({unreadCount} 未读)</span>}
+            </span>
+          </div>
           <div className="flex items-center gap-1">
             <Button
               variant="ghost"

@@ -9,11 +9,13 @@ import { ArticleList } from "@/components/ArticleList";
 import { ReaderView } from "@/components/ReaderView";
 import { useArticles, useMarkAsRead, Article } from "@/hooks/useDatabase";
 import { useQueryClient } from "@tanstack/react-query";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function Home() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const isMobile = useIsMobile();
   const [selectedFeed, setSelectedFeed] = useState<string | null>(null);
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
 
@@ -59,10 +61,44 @@ export default function Home() {
     return null; // Will redirect to login
   }
 
+  // Mobile rendering logic
+  if (isMobile) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <Header />
+        <div className="flex-1 overflow-hidden relative">
+          {selectedArticle ? (
+            <ReaderView
+              article={selectedArticle}
+              onBack={() => setSelectedArticle(null)}
+              className="w-full h-full border-none"
+            />
+          ) : selectedFeed ? (
+            <ArticleList
+              articles={articles}
+              selectedArticle={null}
+              onSelectArticle={handleSelectArticle}
+              isLoading={articlesLoading}
+              feedId={selectedFeed}
+              onBack={() => handleSelectFeed(null)}
+              className="w-full h-full border-none"
+            />
+          ) : (
+            <Sidebar
+              selectedFeed={selectedFeed}
+              onSelectFeed={handleSelectFeed}
+              className="w-full h-full border-none"
+            />
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <div className="flex">
+      <div className="flex bg-background h-[calc(100vh-3.5rem)] overflow-hidden">
         <Sidebar selectedFeed={selectedFeed} onSelectFeed={handleSelectFeed} />
         <ArticleList
           articles={articles}

@@ -1,5 +1,5 @@
 import parse from 'html-react-parser';
-import { ExternalLink, Bookmark, Share2, Expand, Minimize2, Image, ImageOff, Bug, Clock, Sparkles, Languages } from 'lucide-react';
+import { ExternalLink, Bookmark, Share2, Expand, Minimize2, Image, ImageOff, Bug, Clock, Sparkles, Languages, ChevronRight } from 'lucide-react';
 import { Article, useBookmarkArticle, useUnbookmarkArticle, useSaveForLater, useRemoveFromLater } from '@/hooks/useDatabase';
 import { Button } from '@/components/ui/button';
 import { useState, useCallback, useEffect, useRef } from 'react';
@@ -10,6 +10,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSettings } from '@/lib/settings';
 import { AISummaryDialog } from '@/components/AISummaryDialog';
+import { cn } from '@/lib/utils';
 
 const CONTENT_CACHE_KEY = 'geekhub_content_translations';
 const CONTENT_CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -51,6 +52,8 @@ function saveContentTranslationCache(articleId: string, translatedContent: strin
 
 interface ReaderViewProps {
   article: Article | null;
+  onBack?: () => void;
+  className?: string;
 }
 
 // Generate a consistent color from a string
@@ -75,7 +78,7 @@ function getFirstChar(str: string): string {
   return str?.charAt(0)?.toUpperCase() || '?';
 }
 
-export function ReaderView({ article }: ReaderViewProps) {
+export function ReaderView({ article, onBack, className }: ReaderViewProps) {
   const formatTime = useFormatTime();
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -127,16 +130,16 @@ export function ReaderView({ article }: ReaderViewProps) {
     // Subscribe to cache changes
     const unsubscribeStarred = queryClient.getQueryCache().subscribe((event) => {
       if (event.query.queryKey[0] === 'articles' &&
-          event.query.queryKey[1] === user.id &&
-          event.query.queryKey[2] === 'starred') {
+        event.query.queryKey[1] === user.id &&
+        event.query.queryKey[2] === 'starred') {
         updateStatus();
       }
     });
 
     const unsubscribeLater = queryClient.getQueryCache().subscribe((event) => {
       if (event.query.queryKey[0] === 'articles' &&
-          event.query.queryKey[1] === user.id &&
-          event.query.queryKey[2] === 'later') {
+        event.query.queryKey[1] === user.id &&
+        event.query.queryKey[2] === 'later') {
         updateStatus();
       }
     });
@@ -421,14 +424,25 @@ export function ReaderView({ article }: ReaderViewProps) {
   return (
     <div
       ref={scrollContainerRef}
-      className="flex-1 h-[calc(100vh-3.5rem)] overflow-y-auto hover-scrollbar bg-background"
+      className={cn("flex-1 h-[calc(100vh-3.5rem)] overflow-y-auto hover-scrollbar bg-background transition-all", className)}
     >
       <article className={fullWidth ? "w-full px-6 py-8" : "max-w-3xl mx-auto px-6 py-8"}>
         {/* Article header */}
         <header className="mb-8">
           {/* Title */}
           <h1 className="text-3xl md:text-4xl font-bold font-sans leading-tight text-foreground mb-4">
-            {article.title}
+            {onBack && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onBack}
+                className="h-8 w-8 md:hidden mr-2 -ml-2 align-middle inline-flex"
+                title="返回文章列表"
+              >
+                <ChevronRight className="w-5 h-5 rotate-180" />
+              </Button>
+            )}
+            <span className="align-middle">{article.title}</span>
           </h1>
 
           {/* Site info row with action buttons */}
