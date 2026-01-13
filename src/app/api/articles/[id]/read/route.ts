@@ -9,9 +9,9 @@ export async function POST(
   try {
     const { id: articleId } = await params;
     const { client: supabase, user } = await createSmartSupabaseClient();
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     // Validate UUID format
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -36,7 +36,26 @@ export async function POST(
       return NextResponse.json({ error: 'Failed to mark as read' }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true });
+    // Get feed_id from article to fetch updated count
+    const { data: article } = await supabase
+      .from('articles')
+      .select('feed_id')
+      .eq('id', articleId)
+      .single();
+
+    let unreadCount: number | null = null;
+
+    if (article?.feed_id) {
+      // Fetch fresh count from fetch_status (maintained by triggers)
+      const { data: status } = await supabase
+        .from('fetch_status')
+        .select('unread_count')
+        .eq('feed_id', article.feed_id)
+        .single();
+      unreadCount = status?.unread_count ?? null;
+    }
+
+    return NextResponse.json({ success: true, feedId: article?.feed_id, unreadCount });
   } catch (error) {
     console.error('Error in /api/articles/[id]/read:', error);
     return NextResponse.json(

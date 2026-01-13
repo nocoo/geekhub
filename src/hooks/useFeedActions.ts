@@ -195,12 +195,24 @@ export function useMarkAsRead() {
 
       return { previousArticles, previousFeeds, feedId };
     },
-    onSettled: (_data, error, { feedId }) => {
-      // Always refetch to ensure unread count is accurate
-      queryClient.invalidateQueries({ queryKey: ['feedViewModels', user?.id] });
+    onSuccess: (data: any, { feedId }) => {
+      // Update unread count from server response if available
+      if (data?.unreadCount !== undefined && data?.unreadCount !== null) {
+        queryClient.setQueryData<FeedViewModel[]>(['feedViewModels', user?.id], (old = []) =>
+          old.map(feed =>
+            feed.id === feedId
+              ? { ...feed, unreadCount: data.unreadCount }
+              : feed
+          )
+        );
+      }
+    },
+    onSettled: (_data, error) => {
       if (error) {
         // Only log error, UI already has optimistic update
         console.error('Mark as read failed:', error);
+        // On error, invalidate to restore correct state
+        queryClient.invalidateQueries({ queryKey: ['feedViewModels', user?.id] });
       }
     },
   });

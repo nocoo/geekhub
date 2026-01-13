@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase-browser';
 import { useAuth } from '@/contexts/AuthContext';
 import { FeedViewModel } from '@/types/feed-view-model';
+import { ArticleViewModel as Article } from '@/types/article-view-model';
 
 const supabase = createClient();
 
@@ -38,34 +39,7 @@ export interface Feed {
   category?: Category;
 }
 
-export interface Article {
-  id: string;
-  feedId: string;
-  title: string;
-  url: string;
-  description: string;
-  content?: string;
-  author?: string;
-  publishedAt?: Date | null;
-  feedName: string;
-  feedIcon: string;
-  isRead: boolean;
-  hash?: string;
-  urlHash?: string;
-  image?: string | null;
-  translatedTitle?: string;
-  translatedDescription?: string;
-  ai_summary?: {
-    content: string;
-    model: string;
-    generated_at: string;
-    usage?: {
-      prompt_tokens: number;
-      completion_tokens: number;
-      total_tokens: number;
-    };
-  };
-}
+export type { Article };
 
 export interface Blog {
   id: string;

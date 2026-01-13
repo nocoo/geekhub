@@ -17,7 +17,7 @@ interface FeedFetchStateContextValue {
   setFetchingFeeds: Dispatch<SetStateAction<Set<string>>>;
 }
 
-const FeedFetchContext = createContext<FeedFetchStateContextValue | undefined>(undefined);
+export const FeedFetchContext = createContext<FeedFetchStateContextValue | undefined>(undefined);
 
 export function useFeedFetch() {
   const context = useContext(FeedFetchContext);
@@ -54,8 +54,9 @@ export function FeedFetchProvider({ children }: ProviderProps) {
         return newSet;
       });
 
-      // Only invalidate articles query, NOT feedViewModels to preserve optimistic updates
+      // Invalidate both articles and feed list to update counts
       queryClient.invalidateQueries({ queryKey: ['articles', user?.id, event.feedId] });
+      queryClient.invalidateQueries({ queryKey: ['feedViewModels', user?.id] });
     }, [setFetchingFeeds, queryClient, user]),
   });
 

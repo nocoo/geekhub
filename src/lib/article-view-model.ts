@@ -1,42 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
-
-/**
- * Complete article for UI display
- */
-export interface ArticleViewModel {
-  id: string;              // article id
-  feedId: string;          // feed ID from database
-  title: string;
-  url: string;
-  description: string;
-  author: string;
-  publishedAt: Date | null;
-  feedName: string;
-  feedIcon: string;
-  isRead: boolean;
-  hash: string;
-  image: string | null;
-  content?: string;        // full HTML content
-}
-
-/**
- * Feed metadata for UI
- */
-export interface FeedViewModel {
-  id: string;
-  title: string;
-  url: string;
-}
-
-/**
- * Result type for article list
- */
-export interface ArticlesResult {
-  feed: FeedViewModel;
-  articles: ArticleViewModel[];
-  total: number;
-  lastUpdated: string | null;
-}
+import { extractFirstImage, transformArticleToViewModel } from './view-models/article-view-model';
+import { ArticleViewModel, ArticlesResult } from '@/types/article-view-model';
 
 /**
  * ViewModel combining database data
@@ -77,24 +40,13 @@ export class ArticleViewModelService {
     }
 
     // Process articles
-    const processedArticles = articles.map((article: any) => {
-      const firstImage = this.extractFirstImage(article.content || '');
-      return {
-        id: article.id,
-        feedId: feedId,
-        title: article.title,
-        url: article.url,
-        description: article.summary || '',
-        author: article.author || '',
-        publishedAt: article.published_at ? new Date(article.published_at) : null,
-        feedName: feedTitle,
-        feedIcon: feedIcon || '',
-        isRead: readArticleIds.has(article.id),
-        hash: article.hash,
-        image: firstImage,
-        content: article.content,
-      };
-    });
+    const processedArticles = articles.map((article: any) =>
+      transformArticleToViewModel(
+        article,
+        { name: feedTitle, icon: feedIcon || '' },
+        readArticleIds.has(article.id)
+      )
+    );
 
     return {
       feed: { id: feedId, title: feedTitle, url: '' },
@@ -125,49 +77,10 @@ export class ArticleViewModelService {
       return null;
     }
 
-    const firstImage = this.extractFirstImage(article.content || '');
-
-    return {
-      id: article.id,
-      feedId: feedId,
-      title: article.title,
-      url: article.url,
-      description: article.summary || article.content_text || '',
-      author: article.author || '',
-      publishedAt: article.published_at ? new Date(article.published_at) : null,
-      feedName: feedTitle,
-      feedIcon: feedIcon || '',
-      isRead: readArticleIds.has(article.id),
-      hash: article.hash,
-      image: firstImage,
-      content: article.content,
-    };
-  }
-
-  /**
-   * Extract first image from HTML content
-   */
-  private extractFirstImage(html: string): string | null {
-    if (!html) return null;
-
-    const patterns = [
-      /<img[^>]+src=["']([^"']+)["'][^>]*>/i,
-      /<img[^>]+src=([^"\s>]+)[^>]*>/i,
-      /<img[^>]+data-src=["']([^"']+)["'][^>]*>/i,
-      /<source[^>]+srcset=["']([^"']+)["'][^>]*>/i,
-    ];
-
-    for (const pattern of patterns) {
-      const match = html.match(pattern);
-      if (match && match[1]) {
-        let url = match[1];
-        url = url.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"');
-        if (url && !url.startsWith('data:') && (url.startsWith('http') || url.startsWith('//'))) {
-          return url.startsWith('//') ? 'https:' + url : url;
-        }
-      }
-    }
-
-    return null;
+    return transformArticleToViewModel(
+      article,
+      { name: feedTitle, icon: feedIcon || '' },
+      readArticleIds.has(article.id)
+    );
   }
 }

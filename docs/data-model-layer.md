@@ -4,320 +4,166 @@ GeekHub 数据模型分层设计与优化计划。
 
 ## 1. Overview
 
-三层数据架构：
+系统已从最初的混合存储（数据库 + 文本文件）演进为**以数据库为中心（Supabase/PostgreSQL）**的全量存储架构。这种变化带来了更好的查询灵活性、严格的数据一致性以及更简单的 RLS（Row Level Security）实现。
 
+架构概览：
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   抓取层         │    │   存储层         │    │   View Model    │
-│  FeedFetcher    │ -> │ ArticleRepo     │ -> │ ArticleViewModel│
-│  (RSS解析)      │    │  (磁盘读写)      │    │  (UI适配)       │
+│  FeedFetcher    │ -> │ Supabase (DB)     │ -> │ React Hook /    │
+│  (RSS解析)      │    │ (PostgreSQL)      │    │ ArticleViewModel│
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
-## 2. Three Core Models
+## 2. Core Tables
 
-### 2.1 Category Model
+### 2.1 Category Model (`categories`)
 
 | Field | Type | Purpose |
 |-------|------|---------|
 | `id` | UUID | Primary key |
-| `user_id` | UUID | RLS isolation |
+| `user_id` | UUID | FK to auth.users, RLS isolation |
 | `name` | VARCHAR(100) | Category name, UNIQUE(user_id, name) |
 | `color` | VARCHAR(7) | UI color, default `#10b981` |
 | `icon` | VARCHAR(50) | Emoji icon, default `📁` |
-| `sort_order` | INTEGER | **Sort key** - drag to reorder |
+| `sort_order` | INTEGER | Sort key for cross-device consistency |
 | `created_at` | TIMESTAMP | Creation time |
 | `updated_at` | TIMESTAMP | Update time |
 
-**Storage**: PostgreSQL `categories` table
-
-**Sort Strategy**: `ORDER BY sort_order ASC, created_at DESC`
-
-**Index**:
-- `idx_categories_user_id` on `user_id`
-
 ---
 
-### 2.2 Feed Model
+### 2.2 Feed Model (`feeds`)
 
 | Field | Type | Purpose |
 |-------|------|---------|
 | `id` | UUID | Primary key |
-| `user_id` | UUID | RLS isolation |
+| `user_id` | UUID | FK to auth.users, RLS isolation |
 | `category_id` | UUID | FK to categories, ON DELETE SET NULL |
 | `title` | VARCHAR(255) | Feed title |
-| `url` | TEXT | RSS URL, UNIQUE(user_id, url) |
-| `url_hash` | VARCHAR(12) | **Critical** - MD5(URL)[:12], file path |
+| `url` | TEXT | RSS/Atom URL, UNIQUE(user_id, url) |
+| `description` | TEXT | Feed description |
+| `url_hash` | VARCHAR(12) | MD5(URL)[:12], UNIQUE, used for quick lookups |
 | `favicon_url` | TEXT | Favicon URL |
-| `site_url` | TEXT | Site URL |
-| `last_fetched_at` | TIMESTAMP | Last fetch time |
-| `fetch_interval_minutes` | INTEGER | Fetch interval, default 60 |
-| `is_active` | BOOLEAN | Active status |
-| `total_articles` | INTEGER | Cached article count |
-| `unread_count` | INTEGER | Cached unread count |
-
-**Storage**: Dual-layer (DB + File System)
-
-**File Structure**:
-```
-data/feeds/{url_hash}/
-├── meta.json          # Feed metadata
-├── index.json         # Article index (recent 1000)
-├── articles/          # Full articles
-│   └── {YYYY}/{MM}/{article_hash}.json
-└── cache.json         # Fetch cache
-```
-
-**Indexes**:
-- `idx_feeds_user_id` on `user_id`
-- `idx_feeds_url_hash` on `url_hash` (UNIQUE)
+| `fetch_interval` | INTEGER | Fetch interval in minutes, default 60 |
+| `is_active` | BOOLEAN | Whether to continue fetching this feed |
+| `auto_translate`| BOOLEAN | Enable AI translation for this feed |
+| `created_at` | TIMESTAMP | Creation time |
+| `updated_at` | TIMESTAMP | Update time |
 
 ---
 
-### 2.3 Article Model
+### 2.3 Article Model (`articles`)
 
 **Hash Strategy**:
 ```typescript
-url_hash = md5(url).slice(0, 12)           // 12 chars, directory name
-article_hash = md5(url | title | pubDate)  // 32 chars, filename
+article_hash = md5(url | title | pubDate) // 32 chars
 ```
 
-**Storage**: File system (primary) + DB (status index)
+| Field | Type | Purpose |
+|-------|------|---------|
+| `id` | UUID | Primary key |
+| `feed_id` | UUID | FK to feeds, ON DELETE CASCADE |
+| `hash` | TEXT | Content hash for deduplication, UNIQUE(feed_id, hash) |
+| `title` | TEXT | Article title |
+| `url` | TEXT | Original article URL |
+| `link` | TEXT | Optional alternative link |
+| `author` | TEXT | Author name |
+| `published_at` | TIMESTAMP | Original publication date |
+| `content` | TEXT | Full HTML content (if available) |
+| `content_text` | TEXT | Cleaned plain text |
+| `summary` | TEXT | Short summary or snippet |
+| `categories` | TEXT[] | Article categories (from RSS tags) |
+| `tags` | TEXT[] | Processed tags |
+| `fetched_at` | TIMESTAMP | When it was last crawled |
+| `created_at` | TIMESTAMP | Record creation time |
 
-**File Structure**:
-```
-data/feeds/{url_hash}/
-├── index.json
-└── articles/
-    └── {YYYY}/{MM}/{article_hash}.json
-```
+---
 
-**index.json Structure** (lightweight index, recent 1000):
-```json
-{
-  "last_updated": "2026-01-11T...",
-  "total_count": 105,
-  "articles": [
-    {
-      "hash": "0e23479e833b69a0782076b2da398fc3",
-      "title": "Article Title",
-      "url": "https://example.com/article",
-      "link": "https://example.com/article",
-      "author": "Author Name",
-      "published_at": "Sat, 10 Jan 2026 22:15:35 +0000",
-      "summary": "Article summary...",
-      "categories": ["News"],
-      "fetched_at": "2026-01-11T01:43:39.306Z"
-    }
-  ]
-}
-```
+### 2.4 User Interaction Model (`user_articles`)
 
-**article_hash.json Structure** (full content):
-```json
-{
-  "hash": "a1b2c3d4e5f6...",
-  "title": "Article Title",
-  "url": "https://example.com/article",
-  "author": "John Doe",
-  "published_at": "2026-01-10T09:00:00Z",
-  "content": "Full HTML content...",
-  "content_text": "Plain text version...",
-  "summary": "Article summary",
-  "categories": ["Tech"],
-  "ai_summary": {
-    "content": "AI generated summary...",
-    "model": "gpt-4o-mini",
-    "generated_at": "2026-01-10T10:00:00Z",
-    "usage": { "prompt_tokens": 100, "completion_tokens": 50 }
-  },
-  "fetched_at": "2026-01-10T09:00:00Z"
-}
-```
+统一处理用户对文章的所有交互状态。
 
-**DB Status Tables**:
-| Table | Purpose | Constraint |
-|-------|---------|------------|
-| `read_articles` | Read status | UNIQUE(user_id, article_hash) |
-| `bookmarked_articles` | Bookmarks | UNIQUE(user_id, article_hash) |
-| `read_later_articles` | Read later | UNIQUE(user_id, article_hash) |
+| Field | Type | Purpose |
+|-------|------|---------|
+| `id` | UUID | Primary key |
+| `user_id` | UUID | FK to auth.users |
+| `article_id` | UUID | FK to articles |
+| `is_read` | BOOLEAN | Read status |
+| `is_bookmarked` | BOOLEAN | Bookmark status |
+| `is_read_later` | BOOLEAN | Read later status |
+| `read_at` | TIMESTAMP | Timestamp when marked as read |
+| `bookmarked_at` | TIMESTAMP | Timestamp when bookmarked |
+| `read_later_at` | TIMESTAMP | Timestamp when added to read later |
+| `notes` | TEXT | User notes for the article |
+| `updated_at` | TIMESTAMP | Record update time |
 
-**Indexes**:
-- `idx_read_articles_user_feed` on `(user_id, feed_id)`
+**Constraint**: `UNIQUE(user_id, article_id)`
+
+---
+
+### 2.5 Fetch Status & Logs
+
+#### `fetch_status` (Cache & Stats)
+用于快速显示 Feed 列表中的统计信息，避免大规模聚合查询。
+- `unread_count`: 实时/缓存的未读数。
+- `total_articles`: 总计文章数。
+- `next_fetch_at`: 预计下次抓取时间。
+
+#### `fetch_logs` (Monitoring)
+结构化抓取日志，取代了早期的文件日志。
+- `level`: info/warn/error。
+- `action`: fetch/parse/save。
+- `duration_ms`: 耗时监控。
 
 ---
 
 ## 3. Cross-Model Relationships
 
 ```
-Category (1) ───< (N) Feed (1) ───< (N) Article
-                           │
-                           └──> (N) read_articles (via article_hash)
-                           └──> (N) bookmarked_articles
+Category (1) ───< (N) Feed (1) ───< (N) Article (1) ───< (1) UserArticle (N)
+                                                                 │
+                                                                 └─> Auth.User
 ```
 
-**Relationship Maintenance**:
-- Feed stores `category_id` FK
-- Category delete: `SET NULL` for feeds
-- Feed delete: Cascade to `read_articles`, `bookmarked_articles`
-
-**Query Examples**:
-```typescript
-// Get feeds with category
-supabase.from('feeds')
-  .select('*, category:categories(*)')
-  .eq('user_id', userId)
-
-// Get unread count for a feed
-const index = await repo.getIndex(urlHash)
-const readHashes = await readStatus.getReadHashes(feedId)
-const unreadCount = index.articles.length - readHashes.size
-```
+**Key Improvements**:
+- **Cascade Deletes**: 删除 Category 会将 Feed 的 `category_id` 设为 NULL；删除 Feed 会级联删除其下所有 Articles 和关联的 `user_articles`。
+- **RLS Policies**: 所有表（除公共 blogs 外）均启用 RLS，强制 `user_id = auth.uid()`。
 
 ---
 
 ## 4. Data Flow
 
 ```
-User Action          -->  API Layer          -->  Data Layer
-─────────────────────────────────────────────────────────────
-Create Feed          -->  POST /feeds        -->  DB + file: meta.json
-List Feeds           -->  GET /feeds/list    -->  DB + file: index.json
-Fetch Articles       -->  GET /feeds/...     -->  file: index.json + articles/*.json
-Mark Read            -->  POST /articles/..  -->  DB: read_articles
-Bookmark             -->  POST /articles/..  -->  DB: bookmarked_articles
-Delete Feed          -->  DELETE /feeds/[id] -->  DB + rm -rf data/feeds/{url_hash}
+User Action          -->  Backend/Supabase Client  -->  Database (PostgreSQL)
+────────────────────────────────────────────────────────────────────────────
+Create Feed          -->  Insert into `feeds`      -->  DB Trigger creates `fetch_status`
+List Articles        -->  Select `articles`        -->  Left Join `user_articles` for status
+Mark Read            -->  Upsert `user_articles`   -->  Update `is_read` & `read_at`
+Fetch Service (CRON) -->  Process RSS Feed         -->  Batch Insert `articles` & Update `fetch_status`
 ```
 
 ---
 
-## 5. Performance Issues
+## 5. Optimization Strategy
 
-| Issue | Location | Impact | Severity |
-|-------|----------|--------|----------|
-| **Unread count O(n)** | `/api/feeds/list` | N feeds = N file reads + N DB queries | High |
-| **Article content preload** | ArticleViewModel | List page loads all full content | High |
-| **No pagination** | `/api/feeds/[id]/articles` | Returns all articles | Medium |
-| **index.json uncompressed** | File storage | Large files for big feeds | Low |
+### 5.1 Unread Count (The performance key)
+不再遍历文件。通过 `fetch_status` 缓存基础计数，并结合 `user_articles` 的变化进行增量更新。
 
-### 5.1 Unread Count Calculation (Bottleneck)
+### 5.2 Search & Discovery
+- `blogs` 表配备了 `pg_trgm` (Trigram) 索引，支持模糊搜索和相似度排名。
+- 对 `articles` 表的 `title` 和 `summary` 正在计划全文搜索 (FTS)。
 
-```typescript
-// Current implementation - O(n) per feed
-const feedsWithCounts = await Promise.all(
-  feeds.map(async (feed) => {
-    const index = await repo.getIndex(feed.url_hash);
-    const readHashes = await readStatus.getReadHashes(feed.id);
-    return {
-      ...feed,
-      unread_count: index.articles.length - readHashes.size
-    };
-  })
-);
-```
+### 5.3 Lazy Content Loading
+API 默认可以只加载文章元数据（URL, Title, Date），仅在进入详情页时通过 Article ID 加载 `content` 和 `summary`。
 
 ---
 
-## 6. Optimization Plan
+## 6. Summary
 
-### Priority 1: Cache Unread Count
-
-**Problem**: O(n) calculation for each feed
-
-**Solution**: Maintain `unread_count` field in `feeds` table, update incrementally
-
-**Implementation**:
-```sql
--- Add/update trigger on read_articles
-CREATE OR REPLACE FUNCTION update_unread_count()
-RETURNS TRIGGER AS $$
-BEGIN
-  IF TG_OP = 'INSERT' THEN
-    UPDATE feeds
-    SET unread_count = unread_count - 1
-    WHERE id = NEW.feed_id;
-  ELSIF TG_OP = 'DELETE' THEN
-    UPDATE feeds
-    SET unread_count = unread_count + 1
-    WHERE id = OLD.feed_id;
-  END IF;
-  RETURN NULL;
-END;
-$$ LANGUAGE plpgsql;
-```
-
-**Expected**: O(n) → O(1) for list API
-
----
-
-### Priority 2: Article Content Lazy Load
-
-**Problem**: List page loads full article content
-
-**Solution**: Only load `index.json` for list, load full content on detail view
-
-**Current**:
-```typescript
-// getArticlesForFeed loads full content for ALL articles
-const fullArticle = await this.repo.getArticle(urlHash, article.hash);
-```
-
-**Expected**: List API returns only index data, detail API loads content
-
----
-
-### Priority 3: Pagination Support
-
-**Problem**: `/api/feeds/[id]/articles` returns all articles
-
-**Solution**: Add `limit` and `offset` parameters
-
-**Implementation**:
-```typescript
-// In repository
-async getArticlesForFeed(feedId, urlHash, page = 1, limit = 20) {
-  const index = await this.repo.getIndex(urlHash);
-  const start = (page - 1) * limit;
-  const pagedArticles = index.articles.slice(start, start + limit);
-  // Load full content only for paged articles
-}
-```
-
----
-
-### Priority 4: Index Compression (Optional)
-
-**Problem**: `index.json` grows large for active feeds
-
-**Solutions**:
-1. Gzip compression (transparent to app)
-2. Switch to SQLite for indexing
-3. Implement article archival (move old to `archives/`)
-
----
-
-## 7. Test Coverage
-
-Current unit test structure by layer:
-
-| Layer | Test File | Coverage |
-|-------|-----------|----------|
-| Fetch | `rss.test.ts` | Hash generation, file naming |
-| Fetch | `feed-fetcher.test.ts` | Article hash, data conversion |
-| Storage | `article-repository.test.ts` | File CRUD operations |
-| DB | `read-status-service.test.ts` | Read status CRUD |
-| View Model | `article-view-model.test.ts` | Data aggregation |
-
-**Total**: 70 test cases passing (using Bun test)
-
----
-
-## 8. Summary
-
-| Aspect | Current State | Target State |
-|--------|---------------|--------------|
-| Storage | Hybrid (DB + File) | Same |
-| Article Index | index.json (1000 limit) | Add pagination |
-| Unread Count | Real-time O(n) | Cached O(1) |
-| Content Loading | All at once | Lazy load |
-| Test Coverage | 70 cases (Bun) | Expand for new features |
+| Aspect | Old State (Hybrid) | New State (Postgres) |
+|--------|-------------------|----------------------|
+| **Storage** | DB + JSON Files | Full PostgreSQL |
+| **Consistency** | Manual Sync | Database Constraints |
+| **Query** | Basic filtering | Complex joins / JSONB support |
+| **Scalability** | IO limited | Indexed performance |
+| **Security** | File permissions | Row Level Security (RLS) |

@@ -3,11 +3,11 @@
  * Unit tests for FeedViewModel transformation and grouping logic
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, mock } from 'bun:test';
 import { FeedViewModel, FeedGroupViewModel, CategoryViewModel } from '@/types/feed-view-model';
 
 // Import the actual transformation function from source to ensure consistency
-import { transformToViewModel } from './useFeedViewModels';
+import { transformToViewModel } from '@/lib/view-models/feed-view-model';
 
 // Test the transformation logic from API response to ViewModel
 describe('FeedViewModel transformation', () => {

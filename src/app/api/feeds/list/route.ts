@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createSmartSupabaseClient } from '@/lib/supabase-server';
 
-// GET /api/feeds/list - 获取带未读数的 feeds 列表
+// GET /api/feeds/list - Get feed list with cached counts
 export async function GET() {
   try {
     const { client: supabase, user } = await createSmartSupabaseClient();
@@ -27,57 +27,24 @@ export async function GET() {
       return NextResponse.json({ feeds: [] });
     }
 
-    const feedIds = (feeds || []).map(f => f.id);
+    const feedIds = feeds.map(f => f.id);
 
-    // Get total articles count per feed
-    const { data: articlesData } = await supabase
-      .from('articles')
-      .select('feed_id, id')
-      .in('feed_id', feedIds);
-
-    // Get read article counts per feed (user_articles where is_read = true)
-    const articleIds = (articlesData || []).map(a => a.id);
-    const { data: readData } = articleIds.length > 0
-      ? await supabase
-          .from('user_articles')
-          .select('article_id, is_read')
-          .in('article_id', articleIds)
-          .eq('is_read', true)
-      : { data: [] };
-
-    // Get fetch_status for all feeds
+    // Get fetch_status for all feeds (contains cached counts)
     const { data: cacheData } = await supabase
       .from('fetch_status')
       .select('*')
       .in('feed_id', feedIds);
 
-    // Build articles count map
-    const articlesCountMap = new Map<string, number>();
-    for (const a of articlesData || []) {
-      articlesCountMap.set(a.feed_id, (articlesCountMap.get(a.feed_id) || 0) + 1);
-    }
-
-    // Build read count map
-    const readCountMap = new Map<string, number>();
-    for (const r of readData || []) {
-      const article = articlesData?.find(a => a.id === r.article_id);
-      if (article) {
-        readCountMap.set(article.feed_id, (readCountMap.get(article.feed_id) || 0) + 1);
-      }
-    }
-
     // Build cache map
-    const cacheMap = new Map(cacheData?.map(c => [c.feed_id, c]) || []);
+    const cacheMap = new Map((cacheData || []).map(c => [c.feed_id, c]));
 
     // Combine data
-    const feedsWithCounts = (feeds || []).map((feed: any) => {
+    const feedsWithCounts = feeds.map((feed: any) => {
       const cache = cacheMap.get(feed.id);
-      const totalArticles = articlesCountMap.get(feed.id) || 0;
-      const readCount = readCountMap.get(feed.id) || 0;
       return {
         ...feed,
-        total_articles: totalArticles,
-        unread_count: totalArticles - readCount,
+        total_articles: cache?.total_articles || 0,
+        unread_count: cache?.unread_count || 0,
         last_fetch_at: cache?.last_fetch_at || null,
         last_fetch_status: cache?.last_fetch_status || null,
         next_fetch_at: cache?.next_fetch_at || null,
