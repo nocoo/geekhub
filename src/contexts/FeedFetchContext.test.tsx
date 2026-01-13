@@ -3,8 +3,8 @@
  * Tests for FeedFetchContext.
  */
 
-import { describe, it, expect, mock, beforeEach } from 'bun:test';
-import { renderHook, act } from '@testing-library/react';
+import { describe, it, expect, mock, beforeEach, afterEach } from 'bun:test';
+import { renderHook, act, cleanup } from '@testing-library/react';
 import { FeedFetchProvider, useFeedFetch } from './FeedFetchContext';
 import React, { ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -24,6 +24,7 @@ mock.module('./AuthContext', () => ({
 describe('FeedFetchContext', () => {
     let queryClient: QueryClient;
 
+    afterEach(cleanup);
     beforeEach(() => {
         mockUseSSEEvents.mockClear();
         queryClient = createTestQueryClient();

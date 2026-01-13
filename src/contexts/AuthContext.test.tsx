@@ -3,8 +3,8 @@
  * Tests for AuthContext.
  */
 
-import { describe, it, expect, mock, beforeEach } from 'bun:test';
-import { renderHook, waitFor, act } from '@testing-library/react';
+import { describe, it, expect, mock, beforeEach, afterEach } from 'bun:test';
+import { renderHook, waitFor, act, cleanup } from '@testing-library/react';
 import { AuthProvider, useAuth } from './AuthContext';
 import React, { ReactNode } from 'react';
 
@@ -26,6 +26,7 @@ mock.module('@/lib/supabase-browser', () => ({
 }));
 
 describe('AuthContext', () => {
+    afterEach(cleanup);
     beforeEach(() => {
         mockGetSession.mockClear();
         mockGetSession.mockImplementation(() => Promise.resolve({ data: { session: null }, error: null }));
@@ -83,7 +84,6 @@ describe('AuthContext', () => {
             stateChangeCallback('SIGNED_IN', { user: mockUser });
         });
 
-        expect(result.current.user).not.toBeNull();
-        expect(result.current.user?.id).toBe('user-456');
+        await waitFor(() => expect(result.current.user?.id).toBe('user-456'));
     });
 });

@@ -3,36 +3,37 @@
  * Unit tests for useDatabase hooks, especially optimistic update behavior
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, mock, beforeEach, afterEach } from 'bun:test';
+import { act } from 'react';
 import { QueryClient } from '@tanstack/react-query';
 import { FeedViewModel } from '@/types/feed-view-model';
 
 // Mock the supabase client
-vi.mock('@/lib/supabase-browser', () => ({
-  createClient: vi.fn(() => ({
+mock.module('@/lib/supabase-browser', () => ({
+  createClient: mock(() => ({
     auth: {
-      getUser: vi.fn(),
+      getUser: mock(),
     },
-    from: vi.fn(() => ({
-      select: vi.fn(() => ({
-        eq: vi.fn(() => ({
-          single: vi.fn(),
-          order: vi.fn(),
+    from: mock(() => ({
+      select: mock(() => ({
+        eq: mock(() => ({
+          single: mock(),
+          order: mock(),
         })),
-        in: vi.fn(),
+        in: mock(),
       })),
-      insert: vi.fn(() => ({
-        select: vi.fn(() => ({
-          single: vi.fn(),
-        })),
-      })),
-      update: vi.fn(() => ({
-        select: vi.fn(() => ({
-          single: vi.fn(),
+      insert: mock(() => ({
+        select: mock(() => ({
+          single: mock(),
         })),
       })),
-      delete: vi.fn(() => ({
-        eq: vi.fn(),
+      update: mock(() => ({
+        select: mock(() => ({
+          single: mock(),
+        })),
+      })),
+      delete: mock(() => ({
+        eq: mock(),
       })),
     })),
   })),
@@ -78,7 +79,9 @@ describe('Optimistic Update Cache Key', () => {
     ];
 
     // Set the feedViewModels cache (this is what Sidebar reads from)
-    queryClient.setQueryData(feedViewModelCacheKey, initialFeeds);
+    act(() => {
+      queryClient.setQueryData(feedViewModelCacheKey, initialFeeds);
+    });
 
     // Verify feedViewModels cache exists and has correct data
     const cachedFeeds = queryClient.getQueryData<FeedViewModel[]>(feedViewModelCacheKey);
@@ -86,13 +89,15 @@ describe('Optimistic Update Cache Key', () => {
     expect(cachedFeeds![0].unreadCount).toBe(10);
 
     // Simulate optimistic update: decrement unread count by 1
-    queryClient.setQueryData<FeedViewModel[]>(feedViewModelCacheKey, (old = []) =>
-      old.map(feed =>
-        feed.id === feedId
-          ? { ...feed, unreadCount: Math.max(0, (feed.unreadCount || 0) - 1) }
-          : feed
-      )
-    );
+    act(() => {
+      queryClient.setQueryData<FeedViewModel[]>(feedViewModelCacheKey, (old = []) =>
+        old.map(feed =>
+          feed.id === feedId
+            ? { ...feed, unreadCount: Math.max(0, (feed.unreadCount || 0) - 1) }
+            : feed
+        )
+      );
+    });
 
     // Verify the optimistic update worked
     const updatedFeeds = queryClient.getQueryData<FeedViewModel[]>(feedViewModelCacheKey);

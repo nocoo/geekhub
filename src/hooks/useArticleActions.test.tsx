@@ -3,11 +3,20 @@
  * Integration tests for article action hooks with optimistic updates and rollbacks.
  */
 
-import { describe, it, expect, mock, beforeEach } from 'bun:test';
+import { describe, it, expect, mock, beforeEach, afterEach } from 'bun:test';
 import { renderHookWithProviders, createTestQueryClient } from '@/test/test-utils';
 import { useBookmarkArticle, useUnbookmarkArticle } from './useArticleActions';
 import { QueryClient } from '@tanstack/react-query';
-import { waitFor } from '@testing-library/react';
+import { waitFor, cleanup } from '@testing-library/react';
+import { act } from 'react';
+
+// Mock sonner
+mock.module('sonner', () => ({
+    toast: {
+        success: mock(() => { }),
+        error: mock(() => { }),
+    },
+}));
 
 // Mock global fetch
 const mockFetch = mock(() => Promise.resolve({
@@ -19,6 +28,7 @@ global.fetch = mockFetch as any;
 describe('useArticleActions ViewModel Actions', () => {
     let queryClient: QueryClient;
 
+    afterEach(cleanup);
     beforeEach(() => {
         mockFetch.mockClear();
         queryClient = createTestQueryClient();
@@ -26,15 +36,19 @@ describe('useArticleActions ViewModel Actions', () => {
 
     it('should optimistic update starred-count when bookmarking', async () => {
         const userId = 'user-123';
-        queryClient.setQueryData(['starred-count', userId], 5);
+        act(() => {
+            queryClient.setQueryData(['starred-count', userId], 5);
+        });
 
-        const { result } = renderHookWithProviders(() => useBookmarkArticle(), { queryClient });
+        const { result } = await act(async () => renderHookWithProviders(() => useBookmarkArticle(), { queryClient }));
 
         let resolveMutation: (v: any) => void;
         const mutationPromise = new Promise(r => { resolveMutation = r; });
         mockFetch.mockImplementationOnce(() => mutationPromise);
 
-        result.current.mutate({ articleId: 'art-1' });
+        act(() => {
+            result.current.mutate({ articleId: 'art-1' });
+        });
 
         // Use waitFor to allow async onMutate to finish
         await waitFor(() => {
@@ -42,7 +56,10 @@ describe('useArticleActions ViewModel Actions', () => {
             expect(optimisticCount).toBe(6);
         });
 
-        resolveMutation!({ ok: true, json: () => Promise.resolve({ success: true }) });
+        act(() => {
+            resolveMutation!({ ok: true, json: () => Promise.resolve({ success: true }) });
+        });
+
         await waitFor(() => {
             expect(queryClient.getQueryData(['starred-count', userId])).toBe(6);
         });
@@ -50,13 +67,17 @@ describe('useArticleActions ViewModel Actions', () => {
 
     it('should rollback starred-count on failure', async () => {
         const userId = 'user-123';
-        queryClient.setQueryData(['starred-count', userId], 5);
+        act(() => {
+            queryClient.setQueryData(['starred-count', userId], 5);
+        });
 
-        const { result } = renderHookWithProviders(() => useBookmarkArticle(), { queryClient });
+        const { result } = await act(async () => renderHookWithProviders(() => useBookmarkArticle(), { queryClient }));
 
         mockFetch.mockImplementationOnce(() => Promise.reject(new Error('Network Error')));
 
-        await result.current.mutateAsync({ articleId: 'art-1' }).catch(() => { });
+        await act(async () => {
+            await result.current.mutateAsync({ articleId: 'art-1' }).catch(() => { });
+        });
 
         await waitFor(() => {
             const rolledBackCount = queryClient.getQueryData(['starred-count', userId]);
@@ -67,14 +88,18 @@ describe('useArticleActions ViewModel Actions', () => {
     it('should remove article from starred articles cache optimistically', async () => {
         const userId = 'user-123';
         const initialArticles = [{ id: 'art-1', title: 'A1' }, { id: 'art-2', title: 'A2' }];
-        queryClient.setQueryData(['articles', userId, 'starred'], initialArticles);
+        act(() => {
+            queryClient.setQueryData(['articles', userId, 'starred'], initialArticles);
+        });
 
-        const { result } = renderHookWithProviders(() => useUnbookmarkArticle(), { queryClient });
+        const { result } = await act(async () => renderHookWithProviders(() => useUnbookmarkArticle(), { queryClient }));
 
         let resolveMutation: (v: any) => void;
         mockFetch.mockImplementationOnce(() => new Promise(r => { resolveMutation = r; }));
 
-        result.current.mutate('art-1');
+        act(() => {
+            result.current.mutate('art-1');
+        });
 
         await waitFor(() => {
             const articles = queryClient.getQueryData<any[]>(['articles', userId, 'starred']);
@@ -82,6 +107,8 @@ describe('useArticleActions ViewModel Actions', () => {
             expect(articles![0].id).toBe('art-2');
         });
 
-        resolveMutation!({ ok: true, json: () => Promise.resolve({ success: true }) });
+        act(() => {
+            resolveMutation!({ ok: true, json: () => Promise.resolve({ success: true }) });
+        });
     });
 });

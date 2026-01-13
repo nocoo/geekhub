@@ -28,3 +28,9 @@ global.Request = jsdom.window.Request;
 global.Response = jsdom.window.Response;
 // @ts-ignore
 global.Headers = jsdom.window.Headers;
+
+// Enable React act() environment
+// @ts-ignore
+globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+// @ts-ignore
+global.IS_REACT_ACT_ENVIRONMENT = true;
