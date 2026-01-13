@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, ReactNode, Dispatch, SetStateAction } from 'react';
+import { createContext, useContext, useState, useCallback, ReactNode, Dispatch, SetStateAction, useMemo } from 'react';
 import { useFeedFetchEvents as useSSEEvents } from './SSEContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from './AuthContext';
@@ -64,11 +64,11 @@ export function FeedFetchProvider({ children }: ProviderProps) {
     return fetchingFeeds.has(feedId);
   }, [fetchingFeeds]);
 
-  const value: FeedFetchStateContextValue = {
+  const value = useMemo<FeedFetchStateContextValue>(() => ({
     fetchingFeeds,
     isFeedFetching,
     setFetchingFeeds,
-  };
+  }), [fetchingFeeds, isFeedFetching]);
 
   return (
     <FeedFetchContext.Provider value={value}>

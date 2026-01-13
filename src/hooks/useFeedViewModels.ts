@@ -12,6 +12,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useFeedFetch } from "@/contexts/FeedFetchContext";
 import { FeedViewModel, FeedGroupViewModel, CategoryViewModel } from "@/types/feed-view-model";
 import { transformToViewModel, calculateFeedGroups, FeedApiResponse } from "@/lib/view-models/feed-view-model";
+import { useMemo } from "react";
 
 // Fetch feeds from API
 async function fetchFeeds(): Promise<FeedViewModel[]> {
@@ -44,10 +45,10 @@ export function useFeedViewModels() {
   });
 
   // Inject isFetching state from context
-  const feedsWithFetchingState = query.data?.map((feed) => ({
+  const feedsWithFetchingState = useMemo(() => query.data?.map((feed) => ({
     ...feed,
     isFetching: fetchingFeeds.has(feed.id),
-  }));
+  })), [query.data, fetchingFeeds]);
 
   return {
     ...query,

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useRef, useCallback, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useCallback, useState, ReactNode, useMemo } from 'react';
 
 interface FetchCompleteEvent {
   feedId: string;
@@ -109,8 +109,15 @@ export function SSEProvider({ children }: { children: ReactNode }) {
     return () => logsUpdateListenersRef.current.delete(callback);
   }, []);
 
+  const value = useMemo(() => ({
+    onFetchComplete,
+    onLogsInit,
+    onLogsUpdate,
+    isOnline
+  }), [onFetchComplete, onLogsInit, onLogsUpdate, isOnline]);
+
   return (
-    <SSEContext.Provider value={{ onFetchComplete, onLogsInit, onLogsUpdate, isOnline }}>
+    <SSEContext.Provider value={value}>
       {children}
     </SSEContext.Provider>
   );

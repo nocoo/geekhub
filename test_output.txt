@@ -1,0 +1,1914 @@
+bun test v1.3.5 (1e86cebd)
+
+src/contexts/AuthContext.test.tsx:
+(pass) AuthContext > should initialize with null user if no session [58.73ms]
+(pass) AuthContext > should initialize with user if session exists [52.50ms]
+An update to AuthProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to AuthProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to AuthProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+(pass) AuthContext > should update user when auth state changes [53.84ms]
+
+src/contexts/FeedFetchContext.test.tsx:
+(pass) FeedFetchContext > should manage fetching state [1.27ms]
+(pass) FeedFetchContext > should handle fetch complete event via SSE [0.50ms]
+
+src/components/ArticleItem.test.tsx:
+(pass) ArticleItem > should render article details correctly [9.66ms]
+54 |       const elementStrings = els.map(element => getElementError(null, element).message).join('\n\n');
+55 |       throw getMultipleElementsFoundError(`${getMultipleError(container, ...args)}
+56 | 
+57 | Here are the matching elements:
+58 | 
+59 | ${elementStrings}`, container);
+                                  ^
+TestingLibraryElementError: Found multiple elements with the role "button"
+
+Here are the matching elements:
+
+Ignored nodes: comments, script, style
+[36m<button[39m
+  [33mclass[39m=[32m"w-full text-left p-4 transition-all duration-150 relative group bg-primary/5 hover:bg-accent/50"[39m
+  [33mdata-article-id[39m=[32m"article-1"[39m
+[36m>[39m
+  [36m<div[39m
+    [33mclass[39m=[32m"flex gap-3"[39m
+  [36m>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"flex-1 min-w-0"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex items-start gap-2"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"w-1.5 h-1.5 rounded-full bg-primary mt-2 flex-shrink-0"[39m
+        [36m/>[39m
+        [36m<h3[39m
+          [33mclass[39m=[32m"text-sm leading-snug line-clamp-2 font-semibold text-foreground"[39m
+        [36m>[39m
+          [0mTest Article[0m
+        [36m</h3>[39m
+      [36m</div>[39m
+      [36m<p[39m
+        [33mclass[39m=[32m"text-xs text-muted-foreground line-clamp-2 mt-1.5"[39m
+      [36m>[39m
+        [0mTest Description[0m
+      [36m</p>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex items-center gap-2 mt-2"[39m
+      [36m>[39m
+        [36m<svg[39m
+          [33mclass[39m=[32m"lucide lucide-rss w-3.5 h-3.5 text-muted-foreground flex-shrink-0"[39m
+          [33mfill[39m=[32m"none"[39m
+          [33mheight[39m=[32m"24"[39m
+          [33mstroke[39m=[32m"currentColor"[39m
+          [33mstroke-linecap[39m=[32m"round"[39m
+          [33mstroke-linejoin[39m=[32m"round"[39m
+          [33mstroke-width[39m=[32m"2"[39m
+          [33mviewBox[39m=[32m"0 0 24 24"[39m
+          [33mwidth[39m=[32m"24"[39m
+          [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+        [36m>[39m
+          [36m<path[39m
+            [33md[39m=[32m"M4 11a9 9 0 0 1 9 9"[39m
+          [36m/>[39m
+          [36m<path[39m
+            [33md[39m=[32m"M4 4a16 16 0 0 1 16 16"[39m
+          [36m/>[39m
+          [36m<circle[39m
+            [33mcx[39m=[32m"5"[39m
+            [33mcy[39m=[32m"19"[39m
+            [33mr[39m=[32m"1"[39m
+          [36m/>[39m
+        [36m</svg>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"text-xs text-muted-foreground truncate"[39m
+        [36m>[39m
+          [0mTest Author[0m
+        [36m</span>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"text-xs text-muted-foreground"[39m
+        [36m>[39m
+          [0m·[0m
+        [36m</span>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"text-xs text-muted-foreground font-mono"[39m
+        [36m>[39m
+          [0m10 mins ago[0m
+        [36m</span>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</button>[39m
+
+Ignored nodes: comments, script, style
+[36m<button[39m
+  [33mclass[39m=[32m"w-full text-left p-4 transition-all duration-150 relative group bg-primary/5 hover:bg-accent/50"[39m
+  [33mdata-article-id[39m=[32m"article-1"[39m
+[36m>[39m
+  [36m<div[39m
+    [33mclass[39m=[32m"flex gap-3"[39m
+  [36m>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"flex-1 min-w-0"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex items-start gap-2"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"w-1.5 h-1.5 rounded-full bg-primary mt-2 flex-shrink-0"[39m
+        [36m/>[39m
+        [36m<h3[39m
+          [33mclass[39m=[32m"text-sm leading-snug line-clamp-2 font-semibold text-foreground"[39m
+        [36m>[39m
+          [0mTest Article[0m
+        [36m</h3>[39m
+      [36m</div>[39m
+      [36m<p[39m
+        [33mclass[39m=[32m"text-xs text-muted-foreground line-clamp-2 mt-1.5"[39m
+      [36m>[39m
+        [0mTest Description[0m
+      [36m</p>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex items-center gap-2 mt-2"[39m
+      [36m>[39m
+        [36m<svg[39m
+          [33mclass[39m=[32m"lucide lucide-rss w-3.5 h-3.5 text-muted-foreground flex-shrink-0"[39m
+          [33mfill[39m=[32m"none"[39m
+          [33mheight[39m=[32m"24"[39m
+          [33mstroke[39m=[32m"currentColor"[39m
+          [33mstroke-linecap[39m=[32m"round"[39m
+          [33mstroke-linejoin[39m=[32m"round"[39m
+          [33mstroke-width[39m=[32m"2"[39m
+          [33mviewBox[39m=[32m"0 0 24 24"[39m
+          [33mwidth[39m=[32m"24"[39m
+          [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+        [36m>[39m
+          [36m<path[39m
+            [33md[39m=[32m"M4 11a9 9 0 0 1 9 9"[39m
+          [36m/>[39m
+          [36m<path[39m
+            [33md[39m=[32m"M4 4a16 16 0 0 1 16 16"[39m
+          [36m/>[39m
+          [36m<circle[39m
+            [33mcx[39m=[32m"5"[39m
+            [33mcy[39m=[32m"19"[39m
+            [33mr[39m=[32m"1"[39m
+          [36m/>[39m
+        [36m</svg>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"text-xs text-muted-foreground truncate"[39m
+        [36m>[39m
+          [0mTest Author[0m
+        [36m</span>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"text-xs text-muted-foreground"[39m
+        [36m>[39m
+          [0m·[0m
+        [36m</span>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"text-xs text-muted-foreground font-mono"[39m
+        [36m>[39m
+          [0m10 mins ago[0m
+        [36m</span>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</button>[39m
+
+(If this is intentional, then use the `*AllBy*` variant of the query (like `queryAllByText`, `getAllByText`, or `findAllByText`)).
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div />[39m
+  [36m<div />[39m
+  [36m<div>[39m
+    [36m<button[39m
+      [33mclass[39m=[32m"w-full text-left p-4 transition-all duration-150 relative group bg-primary/5 hover:bg-accent/50"[39m
+      [33mdata-article-id[39m=[32m"article-1"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex gap-3"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"flex-1 min-w-0"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-start gap-2"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"w-1.5 h-1.5 rounded-full bg-primary mt-2 flex-shrink-0"[39m
+            [36m/>[39m
+            [36m<h3[39m
+              [33mclass[39m=[32m"text-sm leading-snug line-clamp-2 font-semibold text-foreground"[39m
+            [36m>[39m
+              [0mTest Article[0m
+            [36m</h3>[39m
+          [36m</div>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"text-xs text-muted-foreground line-clamp-2 mt-1.5"[39m
+          [36m>[39m
+            [0mTest Description[0m
+          [36m</p>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-center gap-2 mt-2"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33mclass[39m=[32m"lucide lucide-rss w-3.5 h-3.5 text-muted-foreground flex-shrink-0"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"24"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"24"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M4 11a9 9 0 0 1 9 9"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M4 4a16 16 0 0 1 16 16"[39m
+              [36m/>[39m
+              [36m<circle[39m
+                [33mcx[39m=[32m"5"[39m
+                [33mcy[39m=[32m"19"[39m
+                [33mr[39m=[32m"1"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-xs text-muted-foreground truncate"[39m
+            [36m>[39m
+              [0mTest Author[0m
+            [36m</span>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-xs text-muted-foreground"[39m
+            [36m>[39m
+              [0m·[0m
+            [36m</span>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-xs text-muted-foreground font-mono"[39m
+            [36m>[39m
+              [0m10 mins ago[0m
+            [36m</span>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</button>[39m
+  [36m</div>[39m
+  [36m<div>[39m
+    [36m<button[39m
+      [33mclass[39m=[32m"w-full text-left p-4 transition-all duration-150 relative group bg-primary/5 hover:bg-accent/50"[39m
+      [33mdata-article-id[39m=[32m"article-1"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex gap-3"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"flex-1 min-w-0"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-start gap-2"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"w-1.5 h-1.5 rounded-full bg-primary mt-2 flex-shrink-0"[39m
+            [36m/>[39m
+            [36m<h3[39m
+              [33mclass[39m=[32m"text-sm leading-snug line-clamp-2 font-semibold text-foreground"[39m
+            [36m>[39m
+              [0mTest Article[0m
+            [36m</h3>[39m
+          [36m</div>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"text-xs text-muted-foreground line-clamp-2 mt-1.5"[39m
+          [36m>[39m
+            [0mTest Description[0m
+          [36m</p>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-center gap-2 mt-2"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33mclass[39m=[32m"lucide lucide-rss w-3.5 h-3.5 text-muted-foreground flex-shrink-0"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"24"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"24"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M4 11a9 9 0 0 1 9 9"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M4 4a16 16 0 0 1 16 16"[39m
+              [36m/>[39m
+              [36m<circle[39m
+                [33mcx[39m=[32m"5"[39m
+                [33mcy[39m=[32m"19"[39m
+                [33mr[39m=[32m"1"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-xs text-muted-foreground truncate"[39m
+            [36m>[39m
+              [0mTest Author[0m
+            [36m</span>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-xs text-muted-foreground"[39m
+            [36m>[39m
+              [0m·[0m
+            [36m</span>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-xs text-muted-foreground font-mono"[39m
+            [36m>[39m
+              [0m10 mins ago[0m
+            [36m</span>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</button>[39m
+  [36m</div>[39m
+[36m</body>[39m
+      at <anonymous> (/Users/nocoo/workspace/personal/geekhub/node_modules/@testing-library/dom/dist/query-helpers.js:59:30)
+      at <anonymous> (/Users/nocoo/workspace/personal/geekhub/node_modules/@testing-library/dom/dist/query-helpers.js:95:19)
+      at <anonymous> (/Users/nocoo/workspace/personal/geekhub/src/components/ArticleItem.test.tsx:55:32)
+(fail) ArticleItem > should call onSelect when clicked [34.71ms]
+54 |       const elementStrings = els.map(element => getElementError(null, element).message).join('\n\n');
+55 |       throw getMultipleElementsFoundError(`${getMultipleError(container, ...args)}
+56 | 
+57 | Here are the matching elements:
+58 | 
+59 | ${elementStrings}`, container);
+                                  ^
+TestingLibraryElementError: Found multiple elements with the text: Test Article
+
+Here are the matching elements:
+
+Ignored nodes: comments, script, style
+[36m<h3[39m
+  [33mclass[39m=[32m"text-sm leading-snug line-clamp-2 font-semibold text-foreground"[39m
+[36m>[39m
+  [0mTest Article[0m
+[36m</h3>[39m
+
+Ignored nodes: comments, script, style
+[36m<h3[39m
+  [33mclass[39m=[32m"text-sm leading-snug line-clamp-2 font-semibold text-foreground"[39m
+[36m>[39m
+  [0mTest Article[0m
+[36m</h3>[39m
+
+Ignored nodes: comments, script, style
+[36m<h3[39m
+  [33mclass[39m=[32m"text-sm leading-snug line-clamp-2 font-semibold text-foreground"[39m
+[36m>[39m
+  [0mTest Article[0m
+[36m</h3>[39m
+
+(If this is intentional, then use the `*AllBy*` variant of the query (like `queryAllByText`, `getAllByText`, or `findAllByText`)).
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div />[39m
+  [36m<div />[39m
+  [36m<div>[39m
+    [36m<button[39m
+      [33mclass[39m=[32m"w-full text-left p-4 transition-all duration-150 relative group bg-primary/5 hover:bg-accent/50"[39m
+      [33mdata-article-id[39m=[32m"article-1"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex gap-3"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"flex-1 min-w-0"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-start gap-2"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"w-1.5 h-1.5 rounded-full bg-primary mt-2 flex-shrink-0"[39m
+            [36m/>[39m
+            [36m<h3[39m
+              [33mclass[39m=[32m"text-sm leading-snug line-clamp-2 font-semibold text-foreground"[39m
+            [36m>[39m
+              [0mTest Article[0m
+            [36m</h3>[39m
+          [36m</div>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"text-xs text-muted-foreground line-clamp-2 mt-1.5"[39m
+          [36m>[39m
+            [0mTest Description[0m
+          [36m</p>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-center gap-2 mt-2"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33mclass[39m=[32m"lucide lucide-rss w-3.5 h-3.5 text-muted-foreground flex-shrink-0"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"24"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"24"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M4 11a9 9 0 0 1 9 9"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M4 4a16 16 0 0 1 16 16"[39m
+              [36m/>[39m
+              [36m<circle[39m
+                [33mcx[39m=[32m"5"[39m
+                [33mcy[39m=[32m"19"[39m
+                [33mr[39m=[32m"1"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-xs text-muted-foreground truncate"[39m
+            [36m>[39m
+              [0mTest Author[0m
+            [36m</span>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-xs text-muted-foreground"[39m
+            [36m>[39m
+              [0m·[0m
+            [36m</span>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-xs text-muted-foreground font-mono"[39m
+            [36m>[39m
+              [0m10 mins ago[0m
+            [36m</span>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</button>[39m
+  [36m</div>[39m
+  [36m<div>[39m
+    [36m<button[39m
+      [33mclass[39m=[32m"w-full text-left p-4 transition-all duration-150 relative group bg-primary/5 hover:bg-accent/50"[39m
+      [33mdata-article-id[39m=[32m"article-1"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex gap-3"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"flex-1 min-w-0"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-start gap-2"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"w-1.5 h-1.5 rounded-full bg-primary mt-2 flex-shrink-0"[39m
+            [36m/>[39m
+            [36m<h3[39m
+              [33mclass[39m=[32m"text-sm leading-snug line-clamp-2 font-semibold text-foreground"[39m
+            [36m>[39m
+              [0mTest Article[0m
+            [36m</h3>[39m
+          [36m</div>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"text-xs text-muted-foreground line-clamp-2 mt-1.5"[39m
+          [36m>[39m
+            [0mTest Description[0m
+          [36m</p>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-center gap-2 mt-2"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33mclass[39m=[32m"lucide lucide-rss w-3.5 h-3.5 text-muted-foreground flex-shrink-0"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"24"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"24"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M4 11a9 9 0 0 1 9 9"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M4 4a16 16 0 0 1 16 16"[39m
+              [36m/>[39m
+              [36m<circle[39m
+                [33mcx[39m=[32m"5"[39m
+                [33mcy[39m=[32m"19"[39m
+                [33mr[39m=[32m"1"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-xs text-muted-foreground truncate"[39m
+            [36m>[39m
+              [0mTest Author[0m
+            [36m</span>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-xs text-muted-foreground"[39m
+            [36m>[39m
+              [0m·[0m
+            [36m</span>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-xs text-muted-foreground font-mono"[39m
+            [36m>[39m
+              [0m10 mins ago[0m
+            [36m</span>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</button>[39m
+  [36m</div>[39m
+  [36m<div>[39m
+    [36m<button[39m
+      [33mclass[39m=[32m"w-full text-left p-4 transition-all duration-150 relative group bg-primary/5 hover:bg-accent/50"[39m
+      [33mdata-article-id[39m=[32m"article-1"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex gap-3"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"flex-1 min-w-0"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-start gap-2"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"w-1.5 h-1.5 rounded-full bg-primary mt-2 flex-shrink-0"[39m
+            [36m/>[39m
+            [36m<h3[39m
+              [33mclass[39m=[32m"text-sm leading-snug line-clamp-2 font-semibold text-foreground"[39m
+            [36m>[39m
+              [0mTest Article[0m
+            [36m</h3>[39m
+          [36m</div>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"text-xs text-muted-foreground line-clamp-2 mt-1.5"[39m
+          [36m>[39m
+            [0mTest Description[0m
+          [36m</p>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-center gap-2 mt-2"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33mclass[39m=[32m"lucide lucide-rss w-3.5 h-3.5 text-muted-foreground flex-shrink-0"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"24"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"24"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M4 11a9 9 0 0 1 9 9"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M4 4a16 16 0 0 1 16 16"[39m
+              [36m/>[39m
+              [36m<circle[39m
+                [33mcx[39m=[32m"5"[39m
+                [33mcy[39m=[32m"19"[39m
+                [33mr[39m=[32m"1"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-xs text-muted-foreground truncate"[39m
+            [36m>[39m
+              [0mTest Author[0m
+            [36m</span>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-xs text-muted-foreground"[39m
+            [36m>[39m
+              [0m·[0m
+            [36m</span>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-xs text-muted-foreground font-mono"[39m
+            [36m>[39m
+              [0m10 mins ago[0m
+            [36m</span>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</button>[39m
+  [36m</div>[39m
+[36m</body>[39m
+      at <anonymous> (/Users/nocoo/workspace/personal/geekhub/node_modules/@testing-library/dom/dist/query-helpers.js:59:30)
+      at <anonymous> (/Users/nocoo/workspace/personal/geekhub/node_modules/@testing-library/dom/dist/query-helpers.js:95:19)
+      at <anonymous> (/Users/nocoo/workspace/personal/geekhub/src/components/ArticleItem.test.tsx:72:36)
+(fail) ArticleItem > should show read status styling [2.56ms]
+54 |       const elementStrings = els.map(element => getElementError(null, element).message).join('\n\n');
+55 |       throw getMultipleElementsFoundError(`${getMultipleError(container, ...args)}
+56 | 
+57 | Here are the matching elements:
+58 | 
+59 | ${elementStrings}`, container);
+                                  ^
+TestingLibraryElementError: Found multiple elements with the role "button"
+
+Here are the matching elements:
+
+Ignored nodes: comments, script, style
+[36m<button[39m
+  [33mclass[39m=[32m"w-full text-left p-4 transition-all duration-150 relative group bg-primary/5 hover:bg-accent/50"[39m
+  [33mdata-article-id[39m=[32m"article-1"[39m
+[36m>[39m
+  [36m<div[39m
+    [33mclass[39m=[32m"flex gap-3"[39m
+  [36m>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"flex-1 min-w-0"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex items-start gap-2"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"w-1.5 h-1.5 rounded-full bg-primary mt-2 flex-shrink-0"[39m
+        [36m/>[39m
+        [36m<h3[39m
+          [33mclass[39m=[32m"text-sm leading-snug line-clamp-2 font-semibold text-foreground"[39m
+        [36m>[39m
+          [0mTest Article[0m
+        [36m</h3>[39m
+      [36m</div>[39m
+      [36m<p[39m
+        [33mclass[39m=[32m"text-xs text-muted-foreground line-clamp-2 mt-1.5"[39m
+      [36m>[39m
+        [0mTest Description[0m
+      [36m</p>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex items-center gap-2 mt-2"[39m
+      [36m>[39m
+        [36m<svg[39m
+          [33mclass[39m=[32m"lucide lucide-rss w-3.5 h-3.5 text-muted-foreground flex-shrink-0"[39m
+          [33mfill[39m=[32m"none"[39m
+          [33mheight[39m=[32m"24"[39m
+          [33mstroke[39m=[32m"currentColor"[39m
+          [33mstroke-linecap[39m=[32m"round"[39m
+          [33mstroke-linejoin[39m=[32m"round"[39m
+          [33mstroke-width[39m=[32m"2"[39m
+          [33mviewBox[39m=[32m"0 0 24 24"[39m
+          [33mwidth[39m=[32m"24"[39m
+          [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+        [36m>[39m
+          [36m<path[39m
+            [33md[39m=[32m"M4 11a9 9 0 0 1 9 9"[39m
+          [36m/>[39m
+          [36m<path[39m
+            [33md[39m=[32m"M4 4a16 16 0 0 1 16 16"[39m
+          [36m/>[39m
+          [36m<circle[39m
+            [33mcx[39m=[32m"5"[39m
+            [33mcy[39m=[32m"19"[39m
+            [33mr[39m=[32m"1"[39m
+          [36m/>[39m
+        [36m</svg>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"text-xs text-muted-foreground truncate"[39m
+        [36m>[39m
+          [0mTest Author[0m
+        [36m</span>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"text-xs text-muted-foreground"[39m
+        [36m>[39m
+          [0m·[0m
+        [36m</span>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"text-xs text-muted-foreground font-mono"[39m
+        [36m>[39m
+          [0m10 mins ago[0m
+        [36m</span>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</button>[39m
+
+Ignored nodes: comments, script, style
+[36m<button[39m
+  [33mclass[39m=[32m"w-full text-left p-4 transition-all duration-150 relative group bg-primary/5 hover:bg-accent/50"[39m
+  [33mdata-article-id[39m=[32m"article-1"[39m
+[36m>[39m
+  [36m<div[39m
+    [33mclass[39m=[32m"flex gap-3"[39m
+  [36m>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"flex-1 min-w-0"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex items-start gap-2"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"w-1.5 h-1.5 rounded-full bg-primary mt-2 flex-shrink-0"[39m
+        [36m/>[39m
+        [36m<h3[39m
+          [33mclass[39m=[32m"text-sm leading-snug line-clamp-2 font-semibold text-foreground"[39m
+        [36m>[39m
+          [0mTest Article[0m
+        [36m</h3>[39m
+      [36m</div>[39m
+      [36m<p[39m
+        [33mclass[39m=[32m"text-xs text-muted-foreground line-clamp-2 mt-1.5"[39m
+      [36m>[39m
+        [0mTest Description[0m
+      [36m</p>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex items-center gap-2 mt-2"[39m
+      [36m>[39m
+        [36m<svg[39m
+          [33mclass[39m=[32m"lucide lucide-rss w-3.5 h-3.5 text-muted-foreground flex-shrink-0"[39m
+          [33mfill[39m=[32m"none"[39m
+          [33mheight[39m=[32m"24"[39m
+          [33mstroke[39m=[32m"currentColor"[39m
+          [33mstroke-linecap[39m=[32m"round"[39m
+          [33mstroke-linejoin[39m=[32m"round"[39m
+          [33mstroke-width[39m=[32m"2"[39m
+          [33mviewBox[39m=[32m"0 0 24 24"[39m
+          [33mwidth[39m=[32m"24"[39m
+          [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+        [36m>[39m
+          [36m<path[39m
+            [33md[39m=[32m"M4 11a9 9 0 0 1 9 9"[39m
+          [36m/>[39m
+          [36m<path[39m
+            [33md[39m=[32m"M4 4a16 16 0 0 1 16 16"[39m
+          [36m/>[39m
+          [36m<circle[39m
+            [33mcx[39m=[32m"5"[39m
+            [33mcy[39m=[32m"19"[39m
+            [33mr[39m=[32m"1"[39m
+          [36m/>[39m
+        [36m</svg>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"text-xs text-muted-foreground truncate"[39m
+        [36m>[39m
+          [0mTest Author[0m
+        [36m</span>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"text-xs text-muted-foreground"[39m
+        [36m>[39m
+          [0m·[0m
+        [36m</span>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"text-xs text-muted-foreground font-mono"[39m
+        [36m>[39m
+          [0m10 mins ago[0m
+        [36m</span>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</button>[39m
+
+Ignored nodes: comments, script, style
+[36m<button[39m
+  [33mclass[39m=[32m"w-full text-left p-4 transition-all duration-150 relative group bg-primary/5 hover:bg-accent/50"[39m
+  [33mdata-article-id[39m=[32m"article-1"[39m
+[36m>[39m
+  [36m<div[39m
+    [33mclass[39m=[32m"flex gap-3"[39m
+  [36m>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"flex-1 min-w-0"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex items-start gap-2"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"w-1.5 h-1.5 rounded-full bg-primary mt-2 flex-shrink-0"[39m
+        [36m/>[39m
+        [36m<h3[39m
+          [33mclass[39m=[32m"text-sm leading-snug line-clamp-2 font-semibold text-foreground"[39m
+        [36m>[39m
+          [0mTest Article[0m
+        [36m</h3>[39m
+      [36m</div>[39m
+      [36m<p[39m
+        [33mclass[39m=[32m"text-xs text-muted-foreground line-clamp-2 mt-1.5"[39m
+      [36m>[39m
+        [0mTest Description[0m
+      [36m</p>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex items-center gap-2 mt-2"[39m
+      [36m>[39m
+        [36m<svg[39m
+          [33mclass[39m=[32m"lucide lucide-rss w-3.5 h-3.5 text-muted-foreground flex-shrink-0"[39m
+          [33mfill[39m=[32m"none"[39m
+          [33mheight[39m=[32m"24"[39m
+          [33mstroke[39m=[32m"currentColor"[39m
+          [33mstroke-linecap[39m=[32m"round"[39m
+          [33mstroke-linejoin[39m=[32m"round"[39m
+          [33mstroke-width[39m=[32m"2"[39m
+          [33mviewBox[39m=[32m"0 0 24 24"[39m
+          [33mwidth[39m=[32m"24"[39m
+          [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+        [36m>[39m
+          [36m<path[39m
+            [33md[39m=[32m"M4 11a9 9 0 0 1 9 9"[39m
+          [36m/>[39m
+          [36m<path[39m
+            [33md[39m=[32m"M4 4a16 16 0 0 1 16 16"[39m
+          [36m/>[39m
+          [36m<circle[39m
+            [33mcx[39m=[32m"5"[39m
+            [33mcy[39m=[32m"19"[39m
+            [33mr[39m=[32m"1"[39m
+          [36m/>[39m
+        [36m</svg>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"text-xs text-muted-foreground truncate"[39m
+        [36m>[39m
+          [0mTest Author[0m
+        [36m</span>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"text-xs text-muted-foreground"[39m
+        [36m>[39m
+          [0m·[0m
+        [36m</span>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"text-xs text-muted-foreground font-mono"[39m
+        [36m>[39m
+          [0m10 mins ago[0m
+        [36m</span>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</button>[39m
+
+Ignored nodes: comments, script, style
+[36m<button[39m
+  [33mclass[39m=[32m"w-full text-left p-4 transition-all duration-150 relative group bg-accent"[39m
+  [33mdata-article-id[39m=[32m"article-1"[39m
+[36m>[39m
+  [36m<div[39m
+    [33mclass[39m=[32m"absolute left-0 top-0 bottom-0 w-0.5 bg-primary"[39m
+  [36m/>[39m
+  [36m<div[39m
+    [33mclass[39m=[32m"flex gap-3"[39m
+  [36m>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"flex-1 min-w-0"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex items-start gap-2"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"w-1.5 h-1.5 rounded-full bg-primary mt-2 flex-shrink-0"[39m
+        [36m/>[39m
+        [36m<h3[39m
+          [33mclass[39m=[32m"text-sm leading-snug line-clamp-2 font-semibold text-foreground"[39m
+        [36m>[39m
+          [0mTest Article[0m
+        [36m</h3>[39m
+      [36m</div>[39m
+      [36m<p[39m
+        [33mclass[39m=[32m"text-xs text-muted-foreground line-clamp-2 mt-1.5"[39m
+      [36m>[39m
+        [0mTest Description[0m
+      [36m</p>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex items-center gap-2 mt-2"[39m
+      [36m>[39m
+        [36m<svg[39m
+          [33mclass[39m=[32m"lucide lucide-rss w-3.5 h-3.5 text-muted-foreground flex-shrink-0"[39m
+          [33mfill[39m=[32m"none"[39m
+          [33mheight[39m=[32m"24"[39m
+          [33mstroke[39m=[32m"currentColor"[39m
+          [33mstroke-linecap[39m=[32m"round"[39m
+          [33mstroke-linejoin[39m=[32m"round"[39m
+          [33mstroke-width[39m=[32m"2"[39m
+          [33mviewBox[39m=[32m"0 0 24 24"[39m
+          [33mwidth[39m=[32m"24"[39m
+          [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+        [36m>[39m
+          [36m<path[39m
+            [33md[39m=[32m"M4 11a9 9 0 0 1 9 9"[39m
+          [36m/>[39m
+          [36m<path[39m
+            [33md[39m=[32m"M4 4a16 16 0 0 1 16 16"[39m
+          [36m/>[39m
+          [36m<circle[39m
+            [33mcx[39m=[32m"5"[39m
+            [33mcy[39m=[32m"19"[39m
+            [33mr[39m=[32m"1"[39m
+          [36m/>[39m
+        [36m</svg>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"text-xs text-muted-foreground truncate"[39m
+        [36m>[39m
+          [0mTest Author[0m
+        [36m</span>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"text-xs text-muted-foreground"[39m
+        [36m>[39m
+          [0m·[0m
+        [36m</span>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"text-xs text-muted-foreground font-mono"[39m
+        [36m>[39m
+          [0m10 mins ago[0m
+        [36m</span>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</button>[39m
+
+(If this is intentional, then use the `*AllBy*` variant of the query (like `queryAllByText`, `getAllByText`, or `findAllByText`)).
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div />[39m
+  [36m<div />[39m
+  [36m<div>[39m
+    [36m<button[39m
+      [33mclass[39m=[32m"w-full text-left p-4 transition-all duration-150 relative group bg-primary/5 hover:bg-accent/50"[39m
+      [33mdata-article-id[39m=[32m"article-1"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex gap-3"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"flex-1 min-w-0"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-start gap-2"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"w-1.5 h-1.5 rounded-full bg-primary mt-2 flex-shrink-0"[39m
+            [36m/>[39m
+            [36m<h3[39m
+              [33mclass[39m=[32m"text-sm leading-snug line-clamp-2 font-semibold text-foreground"[39m
+            [36m>[39m
+              [0mTest Article[0m
+            [36m</h3>[39m
+          [36m</div>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"text-xs text-muted-foreground line-clamp-2 mt-1.5"[39m
+          [36m>[39m
+            [0mTest Description[0m
+          [36m</p>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-center gap-2 mt-2"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33mclass[39m=[32m"lucide lucide-rss w-3.5 h-3.5 text-muted-foreground flex-shrink-0"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"24"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"24"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M4 11a9 9 0 0 1 9 9"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M4 4a16 16 0 0 1 16 16"[39m
+              [36m/>[39m
+              [36m<circle[39m
+                [33mcx[39m=[32m"5"[39m
+                [33mcy[39m=[32m"19"[39m
+                [33mr[39m=[32m"1"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-xs text-muted-foreground truncate"[39m
+            [36m>[39m
+              [0mTest Author[0m
+            [36m</span>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-xs text-muted-foreground"[39m
+            [36m>[39m
+              [0m·[0m
+            [36m</span>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-xs text-muted-foreground font-mono"[39m
+            [36m>[39m
+              [0m10 mins ago[0m
+            [36m</span>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</button>[39m
+  [36m</div>[39m
+  [36m<div>[39m
+    [36m<button[39m
+      [33mclass[39m=[32m"w-full text-left p-4 transition-all duration-150 relative group bg-primary/5 hover:bg-accent/50"[39m
+      [33mdata-article-id[39m=[32m"article-1"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex gap-3"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"flex-1 min-w-0"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-start gap-2"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"w-1.5 h-1.5 rounded-full bg-primary mt-2 flex-shrink-0"[39m
+            [36m/>[39m
+            [36m<h3[39m
+              [33mclass[39m=[32m"text-sm leading-snug line-clamp-2 font-semibold text-foreground"[39m
+            [36m>[39m
+              [0mTest Article[0m
+            [36m</h3>[39m
+          [36m</div>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"text-xs text-muted-foreground line-clamp-2 mt-1.5"[39m
+          [36m>[39m
+            [0mTest Description[0m
+          [36m</p>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-center gap-2 mt-2"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33mclass[39m=[32m"lucide lucide-rss w-3.5 h-3.5 text-muted-foreground flex-shrink-0"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"24"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"24"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M4 11a9 9 0 0 1 9 9"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M4 4a16 16 0 0 1 16 16"[39m
+              [36m/>[39m
+              [36m<circle[39m
+                [33mcx[39m=[32m"5"[39m
+                [33mcy[39m=[32m"19"[39m
+                [33mr[39m=[32m"1"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-xs text-muted-foreground truncate"[39m
+            [36m>[39m
+              [0mTest Author[0m
+            [36m</span>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-xs text-muted-foreground"[39m
+            [36m>[39m
+              [0m·[0m
+            [36m</span>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-xs text-muted-foreground font-mono"[39m
+            [36m>[39m
+              [0m10 mins ago[0m
+            [36m</span>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</button>[39m
+  [36m</div>[39m
+  [36m<div>[39m
+    [36m<button[39m
+      [33mclass[39m=[32m"w-full text-left p-4 transition-all duration-150 relative group bg-primary/5 hover:bg-accent/50"[39m
+      [33mdata-article-id[39m=[32m"article-1"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex gap-3"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"flex-1 min-w-0"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-start gap-2"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"w-1.5 h-1.5 rounded-full bg-primary mt-2 flex-shrink-0"[39m
+            [36m/>[39m
+            [36m<h3[39m
+              [33mclass[39m=[32m"text-sm leading-snug line-clamp-2 font-semibold text-foreground"[39m
+            [36m>[39m
+              [0mTest Article[0m
+            [36m</h3>[39m
+          [36m</div>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"text-xs text-muted-foreground line-clamp-2 mt-1.5"[39m
+          [36m>[39m
+            [0mTest Description[0m
+          [36m</p>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-center gap-2 mt-2"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33mclass[39m=[32m"lucide lucide-rss w-3.5 h-3.5 text-muted-foreground flex-shrink-0"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"24"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"24"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M4 11a9 9 0 0 1 9 9"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M4 4a16 16 0 0 1 16 16"[39m
+              [36m/>[39m
+              [36m<circle[39m
+                [33mcx[39m=[32m"5"[39m
+                [33mcy[39m=[32m"19"[39m
+                [33mr[39m=[32m"1"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-xs text-muted-foreground truncate"[39m
+            [36m>[39m
+              [0mTest Author[0m
+            [36m</span>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-xs text-muted-foreground"[39m
+            [36m>[39m
+              [0m·[0m
+            [36m</span>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-xs text-muted-foreground font-mono"[39m
+            [36m>[39m
+              [0m10 mins ago[0m
+            [36m</span>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</button>[39m
+  [36m</div>[39m
+  [36m<div>[39m
+    [36m<button[39m
+      [33mclass[39m=[32m"w-full text-left p-4 transition-all duration-150 relative group bg-accent"[39m
+      [33mdata-article-id[39m=[32m"article-1"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"absolute left-0 top-0 bottom-0 w-0.5 bg-primary"[39m
+      [36m/>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex gap-3"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"flex-1 min-w-0"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-start gap-2"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"w-1.5 h-1.5 rounded-full bg-primary mt-2 flex-shrink-0"[39m
+            [36m/>[39m
+            [36m<h3[39m
+              [33mclass[39m=[32m"text-sm leading-snug line-clamp-2 font-semibold text-foreground"[39m
+            [36m>[39m
+              [0mTest Article[0m
+            [36m</h3>[39m
+          [36m</div>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"text-xs text-muted-foreground line-clamp-2 mt-1.5"[39m
+          [36m>[39m
+            [0mTest Description[0m
+          [36m</p>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-center gap-2 mt-2"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33mclass[39m=[32m"lucide lucide-rss w-3.5 h-3.5 text-muted-foreground flex-shrink-0"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"24"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"24"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M4 11a9 9 0 0 1 9 9"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M4 4a16 16 0 0 1 16 16"[39m
+              [36m/>[39m
+              [36m<circle[39m
+                [33mcx[39m=[32m"5"[39m
+                [33mcy[39m=[32m"19"[39m
+                [33mr[39m=[32m"1"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-xs text-muted-foreground truncate"[39m
+            [36m>[39m
+              [0mTest Author[0m
+            [36m</span>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-xs text-muted-foreground"[39m
+            [36m>[39m
+              [0m·[0m
+            [36m</span>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-xs text-muted-foreground font-mono"[39m
+            [36m>[39m
+              [0m10 mins ago[0m
+            [36m</span>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</button>[39m
+  [36m</div>[39m
+[36m</body>[39m
+      at <anonymous> (/Users/nocoo/workspace/personal/geekhub/node_modules/@testing-library/dom/dist/query-helpers.js:59:30)
+      at <anonymous> (/Users/nocoo/workspace/personal/geekhub/node_modules/@testing-library/dom/dist/query-helpers.js:95:19)
+      at <anonymous> (/Users/nocoo/workspace/personal/geekhub/src/components/ArticleItem.test.tsx:104:31)
+(fail) ArticleItem > should show selected styling [6.23ms]
+54 |       const elementStrings = els.map(element => getElementError(null, element).message).join('\n\n');
+55 |       throw getMultipleElementsFoundError(`${getMultipleError(container, ...args)}
+56 | 
+57 | Here are the matching elements:
+58 | 
+59 | ${elementStrings}`, container);
+                                  ^
+TestingLibraryElementError: Found multiple elements with the text: Test Article
+
+Here are the matching elements:
+
+Ignored nodes: comments, script, style
+[36m<h3[39m
+  [33mclass[39m=[32m"text-sm leading-snug line-clamp-2 font-semibold text-foreground"[39m
+[36m>[39m
+  [0mTest Article[0m
+[36m</h3>[39m
+
+Ignored nodes: comments, script, style
+[36m<h3[39m
+  [33mclass[39m=[32m"text-sm leading-snug line-clamp-2 font-semibold text-foreground"[39m
+[36m>[39m
+  [0mTest Article[0m
+[36m</h3>[39m
+
+Ignored nodes: comments, script, style
+[36m<h3[39m
+  [33mclass[39m=[32m"text-sm leading-snug line-clamp-2 font-semibold text-foreground"[39m
+[36m>[39m
+  [0mTest Article[0m
+[36m</h3>[39m
+
+Ignored nodes: comments, script, style
+[36m<h3[39m
+  [33mclass[39m=[32m"text-sm leading-snug line-clamp-2 font-semibold text-foreground"[39m
+[36m>[39m
+  [0mTest Article[0m
+[36m</h3>[39m
+
+(If this is intentional, then use the `*AllBy*` variant of the query (like `queryAllByText`, `getAllByText`, or `findAllByText`)).
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div />[39m
+  [36m<div />[39m
+  [36m<div>[39m
+    [36m<button[39m
+      [33mclass[39m=[32m"w-full text-left p-4 transition-all duration-150 relative group bg-primary/5 hover:bg-accent/50"[39m
+      [33mdata-article-id[39m=[32m"article-1"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex gap-3"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"flex-1 min-w-0"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-start gap-2"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"w-1.5 h-1.5 rounded-full bg-primary mt-2 flex-shrink-0"[39m
+            [36m/>[39m
+            [36m<h3[39m
+              [33mclass[39m=[32m"text-sm leading-snug line-clamp-2 font-semibold text-foreground"[39m
+            [36m>[39m
+              [0mTest Article[0m
+            [36m</h3>[39m
+          [36m</div>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"text-xs text-muted-foreground line-clamp-2 mt-1.5"[39m
+          [36m>[39m
+            [0mTest Description[0m
+          [36m</p>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-center gap-2 mt-2"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33mclass[39m=[32m"lucide lucide-rss w-3.5 h-3.5 text-muted-foreground flex-shrink-0"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"24"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"24"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M4 11a9 9 0 0 1 9 9"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M4 4a16 16 0 0 1 16 16"[39m
+              [36m/>[39m
+              [36m<circle[39m
+                [33mcx[39m=[32m"5"[39m
+                [33mcy[39m=[32m"19"[39m
+                [33mr[39m=[32m"1"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-xs text-muted-foreground truncate"[39m
+            [36m>[39m
+              [0mTest Author[0m
+            [36m</span>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-xs text-muted-foreground"[39m
+            [36m>[39m
+              [0m·[0m
+            [36m</span>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-xs text-muted-foreground font-mono"[39m
+            [36m>[39m
+              [0m10 mins ago[0m
+            [36m</span>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</button>[39m
+  [36m</div>[39m
+  [36m<div>[39m
+    [36m<button[39m
+      [33mclass[39m=[32m"w-full text-left p-4 transition-all duration-150 relative group bg-primary/5 hover:bg-accent/50"[39m
+      [33mdata-article-id[39m=[32m"article-1"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex gap-3"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"flex-1 min-w-0"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-start gap-2"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"w-1.5 h-1.5 rounded-full bg-primary mt-2 flex-shrink-0"[39m
+            [36m/>[39m
+            [36m<h3[39m
+              [33mclass[39m=[32m"text-sm leading-snug line-clamp-2 font-semibold text-foreground"[39m
+            [36m>[39m
+              [0mTest Article[0m
+            [36m</h3>[39m
+          [36m</div>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"text-xs text-muted-foreground line-clamp-2 mt-1.5"[39m
+          [36m>[39m
+            [0mTest Description[0m
+          [36m</p>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-center gap-2 mt-2"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33mclass[39m=[32m"lucide lucide-rss w-3.5 h-3.5 text-muted-foreground flex-shrink-0"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"24"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"24"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M4 11a9 9 0 0 1 9 9"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M4 4a16 16 0 0 1 16 16"[39m
+              [36m/>[39m
+              [36m<circle[39m
+                [33mcx[39m=[32m"5"[39m
+                [33mcy[39m=[32m"19"[39m
+                [33mr[39m=[32m"1"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-xs text-muted-foreground truncate"[39m
+            [36m>[39m
+              [0mTest Author[0m
+            [36m</span>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-xs text-muted-foreground"[39m
+            [36m>[39m
+              [0m·[0m
+            [36m</span>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-xs text-muted-foreground font-mono"[39m
+            [36m>[39m
+              [0m10 mins ago[0m
+            [36m</span>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</button>[39m
+  [36m</div>[39m
+  [36m<div>[39m
+    [36m<button[39m
+      [33mclass[39m=[32m"w-full text-left p-4 transition-all duration-150 relative group bg-primary/5 hover:bg-accent/50"[39m
+      [33mdata-article-id[39m=[32m"article-1"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex gap-3"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"flex-1 min-w-0"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-start gap-2"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"w-1.5 h-1.5 rounded-full bg-primary mt-2 flex-shrink-0"[39m
+            [36m/>[39m
+            [36m<h3[39m
+              [33mclass[39m=[32m"text-sm leading-snug line-clamp-2 font-semibold text-foreground"[39m
+            [36m>[39m
+              [0mTest Article[0m
+            [36m</h3>[39m
+          [36m</div>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"text-xs text-muted-foreground line-clamp-2 mt-1.5"[39m
+          [36m>[39m
+            [0mTest Description[0m
+          [36m</p>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-center gap-2 mt-2"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33mclass[39m=[32m"lucide lucide-rss w-3.5 h-3.5 text-muted-foreground flex-shrink-0"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"24"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"24"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M4 11a9 9 0 0 1 9 9"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M4 4a16 16 0 0 1 16 16"[39m
+              [36m/>[39m
+              [36m<circle[39m
+                [33mcx[39m=[32m"5"[39m
+                [33mcy[39m=[32m"19"[39m
+                [33mr[39m=[32m"1"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-xs text-muted-foreground truncate"[39m
+            [36m>[39m
+              [0mTest Author[0m
+            [36m</span>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-xs text-muted-foreground"[39m
+            [36m>[39m
+              [0m·[0m
+            [36m</span>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-xs text-muted-foreground font-mono"[39m
+            [36m>[39m
+              [0m10 mins ago[0m
+            [36m</span>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</button>[39m
+  [36m</div>[39m
+  [36m<div>[39m
+    [36m<button[39m
+      [33mclass[39m=[32m"w-full text-left p-4 transition-all duration-150 relative group bg-accent"[39m
+      [33mdata-article-id[39m=[32m"article-1"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"absolute left-0 top-0 bottom-0 w-0.5 bg-primary"[39m
+      [36m/>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex gap-3"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"flex-1 min-w-0"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-start gap-2"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"w-1.5 h-1.5 rounded-full bg-primary mt-2 flex-shrink-0"[39m
+            [36m/>[39m
+            [36m<h3[39m
+              [33mclass[39m=[32m"text-sm leading-snug line-clamp-2 font-semibold text-foreground"[39m
+            [36m>[39m
+              [0mTest Article[0m
+            [36m</h3>[39m
+          [36m</div>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"text-xs text-muted-foreground line-clamp-2 mt-1.5"[39m
+          [36m>[39m
+            [0mTest Description[0m
+          [36m</p>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-center gap-2 mt-2"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33mclass[39m=[32m"lucide lucide-rss w-3.5 h-3.5 text-muted-foreground flex-shrink-0"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"24"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"24"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M4 11a9 9 0 0 1 9 9"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M4 4a16 16 0 0 1 16 16"[39m
+              [36m/>[39m
+              [36m<circle[39m
+                [33mcx[39m=[32m"5"[39m
+                [33mcy[39m=[32m"19"[39m
+                [33mr[39m=[32m"1"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-xs text-muted-foreground truncate"[39m
+            [36m>[39m
+              [0mTest Author[0m
+            [36m</span>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-xs text-muted-foreground"[39m
+            [36m>[39m
+              [0m·[0m
+            [36m</span>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-xs text-muted-foreground font-mono"[39m
+            [36m>[39m
+              [0m10 mins ago[0m
+            [36m</span>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</button>[39m
+  [36m</div>[39m
+  [36m<div>[39m
+    [36m<button[39m
+      [33mclass[39m=[32m"w-full text-left p-4 transition-all duration-150 relative group bg-primary/5 hover:bg-accent/50"[39m
+      [33mdata-article-id[39m=[32m"article-1"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex gap-3"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"flex-1 min-w-0"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-start gap-2"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"w-1.5 h-1.5 rounded-full bg-primary mt-2 flex-shrink-0"[39m
+            [36m/>[39m
+            [36m<h3[39m
+              [33mclass[39m=[32m"text-sm leading-snug line-clamp-2 font-semibold text-foreground"[39m
+            [36m>[39m
+              [0mTranslated Title[0m
+            [36m</h3>[39m
+          [36m</div>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"text-xs text-muted-foreground line-clamp-2 mt-1.5"[39m
+          [36m>[39m
+            [0mTranslated Description[0m
+          [36m</p>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-center gap-2 mt-2"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33mclass[39m=[32m"lucide lucide-rss w-3.5 h-3.5 text-muted-foreground flex-shrink-0"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"24"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"24"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M4 11a9 9 0 0 1 9 9"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M4 4a16 16 0 0 1 16 16"[39m
+              [36m/>[39m
+              [36m<circle[39m
+                [33mcx[39m=[32m"5"[39m
+                [33mcy[39m=[32m"19"[39m
+                [33mr[39m=[32m"1"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-xs text-muted-foreground truncate"[39m
+            [36m>[39m
+              [0mTest Author[0m
+            [36m</span>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-xs text-muted-foreground"[39m
+            [36m>[39m
+              [0m·[0m
+            [36m</span>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-xs text-muted-foreground font-mono"[39m
+            [36m>[39m
+              [0m10 mins ago[0m
+            [36m</span>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</button>[39m
+  [36m</div>[39m
+[36m</body>[39m
+      at <anonymous> (/Users/nocoo/workspace/personal/geekhub/node_modules/@testing-library/dom/dist/query-helpers.js:59:30)
+      at <anonymous> (/Users/nocoo/workspace/personal/geekhub/node_modules/@testing-library/dom/dist/query-helpers.js:95:19)
+      at <anonymous> (/Users/nocoo/workspace/personal/geekhub/src/components/ArticleItem.test.tsx:129:23)
+(fail) ArticleItem > should use translated content if available [3.16ms]
+
+src/hooks/useFeedActions.test.ts:
+(pass) useFeedActions Optimistic Updates > FeedViewModel cache manipulation > should update autoTranslate in cache [1.07ms]
+(pass) useFeedActions Optimistic Updates > FeedViewModel cache manipulation > should set unreadCount to 0 for markAllAsRead
+(pass) useFeedActions Optimistic Updates > FeedViewModel cache manipulation > should decrement unreadCount for markAsRead [0.84ms]
+(pass) useFeedActions Optimistic Updates > FeedViewModel cache manipulation > should not go below zero for unreadCount [0.17ms]
+(pass) useFeedActions Optimistic Updates > FeedViewModel cache manipulation > should rollback on error [0.14ms]
+(pass) useFeedActions Optimistic Updates > FeedViewModel cache manipulation > should mark all articles as read in articles cache [0.18ms]
+(pass) useFeedActions Optimistic Updates > FeedViewModel cache manipulation > should mark single article as read [0.15ms]
+(pass) useFeedActions Optimistic Updates > Multiple feeds handling > should update only the correct feed [0.16ms]
+
+src/hooks/useFeedViewModels.test.ts:
+(pass) FeedViewModel transformation > should transform basic feed properties
+(pass) FeedViewModel transformation > should transform category properties
+(pass) FeedViewModel transformation > should handle null category
+(pass) FeedViewModel transformation > should transform counts correctly
+(pass) FeedViewModel transformation > should transform status fields
+(pass) FeedViewModel transformation > should handle null status fields
+(pass) FeedViewModel transformation > should set isFetching to false by default
+(pass) FeedViewModel transformation > should correctly map all snake_case API fields to camelCase ViewModel fields
+(pass) FeedViewModel transformation > should map zero counts correctly
+(pass) FeedGroupViewModel calculation > should group feeds by category [0.48ms]
+(pass) FeedGroupViewModel calculation > should calculate total unread counts correctly [0.03ms]
+(pass) FeedGroupViewModel calculation > should calculate grand total unread correctly
+(pass) FeedGroupViewModel calculation > should handle empty feeds array
+(pass) FeedGroupViewModel calculation > should handle all uncategorized feeds
+(pass) FeedGroupViewModel calculation > should handle all categorized feeds
+(pass) FeedViewModel type validation > should have correct structure for required fields
+(pass) FeedViewModel type validation > should allow optional fields to be undefined
+
+src/hooks/useArticleActions.test.tsx:
+(pass) useArticleActions ViewModel Actions > should optimistic update starred-count when bookmarking [55.55ms]
+(pass) useArticleActions ViewModel Actions > should rollback starred-count on failure [2.08ms]
+(pass) useArticleActions ViewModel Actions > should remove article from starred articles cache optimistically [53.10ms]
+
+src/hooks/useDatabase.test.ts:
+(pass) Optimistic Update Cache Key > should use feedViewModels cache key (not feeds) for unread count updates [0.16ms]
+(pass) Optimistic Update Cache Key > should correctly calculate unread count as total - read
+(pass) Optimistic Update Cache Key > should handle zero unread count correctly
+(pass) Optimistic Update Cache Key > should handle unread count below zero gracefully
+(pass) FeedViewModel field naming > should use unreadCount (camelCase) not unread_count (snake_case) [0.10ms]
+(pass) FeedViewModel field naming > should use totalArticles (camelCase) not total_articles (snake_case) [0.03ms]
+
+src/lib/article-view-model.test.ts:
+(pass) ArticleViewModelService > constructor > should initialize with Supabase client [0.03ms]
+(pass) ArticleViewModelService > getArticlesForFeed > should return result structure with empty articles [0.08ms]
+(pass) ArticleViewModelService > getArticlesForFeed > should return empty articles when no data
+(pass) ArticleViewModelService > getArticlesForFeed > should handle articles with data
+(pass) ArticleViewModelService > getArticlesForFeed > should mark articles as read based on readArticleIds [0.50ms]
+(pass) ArticleViewModelService > result structure > should have correct feed structure in result [0.02ms]
+(pass) ArticleViewModelService > result structure > should have correct article structure when article exists
+
+src/lib/article-actions.test.ts:
+(pass) Article Actions Service > fetchFullContent > should fetch full content successfully [0.16ms]
+(pass) Article Actions Service > fetchFullContent > should throw error when API fails [0.06ms]
+(pass) Article Actions Service > fetchFullContent > should throw error when response has no content [0.03ms]
+(pass) Article Actions Service > translateContent > should translate content successfully [0.07ms]
+(pass) Article Actions Service > translateContent > should throw error when translation fails [0.10ms]
+(pass) Article Actions Service > bookmarkArticle > should bookmark article successfully [0.03ms]
+(pass) Article Actions Service > bookmarkArticle > should bookmark without notes [0.02ms]
+(pass) Article Actions Service > bookmarkArticle > should throw error when bookmark fails
+(pass) Article Actions Service > unbookmarkArticle > should unbookmark article successfully
+(pass) Article Actions Service > unbookmarkArticle > should throw error when unbookmark fails
+(pass) Article Actions Service > saveForLater > should save article for later successfully
+(pass) Article Actions Service > saveForLater > should throw error when save fails [0.21ms]
+(pass) Article Actions Service > removeFromLater > should remove article from later successfully [0.10ms]
+(pass) Article Actions Service > removeFromLater > should throw error when remove fails [0.12ms]
+
+src/lib/rsshub.test.ts:
+(pass) parseRssHubUrl > invalid inputs > should return invalid for null input [0.77ms]
+(pass) parseRssHubUrl > invalid inputs > should return invalid for undefined input [0.02ms]
+(pass) parseRssHubUrl > invalid inputs > should return invalid for empty string
+(pass) parseRssHubUrl > invalid inputs > should return invalid for non-string input
+(pass) parseRssHubUrl > rsshub:// protocol > should parse rsshub://namespace/route format [0.09ms]
+(pass) parseRssHubUrl > rsshub:// protocol > should parse rsshub:// with custom instance domain [0.02ms]
+(pass) parseRssHubUrl > rsshub:// protocol > should parse rsshub:// with route parameters [0.01ms]
+(pass) parseRssHubUrl > rsshub:// protocol > should handle rsshub:// with only namespace (no route)
+(pass) parseRssHubUrl > rsshub:// protocol > should use custom instance URL from config [0.02ms]
+(pass) parseRssHubUrl > https:// RssHub URLs > should parse https://rsshub.app URL [0.03ms]
+(pass) parseRssHubUrl > https:// RssHub URLs > should parse https://rsshub.app subdomain URL [0.03ms]
+(pass) parseRssHubUrl > https:// RssHub URLs > should parse http:// URL
+(pass) parseRssHubUrl > https:// RssHub URLs > should reject non-RssHub https URLs [0.02ms]
+(pass) parseRssHubUrl > https:// RssHub URLs > should reject https URLs from unknown hosts
+(pass) parseRssHubUrl > namespace/route format > should parse namespace/route format
+(pass) parseRssHubUrl > namespace/route format > should parse nested route
+(pass) parseRssHubUrl > error handling > should return error message for invalid format
+(pass) parseRssHubUrl > known RssHub hosts > should recognize rsshub.rssforever.com
+(pass) parseRssHubUrl > known RssHub hosts > should recognize rss.wifease.com
+(pass) parseRssHubUrl > known RssHub hosts > should recognize hosts containing rsshub
+(pass) resolveRssHubUrl > should return feedUrl for valid input [0.01ms]
+(pass) resolveRssHubUrl > should return null for invalid input
+(pass) resolveRssHubUrl > should return null for empty string
+(pass) resolveRssHubUrl > should use custom instance from config
+(pass) resolveRssHubUrl > should return null for non-RssHub URLs
+(pass) isRssHubUrl > should return true for valid rsshub:// URL [0.03ms]
+(pass) isRssHubUrl > should return true for valid https RssHub URL
+(pass) isRssHubUrl > should return false for invalid URL
+(pass) isRssHubUrl > should return false for non-RssHub URLs
+(pass) isRssHubUrl > should return false for empty string
+(pass) isRssHubUrl > should use config instance URL
+(pass) extractRssHubRoute > should extract namespace and route from rsshub:// URL
+(pass) extractRssHubRoute > should extract nested route
+(pass) extractRssHubRoute > should return nulls for invalid input
+(pass) extractRssHubRoute > should return nulls for empty string [0.14ms]
+(pass) extractRssHubRoute > should extract route from https URL
+(pass) extractRssHubRoute > should handle route without namespace - returns null
+(pass) RssHubParseResult interface > should accept valid result [0.04ms]
+(pass) RssHubParseResult interface > should accept invalid result with error
+(pass) RssHubParseResult interface > should allow optional fields
+(pass) RssHubConfig interface > should accept config with instanceUrl
+(pass) RssHubConfig interface > should accept undefined config [0.02ms]
+(pass) URL format examples > should handle juejin route
+(pass) URL format examples > should handle telegram channel
+(pass) URL format examples > should handle github trending
+
+src/lib/read-status-service.test.ts:
+(pass) ReadStatusService > constructor > should store userId [0.70ms]
+(pass) ReadStatusService > constructor > should handle empty userId [0.03ms]
+(pass) ReadStatusService > constructor > should handle UUID format userId
+(pass) ReadStatusService > public API > should expose getReadArticleIds method
+(pass) ReadStatusService > public API > should expose markAsRead method
+(pass) ReadStatusService > public API > should expose markAllAsRead method
+(pass) ReadStatusService > public API > should expose markAsUnread method
+(pass) ReadStatusService > public API > should expose toggleBookmark method
+(pass) ReadStatusService > public API > should expose toggleReadLater method
+(pass) ReadStatusService > public API > should expose getReadHashes method
+(pass) ReadStatusService > public API > should expose markAsReadByHash method
+(pass) ReadStatusService > public API > should expose markAsUnreadByHash method
+
+src/lib/rss.test.ts:
+(pass) URL Hash Generation > should generate 12-character hash from URL [0.16ms]
+(pass) URL Hash Generation > should generate consistent hash for same URL [0.07ms]
+(pass) URL Hash Generation > should generate different hashes for different URLs
+(pass) URL Hash Generation > should handle URL with query parameters
+(pass) fetchRss function > should return feed data with required fields [44.71ms]
+
+src/lib/feed-actions.test.ts:
+(pass) Feed Actions Service > toggleAutoTranslate > should call API to enable auto-translate [1.11ms]
+(pass) Feed Actions Service > toggleAutoTranslate > should call API to disable auto-translate [0.24ms]
+(pass) Feed Actions Service > toggleAutoTranslate > should throw error when API fails [0.09ms]
+(pass) Feed Actions Service > fetchFeed > should call feed fetch API [0.30ms]
+(pass) Feed Actions Service > fetchFeed > should work without feed title [0.07ms]
+(pass) Feed Actions Service > fetchFeed > should throw error when fetch fails [0.07ms]
+
+src/lib/translation-queue.test.ts:
+(pass) TranslationRequest interface > should require all mandatory fields [0.04ms]
+(pass) TranslationRequest interface > should allow optional onSuccess callback [0.02ms]
+(pass) TranslationRequest interface > should allow userId to be undefined [0.02ms]
+
+src/lib/article-repository.test.ts:
+(pass) ArticleRepository > constructor > should initialize with Supabase client
+(pass) ArticleRepository > getIndex > should return index structure for existing feed [0.49ms]
+(pass) ArticleRepository > getIndex > should return null for non-existent feed [0.11ms]
+(pass) ArticleRepository > getArticleHashes > should return array of article hashes [0.20ms]
+(pass) ArticleRepository > getArticleHashes > should return empty array for non-existent feed [0.06ms]
+(pass) ArticleRepository > getArticle > should return article data for existing article [0.09ms]
+(pass) ArticleRepository > getArticle > should return null for non-existent article [0.05ms]
+(pass) ArticleRepository > getArticles > should return multiple articles by hashes [0.05ms]
+(pass) ArticleRepository > getArticles > should return empty array for non-existent articles [0.06ms]
+(pass) ArticleRepository > getAllArticles > should return all articles without limit
+(pass) ArticleRepository > getAllArticles > should return limited articles with limit parameter [0.12ms]
+
+src/lib/feed-fetcher.test.ts:
+(pass) URL Hash Generation > should generate 12-character hash from URL
+(pass) URL Hash Generation > should generate consistent hash for same URL
+(pass) URL Hash Generation > should generate different hashes for different URLs
+(pass) URL Hash Generation > should handle URL with query parameters
+(pass) URL Hash Generation > should handle URL with trailing slash
+(pass) Article Hash Generation > should generate 32-character hash
+(pass) Article Hash Generation > should generate consistent hash for same content
+(pass) Article Hash Generation > should generate different hashes for different links
+(pass) Article Hash Generation > should generate different hashes for different titles
+(pass) Article Hash Generation > should generate different hashes for different dates
+(pass) Article Hash Generation > should handle missing link
+(pass) Article Hash Generation > should handle missing title
+(pass) Article Hash Generation > should handle missing pubDate
+(pass) Article Hash Generation > should use guid as fallback for url
+(pass) Item to ArticleData Conversion > should convert basic item fields
+(pass) Item to ArticleData Conversion > should use 'Untitled' for missing title
+(pass) Item to ArticleData Conversion > should use guid as fallback for url
+(pass) Item to ArticleData Conversion > should handle creator as author
+(pass) Item to ArticleData Conversion > should handle author as fallback
+(pass) Item to ArticleData Conversion > should prefer creator over author
+(pass) Item to ArticleData Conversion > should handle content field
+(pass) Item to ArticleData Conversion > should handle contentSnippet as summary and content_text
+(pass) Item to ArticleData Conversion > should handle categories as array [0.03ms]
+(pass) Item to ArticleData Conversion > should handle enclosure as enclosures array
+(pass) Item to ArticleData Conversion > should handle numeric length [0.04ms]
+(pass) Item to ArticleData Conversion > should handle missing enclosure
+(pass) Item to ArticleData Conversion > should handle empty enclosure [0.02ms]
+(pass) Item to ArticleData Conversion > should have fetched_at timestamp [0.03ms]
+(pass) Item to ArticleData Conversion > should prefer pubDate over isoDate for published_at [0.01ms]
+(pass) Data Type Consistency > should have all required ArticleData fields
+(pass) Data Type Consistency > should not have undefined for required string fields
+
+src/lib/logger.test.ts:
+(pass) FeedLogger > constructor > should store feedId [0.57ms]
+(pass) FeedLogger > constructor > should store urlHash [0.01ms]
+(pass) FeedLogger > LogLevel enum > should have correct values
+(pass) FeedLogger > FetchLogEntry interface > should accept minimal entry
+(pass) FeedLogger > FetchLogEntry interface > should accept entry with all fields [0.04ms]
+(pass) FeedLogger > public API > should expose info method
+(pass) FeedLogger > public API > should expose success method
+(pass) FeedLogger > public API > should expose warning method
+(pass) FeedLogger > public API > should expose error method
+(pass) FeedLogger > public API > should expose getRecentLogs method
+(pass) FeedLogger > public API > should expose clearLogs method
+
+src/lib/view-models/feed-view-model.test.ts:
+(pass) FeedViewModel Library Logic > transformToViewModel > should correctly map API fields to camelCase ViewModel fields [0.05ms]
+(pass) FeedViewModel Library Logic > transformToViewModel > should handle null categories [0.02ms]
+(pass) FeedViewModel Library Logic > calculateFeedGroups > should group feeds by category id [0.11ms]
+(pass) FeedViewModel Library Logic > calculateFeedGroups > should handle uncategorized feeds [0.02ms]
+(pass) FeedViewModel Library Logic > calculateFeedGroups > should return empty arrays for empty input
+
+4 tests failed:
+(fail) ArticleItem > should call onSelect when clicked [34.71ms]
+(fail) ArticleItem > should show read status styling [2.56ms]
+(fail) ArticleItem > should show selected styling [6.23ms]
+(fail) ArticleItem > should use translated content if available [3.16ms]
+
+ 190 pass
+ 4 fail
+ 373 expect() calls
+Ran 194 tests across 18 files. [1294.00ms]
