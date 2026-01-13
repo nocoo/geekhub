@@ -42,7 +42,13 @@ interface FeedItemProps {
 
 // Extracted feed item component
 function FeedItem({ feed, selectedFeed, isKeyboardSelected, onSelectFeed, onFetchFeed, onEditFeed, onDeleteFeed, onViewLogs }: FeedItemProps) {
+  const [imgError, setImgError] = useState(false);
   const handleSelect = useCallback(() => onSelectFeed(feed.id), [feed.id, onSelectFeed]);
+
+  // Reset error when feed changes
+  useEffect(() => {
+    setImgError(false);
+  }, [feed.faviconUrl]);
 
   return (
     <div key={feed.id} className="flex items-center gap-0.5 group/feed">
@@ -57,14 +63,12 @@ function FeedItem({ feed, selectedFeed, isKeyboardSelected, onSelectFeed, onFetc
               : "text-sidebar-foreground/80 hover:bg-accent/50"
         )}
       >
-        {feed.faviconUrl ? (
+        {feed.faviconUrl && !imgError ? (
           <img
             src={feed.faviconUrl}
             alt=""
             className="w-3.5 h-3.5 rounded flex-shrink-0"
-            onError={(e) => {
-              e.currentTarget.style.display = 'none';
-            }}
+            onError={() => setImgError(true)}
           />
         ) : (
           <Rss className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
@@ -177,8 +181,10 @@ export function Sidebar({ selectedFeed, onSelectFeed }: SidebarProps) {
 
   // Handle select feed
   const handleSelectFeed = useCallback((feedId: string | null) => {
+    // Refresh feed counts when switching feeds to ensure accuracy
+    queryClient.invalidateQueries({ queryKey: ['feedViewModels', user?.id] });
     onSelectFeed(feedId);
-  }, [onSelectFeed]);
+  }, [onSelectFeed, queryClient, user?.id]);
 
   // Handle add feed to category
   const handleAddFeedToCategory = useCallback((categoryId?: string) => {

@@ -55,6 +55,101 @@ interface ManagePopupProps {
   onOpenChange: (open: boolean) => void;
 }
 
+interface FeedListItemProps {
+  feed: Feed;
+  fetchingFeeds: Set<string>;
+  onViewLogs: (feed: { id: string; title: string }) => void;
+  onFetchFeed: (id: string, title: string) => void;
+  onEditFeed: (feed: Feed) => void;
+  onDeleteFeed: (feed: { type: 'feed'; id: string; name: string }) => void;
+}
+
+function FeedListItem({ feed, fetchingFeeds, onViewLogs, onFetchFeed, onEditFeed, onDeleteFeed }: FeedListItemProps) {
+  const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    setImgError(false);
+  }, [feed.favicon_url]);
+
+  return (
+    <div
+      key={feed.id}
+      className="flex items-center justify-between p-3 rounded-lg border border-border bg-card"
+    >
+      <div className="flex items-center gap-3 flex-1 min-w-0">
+        {feed.favicon_url && !imgError ? (
+          <img
+            src={feed.favicon_url}
+            alt=""
+            className="w-5 h-5 rounded flex-shrink-0"
+            onError={() => setImgError(true)}
+          />
+        ) : (
+          <Rss className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+        )}
+        <div className="flex-1 min-w-0">
+          <h3 className="font-medium text-sm truncate">{feed.title}</h3>
+          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            {feed.category && (
+              <span className="flex items-center gap-1">
+                <span>{feed.category.icon}</span>
+                {feed.category.name}
+              </span>
+            )}
+            <span>{feed.total_articles} articles</span>
+            {!feed.is_active && (
+              <span className="text-orange-500">Inactive</span>
+            )}
+          </div>
+        </div>
+      </div>
+      <div className="flex items-center gap-1 flex-shrink-0">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={() => onViewLogs({ id: feed.id, title: feed.title })}
+          title="View logs & files"
+        >
+          <FileText className="w-3 h-3" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={() => onFetchFeed(feed.id, feed.title)}
+          disabled={fetchingFeeds.has(feed.id)}
+          title="Fetch now"
+        >
+          <RefreshCw className={`w-3 h-3 ${fetchingFeeds.has(feed.id) ? 'animate-spin' : ''}`} />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={() => onEditFeed(feed)}
+          title="Edit feed"
+        >
+          <Edit className="w-3 h-3" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-destructive"
+          onClick={() => onDeleteFeed({
+            type: 'feed',
+            id: feed.id,
+            name: feed.title,
+          })}
+          title="Delete feed"
+        >
+          <Trash2 className="w-3 h-3" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function ManagePopup({ open, onOpenChange }: ManagePopupProps) {
   const { user } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
@@ -279,83 +374,15 @@ export function ManagePopup({ open, onOpenChange }: ManagePopupProps) {
 
                 <div className="space-y-2 max-h-96 overflow-y-auto">
                   {feeds.map((feed) => (
-                    <div
+                    <FeedListItem
                       key={feed.id}
-                      className="flex items-center justify-between p-3 rounded-lg border border-border bg-card"
-                    >
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        {feed.favicon_url ? (
-                          <img
-                            src={feed.favicon_url}
-                            alt=""
-                            className="w-5 h-5 rounded flex-shrink-0"
-                            onError={(e) => {
-                              e.currentTarget.style.display = 'none';
-                            }}
-                          />
-                        ) : (
-                          <Rss className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-medium text-sm truncate">{feed.title}</h3>
-                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                            {feed.category && (
-                              <span className="flex items-center gap-1">
-                                <span>{feed.category.icon}</span>
-                                {feed.category.name}
-                              </span>
-                            )}
-                            <span>{feed.total_articles} articles</span>
-                            {!feed.is_active && (
-                              <span className="text-orange-500">Inactive</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => setViewingLogsFeed({ id: feed.id, title: feed.title })}
-                          title="View logs & files"
-                        >
-                          <FileText className="w-3 h-3" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => handleFetchFeed(feed.id, feed.title)}
-                          disabled={fetchingFeeds.has(feed.id)}
-                          title="Fetch now"
-                        >
-                          <RefreshCw className={`w-3 h-3 ${fetchingFeeds.has(feed.id) ? 'animate-spin' : ''}`} />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => setEditingFeed(feed)}
-                          title="Edit feed"
-                        >
-                          <Edit className="w-3 h-3" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-destructive"
-                          onClick={() => setDeleteConfirm({
-                            type: 'feed',
-                            id: feed.id,
-                            name: feed.title,
-                          })}
-                          title="Delete feed"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      </div>
-                    </div>
+                      feed={feed}
+                      fetchingFeeds={fetchingFeeds}
+                      onViewLogs={setViewingLogsFeed}
+                      onFetchFeed={handleFetchFeed}
+                      onEditFeed={setEditingFeed}
+                      onDeleteFeed={setDeleteConfirm}
+                    />
                   ))}
 
                   {feeds.length === 0 && (
