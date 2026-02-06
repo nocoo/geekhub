@@ -267,4 +267,189 @@ describe('ArticleViewModelService', () => {
       expect(article.hash).toBe('abc123');
     });
   });
+
+  describe('getArticle', () => {
+    it('should return single article with read status', async () => {
+      const mockArticle = {
+        id: 'article-uuid-1',
+        feed_id: 'feed-123',
+        title: 'Test Article',
+        url: 'https://example.com/article1',
+        link: 'https://example.com/article1',
+        author: 'Test Author',
+        published_at: new Date().toISOString(),
+        content: '<p>Test content</p>',
+        content_text: 'Test content',
+        summary: 'Test summary',
+        hash: 'abc123',
+      };
+
+      const mockSupabase = {
+        from: () => ({
+          select: () => ({
+            eq: (col: string, val: string) => ({
+              eq: (col2: string, val2: string) => ({
+                single: () => Promise.resolve({ data: mockArticle, error: null }),
+              }),
+            }),
+          }),
+        }),
+      } as any;
+
+      const viewModel = new ArticleViewModelService(mockSupabase);
+      const readArticleIds = new Set<string>();
+
+      const article = await viewModel.getArticle(
+        'feed-123',
+        'article-uuid-1',
+        'Test Feed',
+        'https://example.com/icon.png',
+        readArticleIds
+      );
+
+      expect(article).not.toBeNull();
+      expect(article?.id).toBe('article-uuid-1');
+      expect(article?.title).toBe('Test Article');
+      expect(article?.isRead).toBe(false);
+    });
+
+    it('should mark article as read when in readArticleIds', async () => {
+      const mockArticle = {
+        id: 'article-uuid-1',
+        feed_id: 'feed-123',
+        title: 'Test Article',
+        url: 'https://example.com/article1',
+        link: 'https://example.com/article1',
+        author: 'Test Author',
+        published_at: new Date().toISOString(),
+        content: '<p>Test content</p>',
+        content_text: 'Test content',
+        summary: 'Test summary',
+        hash: 'abc123',
+      };
+
+      const mockSupabase = {
+        from: () => ({
+          select: () => ({
+            eq: () => ({
+              eq: () => ({
+                single: () => Promise.resolve({ data: mockArticle, error: null }),
+              }),
+            }),
+          }),
+        }),
+      } as any;
+
+      const viewModel = new ArticleViewModelService(mockSupabase);
+      const readArticleIds = new Set<string>(['article-uuid-1']);
+
+      const article = await viewModel.getArticle(
+        'feed-123',
+        'article-uuid-1',
+        'Test Feed',
+        '',
+        readArticleIds
+      );
+
+      expect(article).not.toBeNull();
+      expect(article?.isRead).toBe(true);
+    });
+
+    it('should return null when article not found', async () => {
+      const mockSupabase = {
+        from: () => ({
+          select: () => ({
+            eq: () => ({
+              eq: () => ({
+                single: () => Promise.resolve({ data: null, error: { message: 'Not found' } }),
+              }),
+            }),
+          }),
+        }),
+      } as any;
+
+      const viewModel = new ArticleViewModelService(mockSupabase);
+      const readArticleIds = new Set<string>();
+
+      const article = await viewModel.getArticle(
+        'feed-123',
+        'nonexistent',
+        'Test Feed',
+        '',
+        readArticleIds
+      );
+
+      expect(article).toBeNull();
+    });
+
+    it('should return null on database error', async () => {
+      const mockSupabase = {
+        from: () => ({
+          select: () => ({
+            eq: () => ({
+              eq: () => ({
+                single: () => Promise.resolve({ data: null, error: { message: 'Database error' } }),
+              }),
+            }),
+          }),
+        }),
+      } as any;
+
+      const viewModel = new ArticleViewModelService(mockSupabase);
+      const readArticleIds = new Set<string>();
+
+      const article = await viewModel.getArticle(
+        'feed-123',
+        'article-1',
+        'Test Feed',
+        '',
+        readArticleIds
+      );
+
+      expect(article).toBeNull();
+    });
+
+    it('should include feed icon in article view model', async () => {
+      const mockArticle = {
+        id: 'article-uuid-1',
+        feed_id: 'feed-123',
+        title: 'Test Article',
+        url: 'https://example.com/article1',
+        link: 'https://example.com/article1',
+        author: 'Test Author',
+        published_at: new Date().toISOString(),
+        content: '<p>Test content</p>',
+        content_text: 'Test content',
+        summary: 'Test summary',
+        hash: 'abc123',
+      };
+
+      const mockSupabase = {
+        from: () => ({
+          select: () => ({
+            eq: () => ({
+              eq: () => ({
+                single: () => Promise.resolve({ data: mockArticle, error: null }),
+              }),
+            }),
+          }),
+        }),
+      } as any;
+
+      const viewModel = new ArticleViewModelService(mockSupabase);
+      const readArticleIds = new Set<string>();
+
+      const article = await viewModel.getArticle(
+        'feed-123',
+        'article-uuid-1',
+        'Test Feed',
+        'https://example.com/icon.png',
+        readArticleIds
+      );
+
+      expect(article).not.toBeNull();
+      expect(article?.feedName).toBe('Test Feed');
+      expect(article?.feedIcon).toBe('https://example.com/icon.png');
+    });
+  });
 });

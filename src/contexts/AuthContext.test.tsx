@@ -86,4 +86,66 @@ describe('AuthContext', () => {
 
         await waitFor(() => expect(result.current.user?.id).toBe('user-456'));
     });
+
+    it('should call signOut and clear user on success', async () => {
+        const mockSignOut = mock(() => Promise.resolve({ error: null }));
+        mock.module('@/lib/supabase-browser', () => ({
+            createClient: () => ({
+                auth: {
+                    getSession: () => Promise.resolve({ data: { session: null }, error: null }),
+                    onAuthStateChange: (cb: any) => ({ data: { subscription: { unsubscribe: mock(() => { }) } } }),
+                    signOut: mockSignOut,
+                    signInWithOAuth: mock(() => Promise.resolve({ error: null })),
+                }
+            }),
+        }));
+
+        const wrapper = ({ children }: { children: ReactNode }) => (
+            <AuthProvider>{children}</AuthProvider>
+        );
+
+        const { result } = renderHook(() => useAuth(), { wrapper });
+
+        await waitFor(() => expect(result.current.loading).toBe(false));
+
+        await act(async () => {
+            await result.current.signOut();
+        });
+
+        expect(mockSignOut).toHaveBeenCalled();
+    });
+
+    it('should call signInWithGoogle', async () => {
+        const mockSignInWithOAuth = mock(() => Promise.resolve({ error: null }));
+        mock.module('@/lib/supabase-browser', () => ({
+            createClient: () => ({
+                auth: {
+                    getSession: () => Promise.resolve({ data: { session: null }, error: null }),
+                    onAuthStateChange: (cb: any) => ({ data: { subscription: { unsubscribe: mock(() => { }) } } }),
+                    signOut: mock(() => Promise.resolve({ error: null })),
+                    signInWithOAuth: mockSignInWithOAuth,
+                }
+            }),
+        }));
+
+        const wrapper = ({ children }: { children: ReactNode }) => (
+            <AuthProvider>{children}</AuthProvider>
+        );
+
+        const { result } = renderHook(() => useAuth(), { wrapper });
+
+        await waitFor(() => expect(result.current.loading).toBe(false));
+
+        await act(async () => {
+            await result.current.signInWithGoogle();
+        });
+
+        expect(mockSignInWithOAuth).toHaveBeenCalled();
+    });
+
+    it('should throw error when useAuth is used outside AuthProvider', () => {
+        expect(() => {
+            renderHook(() => useAuth());
+        }).toThrow('useAuth must be used within an AuthProvider');
+    });
 });
