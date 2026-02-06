@@ -1,61 +1,113 @@
-/**
- * RSS Utils Tests
- *
- * Tests the RSS fetching functionality.
- *
- * Run: bun test -- rss.test.ts
- */
+import { describe, test, expect, mock, beforeEach } from 'bun:test';
 
-import crypto from "crypto";
+const mockParseURL = mock(() => Promise.resolve({
+  title: 'Test Feed',
+  description: 'A test feed',
+  link: 'https://example.com',
+  items: [
+    {
+      title: 'Article 1',
+      link: 'https://example.com/1',
+      pubDate: '2026-02-01T00:00:00Z',
+      content: 'Content 1',
+    },
+    {
+      title: 'Article 2',
+      link: 'https://example.com/2',
+      pubDate: '2026-02-02T00:00:00Z',
+      content: 'Content 2',
+    },
+  ],
+}));
 
-describe("URL Hash Generation", () => {
-  // Helper function to generate URL hash (same logic as in rss.ts)
-  function urlToHash(url: string): string {
-    return crypto.createHash("md5").update(url).digest("hex").slice(0, 12);
-  }
+mock.module('rss-parser', () => ({
+  default: class MockParser {
+    parseURL = mockParseURL;
+  },
+}));
 
-  it("should generate 12-character hash from URL", () => {
-    const url = "https://example.com/feed";
-    const hash = urlToHash(url);
-
-    expect(hash).toHaveLength(12);
-    expect(hash).toMatch(/^[a-f0-9]+$/);
+describe('fetchRss', () => {
+  beforeEach(() => {
+    mockParseURL.mockClear();
   });
 
-  it("should generate consistent hash for same URL", () => {
-    const url = "https://example.com/feed";
-    const hash1 = urlToHash(url);
-    const hash2 = urlToHash(url);
-
-    expect(hash1).toBe(hash2);
+  test('returns feed data with required fields', async () => {
+    const { fetchRss } = await import('./rss');
+    
+    const result = await fetchRss('https://example.com/feed.xml');
+    
+    expect(result).toHaveProperty('feed');
+    expect(result).toHaveProperty('cached');
+    expect(result).toHaveProperty('fetchedAt');
   });
 
-  it("should generate different hashes for different URLs", () => {
-    const hash1 = urlToHash("https://example.com/feed1");
-    const hash2 = urlToHash("https://example.com/feed2");
-
-    expect(hash1).not.toBe(hash2);
+  test('cached is always false (no file caching)', async () => {
+    const { fetchRss } = await import('./rss');
+    
+    const result = await fetchRss('https://example.com/feed.xml');
+    
+    expect(result.cached).toBe(false);
   });
 
-  it("should handle URL with query parameters", () => {
-    const url1 = "https://example.com/feed?sort=latest";
-    const url2 = "https://example.com/feed?sort=oldest";
-
-    const hash1 = urlToHash(url1);
-    const hash2 = urlToHash(url2);
-
-    expect(hash1).not.toBe(hash2);
+  test('fetchedAt is a valid ISO date string', async () => {
+    const { fetchRss } = await import('./rss');
+    
+    const result = await fetchRss('https://example.com/feed.xml');
+    
+    const date = new Date(result.fetchedAt);
+    expect(date.toISOString()).toBe(result.fetchedAt);
   });
-});
 
-describe("fetchRss function", () => {
-  it("should return feed data with required fields", async () => {
-    // Since we removed file caching, we just test the structure
-    // The actual API call would be tested in integration tests
-    const { fetchRss } = await import("./rss");
+  test('calls parser.parseURL with the provided URL', async () => {
+    const { fetchRss } = await import('./rss');
+    
+    await fetchRss('https://example.com/custom-feed.xml');
+    
+    expect(mockParseURL).toHaveBeenCalledWith('https://example.com/custom-feed.xml');
+  });
 
-    // This would make a real network call in test environment
-    // We skip actual tests here since they require network
-    expect(typeof fetchRss).toBe("function");
+  test('returns parsed feed from parser', async () => {
+    const { fetchRss } = await import('./rss');
+    
+    const result = await fetchRss('https://example.com/feed.xml');
+    
+    expect(result.feed.title).toBe('Test Feed');
+    expect(result.feed.items).toHaveLength(2);
+    expect(result.feed.items[0].title).toBe('Article 1');
+  });
+
+  test('handles skipCache parameter (ignored in current implementation)', async () => {
+    const { fetchRss } = await import('./rss');
+    
+    const result1 = await fetchRss('https://example.com/feed.xml', true);
+    const result2 = await fetchRss('https://example.com/feed.xml', false);
+    
+    expect(result1.cached).toBe(false);
+    expect(result2.cached).toBe(false);
+  });
+
+  test('propagates parser errors', async () => {
+    mockParseURL.mockImplementationOnce(() => 
+      Promise.reject(new Error('Network error'))
+    );
+    
+    const { fetchRss } = await import('./rss');
+    
+    await expect(fetchRss('https://invalid.example.com/feed.xml'))
+      .rejects.toThrow('Network error');
+  });
+
+  test('handles empty feed items', async () => {
+    mockParseURL.mockImplementationOnce(() => Promise.resolve({
+      title: 'Empty Feed',
+      items: [],
+    }));
+    
+    const { fetchRss } = await import('./rss');
+    
+    const result = await fetchRss('https://example.com/empty.xml');
+    
+    expect(result.feed.title).toBe('Empty Feed');
+    expect(result.feed.items).toHaveLength(0);
   });
 });
