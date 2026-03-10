@@ -1,5 +1,3 @@
-import { formatDistanceToNow } from 'date-fns';
-
 export function useFormatTime() {
   return (date: Date | number | string | null | undefined): string => {
     if (!date) return '';
