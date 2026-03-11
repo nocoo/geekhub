@@ -2,6 +2,7 @@ import React, { ReactNode } from 'react';
 import { renderHook } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthContext } from '@/contexts/AuthContext';
+import type { User } from '@supabase/supabase-js';
 
 /**
  * Create a new QueryClient for each test to avoid cache pollution
@@ -40,7 +41,7 @@ export function TestWrapper({
     return (
         <QueryClientProvider client={qc}>
             <AuthContext.Provider value={{
-                user: mockUser as any,
+                user: mockUser as unknown as User,
                 session: null,
                 loading: false,
                 signInWithGoogle: async () => { },

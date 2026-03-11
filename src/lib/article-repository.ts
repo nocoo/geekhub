@@ -77,7 +77,7 @@ export class ArticleRepository {
         },
       }
     );
-    return new ArticleRepository(supabase as any);
+    return new ArticleRepository(supabase as unknown as ReturnType<typeof createClient>);
   }
 
   /**
@@ -98,7 +98,7 @@ export class ArticleRepository {
     return {
       last_updated: new Date().toISOString(),
       total_count: data.length,
-      articles: (data as any[]).map(a => ({
+      articles: (data as ArticleRaw[]).map(a => ({
         id: a.id,
         hash: a.hash,
         title: a.title,
@@ -125,7 +125,7 @@ export class ArticleRepository {
       return [];
     }
 
-    return (data as any[]).map(a => a.hash);
+    return (data as { hash: string }[]).map(a => a.hash);
   }
 
   /**

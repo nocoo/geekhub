@@ -17,9 +17,9 @@ interface DatabaseTableInfo {
 }
 
 // GET /api/data/files - Get database storage information (replaces file system browsing)
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
-    const { client: supabase, user } = await createSmartSupabaseClient();
+    const { user } = await createSmartSupabaseClient();
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }

@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, afterEach, mock } from 'bun:test';
+import { describe, test, expect, beforeEach, afterEach } from 'bun:test';
 import { renderHook } from '@testing-library/react';
 import { useFormatTime } from './format-time';
 
@@ -13,15 +13,15 @@ describe('useFormatTime', () => {
     // Also mock new Date() without args
     const OriginalDate = Date;
     global.Date = class extends OriginalDate {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Date constructor overloads make precise typing impractical
       constructor(...args: any[]) {
         if (args.length === 0) {
           super(NOW);
         } else {
-          // @ts-ignore
           super(...args);
         }
       }
-    } as any;
+    } as typeof Date;
     global.Date.now = () => NOW;
   });
 

@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 
 export default function LoginPage() {
   const { user, loading, signInWithGoogle } = useAuth();
@@ -82,7 +83,7 @@ export default function LoginPage() {
           {/* Logo Circle */}
           <div className="flex flex-col items-center mb-10">
             <div className="w-32 h-32 rounded-full bg-black border-2 border-emerald-700/50 flex items-center justify-center mb-8 p-4">
-              <img src="/logo-64.png" alt="GeekHub" className="w-16 h-16" />
+              <Image src="/logo-64.png" alt="GeekHub" width={64} height={64} className="w-16 h-16" />
             </div>
 
             {/* Company Name */}

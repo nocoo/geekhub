@@ -10,6 +10,15 @@ function getServiceClient() {
   );
 }
 
+interface FetchStatus {
+  feed_id: string;
+  last_fetch_at: string | null;
+  last_success_at: string | null;
+  last_fetch_status: string | null;
+  next_fetch_at: string | null;
+  total_articles?: number;
+}
+
 // Calculate success rate from fetch_logs table
 async function calculateSuccessRate(feedId: string): Promise<number> {
   try {
@@ -54,7 +63,7 @@ async function getLastError(feedId: string): Promise<string | undefined> {
 }
 
 // Get last fetch status from fetch_status table
-async function getLastFetchStatus(feedId: string) {
+async function _getLastFetchStatus(feedId: string) {
   try {
     const supabase = getServiceClient();
     const { data: status } = await supabase
@@ -70,7 +79,7 @@ async function getLastFetchStatus(feedId: string) {
 }
 
 // GET /api/data/feeds - Get all feeds detailed status
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const { client: supabase, user } = await createSmartSupabaseClient();
   if (!user) {
@@ -92,7 +101,7 @@ export async function GET(request: NextRequest) {
     const feedIds = feeds.map(f => f.id);
 
     // Batch fetch fetch_status for all feeds
-    let fetchStatusMap: Record<string, any> = {};
+    let fetchStatusMap: Record<string, FetchStatus> = {};
     if (feedIds.length > 0) {
       const supabaseAdmin = getServiceClient();
       const { data: allStatuses } = await supabaseAdmin
@@ -109,7 +118,6 @@ export async function GET(request: NextRequest) {
     const feedStatuses = await Promise.all(
       feeds.map(async (feed) => {
         const fetchStatus = fetchStatusMap[feed.id];
-        const status = 'active'; // Default to active, can be refined based on last_fetch_at
         const errorMessage = await getLastError(feed.id);
         const successRate = await calculateSuccessRate(feed.id);
 
@@ -126,7 +134,6 @@ export async function GET(request: NextRequest) {
 
             if (hoursSinceLastFetch > 24) {
               currentStatus = 'error';
-              errorMessage || 'Long time no fetch';
             } else {
               currentStatus = 'active';
             }

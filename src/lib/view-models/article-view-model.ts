@@ -26,6 +26,11 @@ export interface ArticleRawData {
 }
 
 /**
+ * Input type for transformArticleToViewModel - requires core fields, rest optional
+ */
+export type ArticleInput = Pick<ArticleRawData, 'id' | 'title' | 'url' | 'hash'> & Partial<ArticleRawData> & { feedId?: string };
+
+/**
  * Transforms raw article data into a standardized Article ViewModel
  * 
  * @param article - Raw article data from DB
@@ -34,7 +39,7 @@ export interface ArticleRawData {
  * @returns Standardized Article ViewModel
  */
 export function transformArticleToViewModel(
-    article: any, // Using any for flexibility during transition
+    article: ArticleInput,
     feedInfo: { name: string; icon: string },
     isRead: boolean = false
 ): Article {
@@ -42,7 +47,7 @@ export function transformArticleToViewModel(
 
     return {
         id: article.id,
-        feedId: article.feed_id || article.feedId,
+        feedId: article.feed_id || article.feedId || '',
         title: article.title,
         url: article.url,
         description: article.summary || article.content_text || '',

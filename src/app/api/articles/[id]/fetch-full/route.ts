@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ProxyAgent } from 'undici';
 import * as cheerio from 'cheerio';
+import type { AnyNode } from 'domhandler';
 
 // Configure proxy
 let proxyAgent: ProxyAgent | undefined;
@@ -25,6 +26,7 @@ async function fetchWithProxy(url: string): Promise<string> {
       'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
       'Accept-Language': 'en,zh-CN;q=0.9,zh;q=0.8',
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any);
 
   if (!response.ok) {
@@ -80,7 +82,7 @@ async function extractFullContent(url: string): Promise<{ content: string; title
   }
 
   // Fallback: try to find the div with most text content
-  let bestElement: any = null;
+  let bestElement: cheerio.Cheerio<AnyNode> | null = null;
   let maxLength = 0;
 
   $('div, p, section').each(function() {
@@ -106,7 +108,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
+    await params;
     const body = await request.json();
     const { url } = body;
 

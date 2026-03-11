@@ -1,5 +1,6 @@
-import { extractFirstImage, transformArticleToViewModel } from './view-models/article-view-model';
+import { transformArticleToViewModel } from './view-models/article-view-model';
 import { ArticleViewModel, ArticlesResult } from '@/types/article-view-model';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 /**
  * ViewModel combining database data
@@ -7,9 +8,9 @@ import { ArticleViewModel, ArticlesResult } from '@/types/article-view-model';
  * to properly handle async cookies in Next.js
  */
 export class ArticleViewModelService {
-  private supabase: any;
+  private supabase: SupabaseClient;
 
-  constructor(supabaseClient: any) {
+  constructor(supabaseClient: SupabaseClient) {
     this.supabase = supabaseClient;
   }
 
@@ -40,7 +41,7 @@ export class ArticleViewModelService {
     }
 
     // Process articles
-    const processedArticles = articles.map((article: any) =>
+    const processedArticles = articles.map((article) =>
       transformArticleToViewModel(
         article,
         { name: feedTitle, icon: feedIcon || '' },

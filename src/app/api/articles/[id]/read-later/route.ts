@@ -8,7 +8,7 @@ export async function POST(
 ) {
   try {
     const { id: articleId } = await params;
-    const body = await request.json();
+    await request.json();
 
     const { client: supabase, user } = await createSmartSupabaseClient();
   if (!user) {
@@ -67,7 +67,7 @@ export async function DELETE(
 ) {
   try {
     const { id: articleId } = await params;
-    const body = await request.json().catch(() => ({}));
+    await request.json().catch(() => ({}));
 
     const { client: supabase, user } = await createSmartSupabaseClient();
   if (!user) {

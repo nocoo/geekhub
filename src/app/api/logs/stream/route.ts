@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
   // Create a readable stream for SSE
   const stream = new ReadableStream({
     async start(controller) {
-      const sendEvent = (data: any, event = 'log') => {
+      const sendEvent = (data: unknown, event = 'log') => {
         const message = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
         controller.enqueue(encoder.encode(message));
       };

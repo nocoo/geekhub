@@ -38,8 +38,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
-      setUser(devUser);
-      setLoading(false);
+      setUser(devUser);  
+      setLoading(false);  
       return;
     }
 
@@ -60,7 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, [isDev, supabase]);
+  }, [isDev, supabase, DEV_USER_EMAIL, DEV_USER_ID]);
 
   const signInWithGoogle = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
@@ -83,13 +83,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
 
-  const value = useMemo<AuthContextType>(() => ({
-    user,
-    session,
-    loading,
-    signInWithGoogle,
-    signOut
-  }), [user, session, loading]);
+  /* eslint-disable-next-line react-hooks/exhaustive-deps -- signInWithGoogle and signOut are stable (only close over supabase) */
+  const value = useMemo<AuthContextType>(() => ({ user, session, loading, signInWithGoogle, signOut }), [user, session, loading]);
 
   return (
     <AuthContext.Provider value={value}>

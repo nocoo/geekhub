@@ -10,7 +10,7 @@ import React, { ReactNode } from 'react';
 
 // Mock Supabase
 const mockGetSession = mock(() => Promise.resolve({ data: { session: null }, error: null }));
-const mockOnAuthStateChange = mock((callback: any) => {
+const mockOnAuthStateChange = mock((_callback: (event: string, session: { user: Record<string, unknown> } | null) => void) => {
     return { data: { subscription: { unsubscribe: mock(() => { }) } } };
 });
 
@@ -49,6 +49,7 @@ describe('AuthContext', () => {
         mockGetSession.mockImplementation(() => Promise.resolve({
             data: { session: { user: mockUser } },
             error: null
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mock doesn't need full Session type
         }) as any);
 
         const wrapper = ({ children }: { children: ReactNode }) => (
@@ -63,8 +64,8 @@ describe('AuthContext', () => {
     });
 
     it('should update user when auth state changes', async () => {
-        let stateChangeCallback: any;
-        mockOnAuthStateChange.mockImplementation((callback: any) => {
+        let stateChangeCallback: ((event: string, session: { user: Record<string, unknown> } | null) => void) | undefined;
+        mockOnAuthStateChange.mockImplementation((callback: (event: string, session: { user: Record<string, unknown> } | null) => void) => {
             stateChangeCallback = callback;
             return { data: { subscription: { unsubscribe: mock(() => { }) } } };
         });
@@ -81,7 +82,7 @@ describe('AuthContext', () => {
 
         // Trigger auth state change
         act(() => {
-            stateChangeCallback('SIGNED_IN', { user: mockUser });
+            stateChangeCallback!('SIGNED_IN', { user: mockUser });
         });
 
         await waitFor(() => expect(result.current.user?.id).toBe('user-456'));
@@ -93,7 +94,7 @@ describe('AuthContext', () => {
             createClient: () => ({
                 auth: {
                     getSession: () => Promise.resolve({ data: { session: null }, error: null }),
-                    onAuthStateChange: (cb: any) => ({ data: { subscription: { unsubscribe: mock(() => { }) } } }),
+                    onAuthStateChange: (_cb: () => void) => ({ data: { subscription: { unsubscribe: mock(() => { }) } } }),
                     signOut: mockSignOut,
                     signInWithOAuth: mock(() => Promise.resolve({ error: null })),
                 }
@@ -121,7 +122,7 @@ describe('AuthContext', () => {
             createClient: () => ({
                 auth: {
                     getSession: () => Promise.resolve({ data: { session: null }, error: null }),
-                    onAuthStateChange: (cb: any) => ({ data: { subscription: { unsubscribe: mock(() => { }) } } }),
+                    onAuthStateChange: (_cb: () => void) => ({ data: { subscription: { unsubscribe: mock(() => { }) } } }),
                     signOut: mock(() => Promise.resolve({ error: null })),
                     signInWithOAuth: mockSignInWithOAuth,
                 }

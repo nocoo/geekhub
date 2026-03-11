@@ -39,7 +39,7 @@ export async function GET() {
     const cacheMap = new Map((cacheData || []).map(c => [c.feed_id, c]));
 
     // Combine data
-    const feedsWithCounts = feeds.map((feed: any) => {
+    const feedsWithCounts = feeds.map((feed) => {
       const cache = cacheMap.get(feed.id);
       return {
         ...feed,

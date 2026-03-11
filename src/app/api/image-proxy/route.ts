@@ -46,6 +46,7 @@ async function fetchImage(url: string, referer?: string): Promise<NextResponse> 
   const response = await fetch(url, {
     dispatcher: proxyAgent,
     headers,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any);
 
   if (!response.ok) {

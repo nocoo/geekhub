@@ -39,7 +39,7 @@ export async function toggleAutoTranslate(feedId: string, enabled: boolean): Pro
  * @returns Promise resolving when fetch is triggered
  * @throws Error if fetch fails
  */
-export async function fetchFeed(feedId: string, feedTitle?: string): Promise<void> {
+export async function fetchFeed(feedId: string, _feedTitle?: string): Promise<void> {
   const response = await fetch(`/api/feeds/${feedId}/fetch`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

@@ -40,6 +40,7 @@ export class FeedLogger {
   private async saveToDatabase(entry: FetchLogEntry): Promise<void> {
     try {
       const supabase = getSupabaseClient();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- fetch_logs table not in generated Supabase types
       await (supabase.from('fetch_logs') as any).insert({
         feed_id: this.feedId,
         fetched_at: entry.timestamp,
@@ -106,6 +107,7 @@ export class FeedLogger {
   async getRecentLogs(limit: number = 100): Promise<FetchLogEntry[]> {
     try {
       const supabase = getSupabaseClient();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- fetch_logs table not in generated Supabase types
       const { data, error } = await (supabase.from('fetch_logs') as any)
         .select('*')
         .eq('feed_id', this.feedId)

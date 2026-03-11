@@ -9,10 +9,6 @@ import {
   HardDrive,
   RefreshCw,
   AlertTriangle,
-  CheckCircle,
-  Clock,
-  Search,
-  Filter,
   Download,
   Trash2,
   Eye,
@@ -34,9 +30,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
 import {
   Table,
@@ -88,16 +83,6 @@ interface LogEntry {
   message: string;
 }
 
-interface DataFile {
-  path: string;
-  name: string;
-  size: number;
-  modified: string;
-  type: 'article' | 'cache' | 'log' | 'index';
-  feedId?: string;
-  feedTitle?: string;
-}
-
 interface DatabaseTableInfo {
   table_name: string;
   row_count: number;
@@ -128,11 +113,6 @@ interface CleanupResult {
     oldLogs: number;
     recommendation: string;
   };
-}
-
-interface CleanupExecuteResult {
-  deletedLogs: number;
-  errors: string[];
 }
 
 interface ArticleCleanupStats {
@@ -175,8 +155,13 @@ export function DataManagerPanel({ open, onOpenChange }: DataManagerPanelProps) 
   const [cleanupLoading, setCleanupLoading] = useState(false);
   const [articleCleanupStats, setArticleCleanupStats] = useState<ArticleCleanupStats | null>(null);
   const [articleCleanupLoading, setArticleCleanupLoading] = useState(false);
-  const [selectedFeedForCleanup, setSelectedFeedForCleanup] = useState<string | null>(null);
-  const [storageInfo, setStorageInfo] = useState<any>(null);
+  const [storageInfo, setStorageInfo] = useState<{
+    totalSizeFormatted: string;
+    usage: { databasePercent: string; databaseUsedFormatted: string; databaseLimitFormatted: string };
+    breakdownFormatted: { articles: string; logs: string; feeds: string };
+    breakdown: { categories: number; userArticles: number; fetchStatus: number };
+    supabaseLimits: { freeDatabaseLimitFormatted: string };
+  } | null>(null);
 
   // Load all data manager data
   const loadDataManagerData = useCallback(async () => {
@@ -252,7 +237,7 @@ export function DataManagerPanel({ open, onOpenChange }: DataManagerPanelProps) 
     if (open) {
       loadDataManagerData();
     }
-  }, [open]);
+  }, [open, loadDataManagerData]);
 
   // Format bytes
   const formatBytes = (bytes: number): string => {
@@ -665,7 +650,7 @@ export function DataManagerPanel({ open, onOpenChange }: DataManagerPanelProps) 
                         className="w-full"
                       />
                     </div>
-                    <Select value={logFilter} onValueChange={(value: any) => setLogFilter(value)}>
+                    <Select value={logFilter} onValueChange={(value: 'all' | 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR') => setLogFilter(value)}>
                       <SelectTrigger className="w-32">
                         <SelectValue />
                       </SelectTrigger>

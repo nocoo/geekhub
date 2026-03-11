@@ -86,8 +86,8 @@ export function useSettings() {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    setSettings(loadSettings());
-    setIsReady(true);
+    setSettings(loadSettings()); // eslint-disable-line react-hooks/set-state-in-effect -- intentional client-side initialization from localStorage
+    setIsReady(true);  
   }, []);
 
   const updateSettings = (updates: Partial<AppSettings>) => {

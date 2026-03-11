@@ -8,33 +8,39 @@
 
 import { describe, it, expect } from 'bun:test';
 import { ArticleRepository } from './article-repository';
+import type { createClient } from '@supabase/supabase-js';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- mock Supabase client with dynamic chaining
+type MockSupabase = Record<string, any>;
+
+const asSupabase = (mock: MockSupabase) => mock as unknown as ReturnType<typeof createClient>;
 
 // Mock Supabase client
-const createMockSupabase = () => {
+const createMockSupabase = (): MockSupabase => {
   return {
-    from: (table: string) => {
+    from: (_table: string) => {
       return {
-        select: (columns?: string) => ({
-          eq: (column: string, value: any) => ({
-            order: (column: string, options?: { ascending: boolean }) => ({
-              limit: (count: number) => Promise.resolve({ data: [], error: null }),
+        select: (_columns?: string) => ({
+          eq: (_column: string, _value: string) => ({
+            order: (_column: string, _options?: { ascending: boolean }) => ({
+              limit: (_count: number) => Promise.resolve({ data: [], error: null }),
             }),
-            in: (column: string, values: any[]) => ({
-              order: (column: string, options?: { ascending: boolean }) => Promise.resolve({ data: [], error: null }),
+            in: (_column: string, _values: string[]) => ({
+              order: (_column: string, _options?: { ascending: boolean }) => Promise.resolve({ data: [], error: null }),
             }),
             single: () => Promise.resolve({ data: null, error: null }),
           }),
-          in: (column: string, values: any[]) => ({
-            order: (column: string, options?: { ascending: boolean }) => Promise.resolve({ data: [], error: null }),
+          in: (_column: string, _values: string[]) => ({
+            order: (_column: string, _options?: { ascending: boolean }) => Promise.resolve({ data: [], error: null }),
           }),
         }),
-        insert: (rows: any) => Promise.resolve({ data: null, error: null }),
-        upsert: (rows: any, options?: any) => Promise.resolve({ error: null }),
-        update: (updates: any) => ({
-          eq: (column: string, value: any) => Promise.resolve({ error: null }),
+        insert: (_rows: unknown) => Promise.resolve({ data: null, error: null }),
+        upsert: (_rows: unknown, _options?: unknown) => Promise.resolve({ error: null }),
+        update: (_updates: unknown) => ({
+          eq: (_column: string, _value: string) => Promise.resolve({ error: null }),
         }),
         delete: () => ({
-          eq: (column: string, value: any) => Promise.resolve({ error: null }),
+          eq: (_column: string, _value: string) => Promise.resolve({ error: null }),
         }),
       };
     },
@@ -45,7 +51,7 @@ describe('ArticleRepository', () => {
   describe('constructor', () => {
     it('should initialize with Supabase client', () => {
       const mockSupabase = createMockSupabase();
-      const repo = new ArticleRepository(mockSupabase as any);
+      const repo = new ArticleRepository(asSupabase(mockSupabase));
       expect(repo).toBeInstanceOf(ArticleRepository);
     });
   });
@@ -55,7 +61,7 @@ describe('ArticleRepository', () => {
       const mockSupabase = createMockSupabase();
 
       // Mock the articles query
-      (mockSupabase as any).from = (table: string) => {
+      mockSupabase.from = (table: string) => {
         if (table === 'articles') {
           return {
             select: () => ({
@@ -84,7 +90,7 @@ describe('ArticleRepository', () => {
         return { select: () => ({ eq: () => ({ order: () => ({ limit: () => Promise.resolve({ data: [], error: null }) }) }) }) };
       };
 
-      const repo = new ArticleRepository(mockSupabase as any);
+      const repo = new ArticleRepository(asSupabase(mockSupabase));
       const index = await repo.getIndex('feed-123');
 
       expect(index).not.toBeNull();
@@ -98,7 +104,7 @@ describe('ArticleRepository', () => {
       const mockSupabase = createMockSupabase();
 
       // Mock empty result with error to simulate non-existent feed
-      (mockSupabase as any).from = () => ({
+      mockSupabase.from = () => ({
         select: () => ({
           eq: () => ({
             order: () => ({
@@ -108,7 +114,7 @@ describe('ArticleRepository', () => {
         }),
       });
 
-      const repo = new ArticleRepository(mockSupabase as any);
+      const repo = new ArticleRepository(asSupabase(mockSupabase));
       const index = await repo.getIndex('nonexistent');
 
       expect(index).toBeNull();
@@ -119,7 +125,7 @@ describe('ArticleRepository', () => {
     it('should return array of article hashes', async () => {
       const mockSupabase = createMockSupabase();
 
-      (mockSupabase as any).from = () => ({
+      mockSupabase.from = () => ({
         select: () => ({
           eq: () => ({
             order: () => Promise.resolve({
@@ -133,7 +139,7 @@ describe('ArticleRepository', () => {
         }),
       });
 
-      const repo = new ArticleRepository(mockSupabase as any);
+      const repo = new ArticleRepository(asSupabase(mockSupabase));
       const hashes = await repo.getArticleHashes('feed-123');
 
       expect(Array.isArray(hashes)).toBe(true);
@@ -143,7 +149,7 @@ describe('ArticleRepository', () => {
     it('should return empty array for non-existent feed', async () => {
       const mockSupabase = createMockSupabase();
 
-      (mockSupabase as any).from = () => ({
+      mockSupabase.from = () => ({
         select: () => ({
           eq: () => ({
             order: () => Promise.resolve({ data: [], error: null }),
@@ -151,7 +157,7 @@ describe('ArticleRepository', () => {
         }),
       });
 
-      const repo = new ArticleRepository(mockSupabase as any);
+      const repo = new ArticleRepository(asSupabase(mockSupabase));
       const hashes = await repo.getArticleHashes('nonexistent');
 
       expect(hashes).toEqual([]);
@@ -176,7 +182,7 @@ describe('ArticleRepository', () => {
         summary: 'Test summary',
       };
 
-      (mockSupabase as any).from = () => ({
+      mockSupabase.from = () => ({
         select: () => ({
           eq: () => ({
             single: () => Promise.resolve({ data: mockArticle, error: null }),
@@ -184,7 +190,7 @@ describe('ArticleRepository', () => {
         }),
       });
 
-      const repo = new ArticleRepository(mockSupabase as any);
+      const repo = new ArticleRepository(asSupabase(mockSupabase));
       const article = await repo.getArticle('article-1');
 
       expect(article).not.toBeNull();
@@ -195,7 +201,7 @@ describe('ArticleRepository', () => {
     it('should return null for non-existent article', async () => {
       const mockSupabase = createMockSupabase();
 
-      (mockSupabase as any).from = () => ({
+      mockSupabase.from = () => ({
         select: () => ({
           eq: () => ({
             single: () => Promise.resolve({ data: null, error: { message: 'Not found' } }),
@@ -203,7 +209,7 @@ describe('ArticleRepository', () => {
         }),
       });
 
-      const repo = new ArticleRepository(mockSupabase as any);
+      const repo = new ArticleRepository(asSupabase(mockSupabase));
       const article = await repo.getArticle('nonexistent');
 
       expect(article).toBeNull();
@@ -219,7 +225,7 @@ describe('ArticleRepository', () => {
         { id: '2', hash: 'hash2', title: 'Article 2', url: 'https://example.com/2', link: 'https://example.com/2', author: 'Author 2', published_at: '2024-01-02T00:00:00Z', summary: 'Summary 2' },
       ];
 
-      (mockSupabase as any).from = () => ({
+      mockSupabase.from = () => ({
         select: () => ({
           eq: () => ({
             eq: () => ({
@@ -230,7 +236,7 @@ describe('ArticleRepository', () => {
         }),
       });
 
-      const repo = new ArticleRepository(mockSupabase as any);
+      const repo = new ArticleRepository(asSupabase(mockSupabase));
       const articles = await repo.getArticles('feed-123', ['hash1', 'hash2']);
 
       expect(articles.length).toBe(2);
@@ -239,7 +245,7 @@ describe('ArticleRepository', () => {
     it('should return empty array for non-existent articles', async () => {
       const mockSupabase = createMockSupabase();
 
-      (mockSupabase as any).from = () => ({
+      mockSupabase.from = () => ({
         select: () => ({
           eq: () => ({
             eq: () => ({
@@ -250,7 +256,7 @@ describe('ArticleRepository', () => {
         }),
       });
 
-      const repo = new ArticleRepository(mockSupabase as any);
+      const repo = new ArticleRepository(asSupabase(mockSupabase));
       const articles = await repo.getArticles('feed-123', ['nonexistent']);
 
       expect(articles).toEqual([]);
@@ -265,7 +271,7 @@ describe('ArticleRepository', () => {
         { id: '1', hash: 'hash1', title: 'Article 1', url: 'https://example.com/1', link: 'https://example.com/1', author: 'Author 1', published_at: '2024-01-01T00:00:00Z', summary: 'Summary 1' },
       ];
 
-      (mockSupabase as any).from = () => ({
+      mockSupabase.from = () => ({
         select: () => ({
           eq: () => ({
             order: () => Promise.resolve({ data: mockArticles, error: null }),
@@ -273,7 +279,7 @@ describe('ArticleRepository', () => {
         }),
       });
 
-      const repo = new ArticleRepository(mockSupabase as any);
+      const repo = new ArticleRepository(asSupabase(mockSupabase));
       const articles = await repo.getAllArticles('feed-123');
 
       expect(articles.length).toBe(1);
@@ -286,7 +292,7 @@ describe('ArticleRepository', () => {
         { id: '1', hash: 'hash1', title: 'Article 1', url: 'https://example.com/1', link: 'https://example.com/1', author: 'Author 1', published_at: '2024-01-01T00:00:00Z', summary: 'Summary 1' },
       ];
 
-      (mockSupabase as any).from = () => ({
+      mockSupabase.from = () => ({
         select: () => ({
           eq: () => ({
             order: () => ({
@@ -296,7 +302,7 @@ describe('ArticleRepository', () => {
         }),
       });
 
-      const repo = new ArticleRepository(mockSupabase as any);
+      const repo = new ArticleRepository(asSupabase(mockSupabase));
       const articles = await repo.getAllArticles('feed-123', 10);
 
       expect(articles.length).toBe(1);
@@ -305,7 +311,7 @@ describe('ArticleRepository', () => {
     it('should return empty array on error', async () => {
       const mockSupabase = createMockSupabase();
 
-      (mockSupabase as any).from = () => ({
+      mockSupabase.from = () => ({
         select: () => ({
           eq: () => ({
             order: () => Promise.resolve({ data: null, error: { message: 'Error' } }),
@@ -313,7 +319,7 @@ describe('ArticleRepository', () => {
         }),
       });
 
-      const repo = new ArticleRepository(mockSupabase as any);
+      const repo = new ArticleRepository(asSupabase(mockSupabase));
       const articles = await repo.getAllArticles('feed-123');
 
       expect(articles).toEqual([]);
@@ -331,9 +337,9 @@ describe('ArticleRepository', () => {
         content: '<p>Content</p>',
       };
 
-      (mockSupabase as any).from = () => ({
+      mockSupabase.from = () => ({
         select: () => ({
-          eq: (col: string) => ({
+          eq: (_col: string) => ({
             eq: () => ({
               single: () => Promise.resolve({ data: mockArticle, error: null }),
             }),
@@ -341,7 +347,7 @@ describe('ArticleRepository', () => {
         }),
       });
 
-      const repo = new ArticleRepository(mockSupabase as any);
+      const repo = new ArticleRepository(asSupabase(mockSupabase));
       const article = await repo.getArticleByHash('feed-123', 'abc123');
 
       expect(article).not.toBeNull();
@@ -351,7 +357,7 @@ describe('ArticleRepository', () => {
     it('should return null when article not found', async () => {
       const mockSupabase = createMockSupabase();
 
-      (mockSupabase as any).from = () => ({
+      mockSupabase.from = () => ({
         select: () => ({
           eq: () => ({
             eq: () => ({
@@ -361,7 +367,7 @@ describe('ArticleRepository', () => {
         }),
       });
 
-      const repo = new ArticleRepository(mockSupabase as any);
+      const repo = new ArticleRepository(asSupabase(mockSupabase));
       const article = await repo.getArticleByHash('feed-123', 'nonexistent');
 
       expect(article).toBeNull();
@@ -376,13 +382,13 @@ describe('ArticleRepository', () => {
         { id: '2', hash: 'hash2', title: 'Article 2' },
       ];
 
-      (mockSupabase as any).from = () => ({
+      mockSupabase.from = () => ({
         select: () => ({
           in: () => Promise.resolve({ data: mockArticles, error: null }),
         }),
       });
 
-      const repo = new ArticleRepository(mockSupabase as any);
+      const repo = new ArticleRepository(asSupabase(mockSupabase));
       const articles = await repo.getArticlesByIds(['1', '2']);
 
       expect(articles.length).toBe(2);
@@ -392,7 +398,7 @@ describe('ArticleRepository', () => {
 
     it('should return empty array for empty input', async () => {
       const mockSupabase = createMockSupabase();
-      const repo = new ArticleRepository(mockSupabase as any);
+      const repo = new ArticleRepository(asSupabase(mockSupabase));
       const articles = await repo.getArticlesByIds([]);
 
       expect(articles).toEqual([]);
@@ -401,13 +407,13 @@ describe('ArticleRepository', () => {
     it('should return empty array on error', async () => {
       const mockSupabase = createMockSupabase();
 
-      (mockSupabase as any).from = () => ({
+      mockSupabase.from = () => ({
         select: () => ({
           in: () => Promise.resolve({ data: null, error: { message: 'Error' } }),
         }),
       });
 
-      const repo = new ArticleRepository(mockSupabase as any);
+      const repo = new ArticleRepository(asSupabase(mockSupabase));
       const articles = await repo.getArticlesByIds(['1', '2']);
 
       expect(articles).toEqual([]);
@@ -418,7 +424,7 @@ describe('ArticleRepository', () => {
     it('should return true when feed has articles', async () => {
       const mockSupabase = createMockSupabase();
 
-      (mockSupabase as any).from = () => ({
+      mockSupabase.from = () => ({
         select: () => ({
           eq: () => ({
             limit: () => Promise.resolve({ count: 5, error: null }),
@@ -426,7 +432,7 @@ describe('ArticleRepository', () => {
         }),
       });
 
-      const repo = new ArticleRepository(mockSupabase as any);
+      const repo = new ArticleRepository(asSupabase(mockSupabase));
       const hasArticles = await repo.feedHasArticles('feed-123');
 
       expect(hasArticles).toBe(true);
@@ -435,7 +441,7 @@ describe('ArticleRepository', () => {
     it('should return false when feed has no articles', async () => {
       const mockSupabase = createMockSupabase();
 
-      (mockSupabase as any).from = () => ({
+      mockSupabase.from = () => ({
         select: () => ({
           eq: () => ({
             limit: () => Promise.resolve({ count: 0, error: null }),
@@ -443,7 +449,7 @@ describe('ArticleRepository', () => {
         }),
       });
 
-      const repo = new ArticleRepository(mockSupabase as any);
+      const repo = new ArticleRepository(asSupabase(mockSupabase));
       const hasArticles = await repo.feedHasArticles('feed-123');
 
       expect(hasArticles).toBe(false);
@@ -452,7 +458,7 @@ describe('ArticleRepository', () => {
     it('should return false on error', async () => {
       const mockSupabase = createMockSupabase();
 
-      (mockSupabase as any).from = () => ({
+      mockSupabase.from = () => ({
         select: () => ({
           eq: () => ({
             limit: () => Promise.resolve({ count: null, error: { message: 'Error' } }),
@@ -460,7 +466,7 @@ describe('ArticleRepository', () => {
         }),
       });
 
-      const repo = new ArticleRepository(mockSupabase as any);
+      const repo = new ArticleRepository(asSupabase(mockSupabase));
       const hasArticles = await repo.feedHasArticles('feed-123');
 
       expect(hasArticles).toBe(false);
@@ -470,7 +476,7 @@ describe('ArticleRepository', () => {
   describe('getArticles empty hashes', () => {
     it('should return empty array for empty hashes input', async () => {
       const mockSupabase = createMockSupabase();
-      const repo = new ArticleRepository(mockSupabase as any);
+      const repo = new ArticleRepository(asSupabase(mockSupabase));
       const articles = await repo.getArticles('feed-123', []);
 
       expect(articles).toEqual([]);
@@ -481,7 +487,7 @@ describe('ArticleRepository', () => {
     it('should return empty array on error', async () => {
       const mockSupabase = createMockSupabase();
 
-      (mockSupabase as any).from = () => ({
+      mockSupabase.from = () => ({
         select: () => ({
           eq: () => ({
             order: () => Promise.resolve({ data: null, error: { message: 'Error' } }),
@@ -489,7 +495,7 @@ describe('ArticleRepository', () => {
         }),
       });
 
-      const repo = new ArticleRepository(mockSupabase as any);
+      const repo = new ArticleRepository(asSupabase(mockSupabase));
       const hashes = await repo.getArticleHashes('feed-123');
 
       expect(hashes).toEqual([]);
@@ -500,7 +506,7 @@ describe('ArticleRepository', () => {
     it('should return empty array on query error', async () => {
       const mockSupabase = createMockSupabase();
 
-      (mockSupabase as any).from = () => ({
+      mockSupabase.from = () => ({
         select: () => ({
           eq: () => ({
             in: () => Promise.resolve({ data: null, error: { message: 'Error' } }),
@@ -508,7 +514,7 @@ describe('ArticleRepository', () => {
         }),
       });
 
-      const repo = new ArticleRepository(mockSupabase as any);
+      const repo = new ArticleRepository(asSupabase(mockSupabase));
       const articles = await repo.getArticles('feed-123', ['hash1']);
 
       expect(articles).toEqual([]);

@@ -9,6 +9,7 @@ import { DataManagerPanel } from '@/components/DataManagerPanel';
 import { DiscoverDialog } from '@/components/DiscoverDialog';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 
 export function Header() {
   const { theme, setTheme } = useTheme();
@@ -18,7 +19,7 @@ export function Header() {
 
   // useEffect only runs on the client, so now we can safely show the UI
   useEffect(() => {
-    setMounted(true);
+    setMounted(true); // eslint-disable-line react-hooks/set-state-in-effect -- standard hydration pattern for client-only rendering
   }, []);
 
   return (
@@ -26,7 +27,7 @@ export function Header() {
       <header className="h-14 flex items-center justify-between px-4 border-b border-subtle bg-glass sticky top-0 z-50">
         <div className="flex items-center gap-2">
           <Link href="/" className="flex items-center gap-2">
-            <img src="/logo-32.png" alt="GeekHub" className="w-8 h-8" />
+            <Image src="/logo-32.png" alt="GeekHub" width={32} height={32} className="w-8 h-8" />
             <span className="font-semibold tracking-tight text-foreground">
               Geek<span className="text-primary">Hub</span>
             </span>

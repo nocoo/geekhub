@@ -34,7 +34,7 @@ export function SettingsDialogContent() {
 
   const [aiTestState, setAiTestState] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [aiTestMessage, setAiTestMessage] = useState('');
-  const [aiTestDetails, setAiTestDetails] = useState<any>(null);
+  const [aiTestDetails, setAiTestDetails] = useState<{ modelCount?: number; models?: string[]; hasMore?: boolean } | null>(null);
 
   const testProxy = async () => {
     setProxyTestState('testing');
@@ -364,7 +364,7 @@ export function SettingsDialogContent() {
                         ))}
                         {aiTestDetails.hasMore && (
                           <span className="px-2 py-1 text-xs rounded-md bg-muted/50 text-muted-foreground">
-                            ...还有 {aiTestDetails.modelCount - 10} 个
+                            ...还有 {(aiTestDetails.modelCount ?? 0) - 10} 个
                           </span>
                         )}
                       </div>

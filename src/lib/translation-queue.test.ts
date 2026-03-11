@@ -7,16 +7,18 @@
  */
 
 import { describe, it, expect } from 'bun:test';
-import { TranslationRequest } from './translation-queue';
+import type { TranslationRequest } from './translation-queue';
+import type { Article } from '@/hooks/useDatabase';
+import type { QueryClient } from '@tanstack/react-query';
 
 describe('TranslationRequest interface', () => {
   it('should require all mandatory fields', () => {
     const request: TranslationRequest = {
-      article: { id: '1', title: 'T', description: 'D', url: 'https://x.com', feedId: 'f' } as any,
+      article: { id: '1', title: 'T', description: 'D', url: 'https://x.com', feedId: 'f' } as Article,
       feedId: 'f',
       userId: 'u',
-      queryClient: {} as any,
-      aiSettings: { enabled: true },
+      queryClient: {} as QueryClient,
+      aiSettings: { enabled: true, provider: 'test', apiKey: '', baseUrl: '' },
     };
 
     expect(request.article).toBeDefined();
@@ -28,12 +30,12 @@ describe('TranslationRequest interface', () => {
 
   it('should allow optional onSuccess callback', () => {
     const request: TranslationRequest = {
-      article: { id: '1', title: 'T', description: 'D', url: 'https://x.com', feedId: 'f' } as any,
+      article: { id: '1', title: 'T', description: 'D', url: 'https://x.com', feedId: 'f' } as Article,
       feedId: 'f',
       userId: 'u',
-      queryClient: {} as any,
-      aiSettings: { enabled: true },
-      onSuccess: (id, translation) => {},
+      queryClient: {} as QueryClient,
+      aiSettings: { enabled: true, provider: 'test', apiKey: '', baseUrl: '' },
+      onSuccess: (_id, _translation) => {},
     };
 
     expect(request.onSuccess).toBeDefined();
@@ -42,11 +44,11 @@ describe('TranslationRequest interface', () => {
 
   it('should allow userId to be undefined', () => {
     const request: TranslationRequest = {
-      article: { id: '1', title: 'T', description: 'D', url: 'https://x.com', feedId: 'f' } as any,
+      article: { id: '1', title: 'T', description: 'D', url: 'https://x.com', feedId: 'f' } as Article,
       feedId: 'f',
       userId: undefined,
-      queryClient: {} as any,
-      aiSettings: { enabled: true },
+      queryClient: {} as QueryClient,
+      aiSettings: { enabled: true, provider: 'test', apiKey: '', baseUrl: '' },
     };
 
     expect(request.userId).toBeUndefined();

@@ -113,6 +113,7 @@ export function FeedLogsDialog({ feedId, feedTitle, open, onOpenChange }: FeedLo
     if (open) {
       loadData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadData is not memoized, only re-fetch when open/feedId changes
   }, [open, feedId]);
 
   return (

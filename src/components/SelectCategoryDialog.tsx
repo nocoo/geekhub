@@ -45,8 +45,7 @@ export function SelectCategoryDialog({
       });
       onOpenChange(false);
       setSelectedCategoryId(null);
-    } catch (error) {
-      // Error is handled by the mutation
+    } catch (_error) {
     } finally {
       setIsSubmitting(false);
     }

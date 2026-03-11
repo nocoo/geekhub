@@ -4,7 +4,7 @@ const parser = new Parser();
 
 export async function fetchRss(
   url: string,
-  skipCache = true // Always fetch fresh, no file caching
+  _skipCache = true // Always fetch fresh, no file caching
 ): Promise<{
   feed: Parser.Output<Record<string, unknown>>;
   cached: boolean;

@@ -57,17 +57,20 @@ describe('ReadStatusService', () => {
   describe('constructor', () => {
     test('stores userId', () => {
       const service = new ReadStatusService('user-123');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- accessing private field for test assertion
       expect((service as any).userId).toBe('user-123');
     });
 
     test('handles empty userId', () => {
       const service = new ReadStatusService('');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- accessing private field for test assertion
       expect((service as any).userId).toBe('');
     });
 
     test('handles UUID format userId', () => {
       const uuid = '550e8400-e29b-41d4-a716-446655440000';
       const service = new ReadStatusService(uuid);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- accessing private field for test assertion
       expect((service as any).userId).toBe(uuid);
     });
   });

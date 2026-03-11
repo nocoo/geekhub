@@ -16,7 +16,7 @@ interface CleanupResult {
 }
 
 // GET /api/data/cleanup - Check cleanup opportunities
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const { client: supabase, user } = await createSmartSupabaseClient();
   if (!user) {

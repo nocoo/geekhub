@@ -161,7 +161,7 @@ async function initProxy() {
 }
 
 function createParser(): Parser {
-  const options: any = {
+  return new Parser({
     timeout: 10000,
     customFields: {
       item: [
@@ -170,9 +170,7 @@ function createParser(): Parser {
         ['author', 'author'],
       ],
     },
-  };
-
-  return new Parser(options);
+  });
 }
 
 const parser = createParser();
@@ -197,6 +195,7 @@ async function fetchWithProxy(url: string): Promise<string> {
       'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
       'Accept-Language': 'en,zh-CN;q=0.9,zh;q=0.8',
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dispatcher is from undici, not in standard RequestInit
   } as any);
 
   if (!response.ok) {
@@ -315,8 +314,8 @@ export class FeedFetcher {
   /**
    * Record fetch history
    */
-  private async recordFetchHistory(result: FetchResult): Promise<void> {
-    const supabase = getSupabaseClient();
+  private async recordFetchHistory(_result: FetchResult): Promise<void> {
+    const _supabase = getSupabaseClient();
 
     // Statistics already logged via logger.success() with articles_found and articles_new
     // No separate history table needed - fetch_logs captures all this info

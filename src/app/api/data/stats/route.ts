@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSmartSupabaseClient } from '@/lib/supabase-server';
 
 // GET /api/data/stats - Get system statistics
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const { client: supabase, user } = await createSmartSupabaseClient();
     if (!user) {

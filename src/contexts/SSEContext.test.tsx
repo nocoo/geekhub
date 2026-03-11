@@ -1,4 +1,4 @@
-import { describe, test, expect, mock, beforeEach, afterEach, spyOn } from 'bun:test';
+import { describe, test, expect, mock, beforeEach, spyOn } from 'bun:test';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { render, screen } from '@testing-library/react';
 import React from 'react';
@@ -51,6 +51,7 @@ class MockEventSource {
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- global EventSource mock for tests
 (global as any).EventSource = MockEventSource;
 
 import { SSEProvider, useSSE, useFeedFetchEvents, useLogsEvents } from './SSEContext';

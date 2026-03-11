@@ -32,7 +32,7 @@ export function AISummaryDialog({ isOpen, onClose, title, content, articleId, fe
   const [summaryState, setSummaryState] = useState<SummaryState>('idle');
   const [summary, setSummary] = useState<string>('');
   const [error, setError] = useState<string>('');
-  const [usage, setUsage] = useState<any>(null);
+  const [usage, setUsage] = useState<{ prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } | null>(null);
   const [copied, setCopied] = useState(false);
 
   const handleSummarize = async () => {
@@ -92,7 +92,7 @@ export function AISummaryDialog({ isOpen, onClose, title, content, articleId, fe
       setCopied(true);
       toast.success('总结已复制到剪贴板');
       setTimeout(() => setCopied(false), 2000);
-    } catch (error) {
+    } catch (_error) {
       toast.error('复制失败');
     }
   };

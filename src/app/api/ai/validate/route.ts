@@ -42,28 +42,30 @@ export async function POST(request: NextRequest) {
       provider: aiSettings.provider,
       baseUrl: aiSettings.baseUrl,
       modelCount: models.data.length,
-      models: models.data.slice(0, 10).map((m: any) => m.id), // Return first 10 models
+      models: models.data.slice(0, 10).map((m) => m.id), // Return first 10 models
       hasMore: models.data.length > 10,
     });
 
-  } catch (error: any) {
-    console.error('[AI Validate] Error:', error.message);
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    const errObj = error as Record<string, unknown>;
+    console.error('[AI Validate] Error:', errMsg);
 
     let errorMessage = '连接失败';
-    if (error.message) {
-      errorMessage = error.message;
+    if (errMsg) {
+      errorMessage = errMsg;
     }
 
     // Add helpful error messages
-    if (error.message?.includes('ENOTFOUND')) {
+    if (errMsg?.includes('ENOTFOUND')) {
       errorMessage = `DNS 解析失败：无法找到服务器。请检查 Base URL 是否正确。`;
-    } else if (error.message?.includes('401')) {
+    } else if (errMsg?.includes('401')) {
       errorMessage = `认证失败：API Key 无效。`;
-    } else if (error.message?.includes('403')) {
+    } else if (errMsg?.includes('403')) {
       errorMessage = `权限不足：请检查 API Key 权限。`;
-    } else if (error.message?.includes('404')) {
+    } else if (errMsg?.includes('404')) {
       errorMessage = `接口不存在：Base URL 可能不正确。`;
-    } else if (error.message?.includes('ECONNREFUSED')) {
+    } else if (errMsg?.includes('ECONNREFUSED')) {
       errorMessage = `连接被拒绝：服务器无法访问。`;
     }
 
@@ -72,9 +74,9 @@ export async function POST(request: NextRequest) {
         success: false,
         error: errorMessage,
         debug: {
-          message: error.message,
-          type: error.type,
-          code: error.code,
+          message: errMsg,
+          type: errObj?.type,
+          code: errObj?.code,
         }
       },
       { status: 200 } // Return 200 so client can display the error

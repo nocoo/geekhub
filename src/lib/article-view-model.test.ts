@@ -8,6 +8,11 @@
 
 import { describe, it, expect } from 'bun:test';
 import { ArticleViewModelService } from './article-view-model';
+import type { createClient } from '@supabase/supabase-js';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- mock Supabase client with dynamic chaining
+type MockSupabase = Record<string, any>;
+const asSupabase = (mock: MockSupabase) => mock as unknown as ReturnType<typeof createClient>;
 
 describe('ArticleViewModelService', () => {
   describe('constructor', () => {
@@ -23,9 +28,9 @@ describe('ArticleViewModelService', () => {
             }),
           }),
         }),
-      } as any;
+      } as MockSupabase;
 
-      const viewModel = new ArticleViewModelService(mockSupabase);
+      const viewModel = new ArticleViewModelService(asSupabase(mockSupabase));
       expect(viewModel).toBeInstanceOf(ArticleViewModelService);
     });
   });
@@ -42,9 +47,9 @@ describe('ArticleViewModelService', () => {
             }),
           }),
         }),
-      } as any;
+      } as MockSupabase;
 
-      const viewModel = new ArticleViewModelService(mockSupabase);
+      const viewModel = new ArticleViewModelService(asSupabase(mockSupabase));
       const readArticleIds = new Set<string>();
 
       const result = await viewModel.getArticlesForFeed(
@@ -75,9 +80,9 @@ describe('ArticleViewModelService', () => {
             }),
           }),
         }),
-      } as any;
+      } as MockSupabase;
 
-      const viewModel = new ArticleViewModelService(mockSupabase);
+      const viewModel = new ArticleViewModelService(asSupabase(mockSupabase));
       const readArticleIds = new Set<string>();
 
       const result = await viewModel.getArticlesForFeed(
@@ -118,9 +123,9 @@ describe('ArticleViewModelService', () => {
             }),
           }),
         }),
-      } as any;
+      } as MockSupabase;
 
-      const viewModel = new ArticleViewModelService(mockSupabase);
+      const viewModel = new ArticleViewModelService(asSupabase(mockSupabase));
       const readArticleIds = new Set<string>();
 
       const result = await viewModel.getArticlesForFeed(
@@ -163,9 +168,9 @@ describe('ArticleViewModelService', () => {
             }),
           }),
         }),
-      } as any;
+      } as MockSupabase;
 
-      const viewModel = new ArticleViewModelService(mockSupabase);
+      const viewModel = new ArticleViewModelService(asSupabase(mockSupabase));
 
       // Article is read
       const readArticleIds = new Set<string>(['article-uuid-1']);
@@ -195,9 +200,9 @@ describe('ArticleViewModelService', () => {
             }),
           }),
         }),
-      } as any;
+      } as MockSupabase;
 
-      const viewModel = new ArticleViewModelService(mockSupabase);
+      const viewModel = new ArticleViewModelService(asSupabase(mockSupabase));
       const readArticleIds = new Set<string>();
 
       const result = await viewModel.getArticlesForFeed(
@@ -241,9 +246,9 @@ describe('ArticleViewModelService', () => {
             }),
           }),
         }),
-      } as any;
+      } as MockSupabase;
 
-      const viewModel = new ArticleViewModelService(mockSupabase);
+      const viewModel = new ArticleViewModelService(asSupabase(mockSupabase));
       const readArticleIds = new Set<string>();
 
       const result = await viewModel.getArticlesForFeed(
@@ -287,16 +292,16 @@ describe('ArticleViewModelService', () => {
       const mockSupabase = {
         from: () => ({
           select: () => ({
-            eq: (col: string, val: string) => ({
-              eq: (col2: string, val2: string) => ({
+            eq: (_col: string, _val: string) => ({
+              eq: (_col2: string, _val2: string) => ({
                 single: () => Promise.resolve({ data: mockArticle, error: null }),
               }),
             }),
           }),
         }),
-      } as any;
+      } as MockSupabase;
 
-      const viewModel = new ArticleViewModelService(mockSupabase);
+      const viewModel = new ArticleViewModelService(asSupabase(mockSupabase));
       const readArticleIds = new Set<string>();
 
       const article = await viewModel.getArticle(
@@ -338,9 +343,9 @@ describe('ArticleViewModelService', () => {
             }),
           }),
         }),
-      } as any;
+      } as MockSupabase;
 
-      const viewModel = new ArticleViewModelService(mockSupabase);
+      const viewModel = new ArticleViewModelService(asSupabase(mockSupabase));
       const readArticleIds = new Set<string>(['article-uuid-1']);
 
       const article = await viewModel.getArticle(
@@ -366,9 +371,9 @@ describe('ArticleViewModelService', () => {
             }),
           }),
         }),
-      } as any;
+      } as MockSupabase;
 
-      const viewModel = new ArticleViewModelService(mockSupabase);
+      const viewModel = new ArticleViewModelService(asSupabase(mockSupabase));
       const readArticleIds = new Set<string>();
 
       const article = await viewModel.getArticle(
@@ -393,9 +398,9 @@ describe('ArticleViewModelService', () => {
             }),
           }),
         }),
-      } as any;
+      } as MockSupabase;
 
-      const viewModel = new ArticleViewModelService(mockSupabase);
+      const viewModel = new ArticleViewModelService(asSupabase(mockSupabase));
       const readArticleIds = new Set<string>();
 
       const article = await viewModel.getArticle(
@@ -434,9 +439,9 @@ describe('ArticleViewModelService', () => {
             }),
           }),
         }),
-      } as any;
+      } as MockSupabase;
 
-      const viewModel = new ArticleViewModelService(mockSupabase);
+      const viewModel = new ArticleViewModelService(asSupabase(mockSupabase));
       const readArticleIds = new Set<string>();
 
       const article = await viewModel.getArticle(

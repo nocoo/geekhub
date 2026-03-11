@@ -10,7 +10,7 @@ describe('useSettings', () => {
   beforeEach(() => {
     mockStorage = {};
 
-    // @ts-ignore - mocking localStorage
+    // @ts-expect-error -- mocking localStorage for test environment
     global.localStorage = {
       getItem: (key: string) => mockStorage[key] || null,
       setItem: (key: string, value: string) => { mockStorage[key] = value; },

@@ -7,7 +7,7 @@ import { Header } from "@/components/Header";
 import { Sidebar } from "@/components/Sidebar";
 import { ArticleList } from "@/components/ArticleList";
 import { ReaderView } from "@/components/ReaderView";
-import { useArticles, useMarkAsRead, Article } from "@/hooks/useDatabase";
+import { useArticles, Article } from "@/hooks/useDatabase";
 import { useQueryClient } from "@tanstack/react-query";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -21,9 +21,6 @@ export default function Home() {
 
   // 获取文章列表（已包含完整内容）
   const { data: articles = [], isLoading: articlesLoading } = useArticles(selectedFeed);
-
-  // 标记已读的 mutation
-  const markAsRead = useMarkAsRead();
 
   useEffect(() => {
     if (!loading && !user) {

@@ -3,6 +3,7 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { LogIn, LogOut, User } from 'lucide-react';
+import Image from 'next/image';
 
 export function AuthButton() {
   const { user, loading, signInWithGoogle, signOut } = useAuth();
@@ -20,9 +21,11 @@ export function AuthButton() {
       <div className="flex items-center gap-2">
         <div className="flex items-center gap-2 px-2">
           {user.user_metadata?.avatar_url ? (
-            <img
+            <Image
               src={user.user_metadata.avatar_url}
               alt={user.user_metadata?.full_name || 'User'}
+              width={24}
+              height={24}
               className="w-6 h-6 rounded-full"
             />
           ) : (

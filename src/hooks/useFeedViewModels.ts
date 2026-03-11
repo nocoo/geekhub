@@ -10,7 +10,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { useFeedFetch } from "@/contexts/FeedFetchContext";
-import { FeedViewModel, FeedGroupViewModel, CategoryViewModel } from "@/types/feed-view-model";
+import { FeedViewModel } from "@/types/feed-view-model";
 import { transformToViewModel, calculateFeedGroups, FeedApiResponse } from "@/lib/view-models/feed-view-model";
 import { useMemo } from "react";
 

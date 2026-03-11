@@ -37,11 +37,13 @@ describe('FeedLogger', () => {
   describe('constructor', () => {
     test('stores feedId', () => {
       const logger = new FeedLogger('feed-123', 'urlhash123');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- accessing private field for test assertion
       expect((logger as any).feedId).toBe('feed-123');
     });
 
     test('stores urlHash', () => {
       const logger = new FeedLogger('feed-123', 'urlhash123');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- accessing private field for test assertion
       expect((logger as any).urlHash).toBe('urlhash123');
     });
   });

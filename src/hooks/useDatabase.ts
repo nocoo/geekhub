@@ -109,7 +109,7 @@ export function useCreateCategory() {
 // which provides properly transformed ViewModels with consistent naming conventions
 
 export function useCreateFeed() {
-  const queryClient = useQueryClient();
+  const _queryClient = useQueryClient();
   const { user } = useAuth();
 
   return useMutation({
@@ -232,7 +232,7 @@ export function useMarkAsRead() {
         queryClient.setQueryData(['feedViewModels', user?.id], context.previousFeeds);
       }
     },
-    onSettled: (_data, error, { feedId }) => {
+    onSettled: (_data, error, { feedId: _feedId }) => {
       // Only refresh feedViewModels on error to restore optimistic update
       // On success, the optimistic update is already correct
       if (error) {
@@ -291,7 +291,7 @@ export function useMarkAllAsRead() {
         queryClient.setQueryData(['feedViewModels', user?.id], context.previousFeeds);
       }
     },
-    onSettled: (_data, error, feedId) => {
+    onSettled: (_data, error, _feedId) => {
       // Only refresh feedViewModels on error to restore optimistic update
       // On success, the optimistic update is already correct
       if (error) {
@@ -376,8 +376,8 @@ export function useDeleteCategory() {
 
 // Feed mutations
 export function useUpdateFeed() {
-  const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const _queryClient = useQueryClient();
+  const { user: _user } = useAuth();
 
   return useMutation({
     mutationFn: async ({ id, updates }: {
@@ -401,8 +401,8 @@ export function useUpdateFeed() {
 }
 
 export function useDeleteFeed() {
-  const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const _queryClient = useQueryClient();
+  const { user: _user } = useAuth();
 
   return useMutation({
     mutationFn: async (id: string) => {

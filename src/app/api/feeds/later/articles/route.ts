@@ -39,8 +39,8 @@ export async function GET(_request: NextRequest) {
 
     // Process articles
     const articles = readLater
-      .filter((item: any) => item.article)
-      .map((item: any) => {
+      .filter((item) => item.article)
+      .map((item) => {
         const article = item.article;
         const feed = article.feed;
         return {

@@ -29,7 +29,7 @@ describe('FeedFetchContext', () => {
         mockUseSSEEvents.mockClear();
         queryClient = createTestQueryClient();
         // Spy on invalidateQueries
-        queryClient.invalidateQueries = mock(() => Promise.resolve()) as any;
+        queryClient.invalidateQueries = mock(() => Promise.resolve()) as typeof queryClient.invalidateQueries;
     });
 
     it('should manage fetching state', () => {
@@ -55,8 +55,8 @@ describe('FeedFetchContext', () => {
 
     it('should handle fetch complete event via SSE', async () => {
         // Capture the callback passed to useSSEEvents
-        let fetchCompleteCallback: any;
-        mockUseSSEEvents.mockImplementation((options: any) => {
+        let fetchCompleteCallback: ((data: { feedId: string }) => void) | undefined;
+        mockUseSSEEvents.mockImplementation((options: { onFetchComplete?: (data: { feedId: string }) => void }) => {
             fetchCompleteCallback = options.onFetchComplete;
         });
 
@@ -79,7 +79,7 @@ describe('FeedFetchContext', () => {
         // Trigger SSE event
         expect(fetchCompleteCallback).toBeDefined();
         act(() => {
-            fetchCompleteCallback({ feedId: 'feed-1' });
+            fetchCompleteCallback!({ feedId: 'feed-1' });
         });
 
         // Should be removed from fetching set

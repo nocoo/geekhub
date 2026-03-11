@@ -10,7 +10,7 @@ import { useViewModelAction } from './useViewModelAction';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchFullContent, translateContent, bookmarkArticle, unbookmarkArticle, saveForLater, removeFromLater } from '@/lib/article-actions';
-import { Article } from '@/hooks/useDatabase';
+import type { Article } from '@/hooks/useDatabase';
 import { AISettings } from '@/lib/settings';
 
 /**
@@ -47,7 +47,7 @@ export function useBookmarkArticle() {
     mutationFn: ({ articleId, notes }: { articleId: string; notes?: string }) =>
       bookmarkArticle(articleId, notes),
     successMessage: '已收藏',
-    onMutate: async ({ articleId }) => {
+    onMutate: async ({ articleId: _articleId }) => {
       await queryClient.cancelQueries({ queryKey: ['bookmarks', user?.id] });
       await queryClient.cancelQueries({ queryKey: ['starred-count', user?.id] });
       await queryClient.cancelQueries({ queryKey: ['articles', user?.id, 'starred'] });
@@ -60,11 +60,12 @@ export function useBookmarkArticle() {
 
       return { previousBookmarks, previousStarredCount, previousStarredArticles };
     },
-    onError: (err, variables, context: any) => {
-      if (context) {
-        queryClient.setQueryData(['bookmarks', user?.id], context.previousBookmarks);
-        queryClient.setQueryData(['starred-count', user?.id], context.previousStarredCount);
-        queryClient.setQueryData(['articles', user?.id, 'starred'], context.previousStarredArticles);
+    onError: (err, variables, context) => {
+      const ctx = context as { previousBookmarks: unknown; previousStarredCount: unknown; previousStarredArticles: unknown } | undefined;
+      if (ctx) {
+        queryClient.setQueryData(['bookmarks', user?.id], ctx.previousBookmarks);
+        queryClient.setQueryData(['starred-count', user?.id], ctx.previousStarredCount);
+        queryClient.setQueryData(['articles', user?.id, 'starred'], ctx.previousStarredArticles);
       }
     },
     onSuccess: () => {
@@ -92,7 +93,7 @@ export function useUnbookmarkArticle() {
 
       const previousBookmarks = queryClient.getQueryData(['bookmarks', user?.id]);
       const previousStarredCount = queryClient.getQueryData(['starred-count', user?.id]);
-      const previousStarredArticles = queryClient.getQueryData<any[]>(['articles', user?.id, 'starred']);
+      const previousStarredArticles = queryClient.getQueryData<Article[]>(['articles', user?.id, 'starred']);
 
       queryClient.setQueryData(['starred-count', user?.id], (old: number = 0) => Math.max(0, old - 1));
 
@@ -104,11 +105,12 @@ export function useUnbookmarkArticle() {
 
       return { previousBookmarks, previousStarredCount, previousStarredArticles };
     },
-    onError: (err, articleId, context: any) => {
-      if (context) {
-        queryClient.setQueryData(['bookmarks', user?.id], context.previousBookmarks);
-        queryClient.setQueryData(['starred-count', user?.id], context.previousStarredCount);
-        queryClient.setQueryData(['articles', user?.id, 'starred'], context.previousStarredArticles);
+    onError: (err, articleId, context) => {
+      const ctx = context as { previousBookmarks: unknown; previousStarredCount: unknown; previousStarredArticles: unknown } | undefined;
+      if (ctx) {
+        queryClient.setQueryData(['bookmarks', user?.id], ctx.previousBookmarks);
+        queryClient.setQueryData(['starred-count', user?.id], ctx.previousStarredCount);
+        queryClient.setQueryData(['articles', user?.id, 'starred'], ctx.previousStarredArticles);
       }
     },
     onSuccess: () => {
@@ -129,7 +131,7 @@ export function useSaveForLater() {
   return useViewModelAction({
     mutationFn: ({ articleId }: { articleId: string }) => saveForLater(articleId),
     successMessage: '已加入稍后阅读',
-    onMutate: async ({ articleId }) => {
+    onMutate: async ({ articleId: _articleId }) => {
       await queryClient.cancelQueries({ queryKey: ['read-later', user?.id] });
       await queryClient.cancelQueries({ queryKey: ['later-count', user?.id] });
       await queryClient.cancelQueries({ queryKey: ['articles', user?.id, 'later'] });
@@ -142,11 +144,12 @@ export function useSaveForLater() {
 
       return { previousReadLater, previousLaterCount, previousLaterArticles };
     },
-    onError: (err, variables, context: any) => {
-      if (context) {
-        queryClient.setQueryData(['read-later', user?.id], context.previousReadLater);
-        queryClient.setQueryData(['later-count', user?.id], context.previousLaterCount);
-        queryClient.setQueryData(['articles', user?.id, 'later'], context.previousLaterArticles);
+    onError: (err, variables, context) => {
+      const ctx = context as { previousReadLater: unknown; previousLaterCount: unknown; previousLaterArticles: unknown } | undefined;
+      if (ctx) {
+        queryClient.setQueryData(['read-later', user?.id], ctx.previousReadLater);
+        queryClient.setQueryData(['later-count', user?.id], ctx.previousLaterCount);
+        queryClient.setQueryData(['articles', user?.id, 'later'], ctx.previousLaterArticles);
       }
     },
     onSuccess: () => {
@@ -174,7 +177,7 @@ export function useRemoveFromLater() {
 
       const previousReadLater = queryClient.getQueryData(['read-later', user?.id]);
       const previousLaterCount = queryClient.getQueryData(['later-count', user?.id]);
-      const previousLaterArticles = queryClient.getQueryData<any[]>(['articles', user?.id, 'later']);
+      const previousLaterArticles = queryClient.getQueryData<Article[]>(['articles', user?.id, 'later']);
 
       queryClient.setQueryData(['later-count', user?.id], (old: number = 0) => Math.max(0, old - 1));
 
@@ -186,11 +189,12 @@ export function useRemoveFromLater() {
 
       return { previousReadLater, previousLaterCount, previousLaterArticles };
     },
-    onError: (err, articleId, context: any) => {
-      if (context) {
-        queryClient.setQueryData(['read-later', user?.id], context.previousReadLater);
-        queryClient.setQueryData(['later-count', user?.id], context.previousLaterCount);
-        queryClient.setQueryData(['articles', user?.id, 'later'], context.previousLaterArticles);
+    onError: (err, articleId, context) => {
+      const ctx = context as { previousReadLater: unknown; previousLaterCount: unknown; previousLaterArticles: unknown } | undefined;
+      if (ctx) {
+        queryClient.setQueryData(['read-later', user?.id], ctx.previousReadLater);
+        queryClient.setQueryData(['later-count', user?.id], ctx.previousLaterCount);
+        queryClient.setQueryData(['articles', user?.id, 'later'], ctx.previousLaterArticles);
       }
     },
     onSuccess: () => {

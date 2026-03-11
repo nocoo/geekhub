@@ -109,7 +109,7 @@ ${articlesText}
     let parsed: { translations: TranslatedArticle[] };
     try {
       parsed = JSON.parse(response.trim());
-    } catch (e) {
+    } catch {
       return NextResponse.json(
         {
           success: false,

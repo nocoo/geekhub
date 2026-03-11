@@ -23,7 +23,7 @@ const mockFetch = mock(() => Promise.resolve({
     ok: true,
     json: () => Promise.resolve({ success: true }),
 }));
-global.fetch = mockFetch as any;
+global.fetch = mockFetch as typeof global.fetch;
 
 describe('useArticleActions ViewModel Actions', () => {
     let queryClient: QueryClient;
@@ -42,7 +42,7 @@ describe('useArticleActions ViewModel Actions', () => {
 
         const { result } = await act(async () => renderHookWithProviders(() => useBookmarkArticle(), { queryClient }));
 
-        let resolveMutation: (v: any) => void;
+        let resolveMutation: (v: unknown) => void;
         const mutationPromise = new Promise(r => { resolveMutation = r; });
         mockFetch.mockImplementationOnce(() => mutationPromise);
 
@@ -94,7 +94,7 @@ describe('useArticleActions ViewModel Actions', () => {
 
         const { result } = await act(async () => renderHookWithProviders(() => useUnbookmarkArticle(), { queryClient }));
 
-        let resolveMutation: (v: any) => void;
+        let resolveMutation: (v: unknown) => void;
         mockFetch.mockImplementationOnce(() => new Promise(r => { resolveMutation = r; }));
 
         act(() => {
@@ -102,7 +102,7 @@ describe('useArticleActions ViewModel Actions', () => {
         });
 
         await waitFor(() => {
-            const articles = queryClient.getQueryData<any[]>(['articles', userId, 'starred']);
+            const articles = queryClient.getQueryData<Array<{ id: string; title: string }>>(['articles', userId, 'starred']);
             expect(articles).toHaveLength(1);
             expect(articles![0].id).toBe('art-2');
         });

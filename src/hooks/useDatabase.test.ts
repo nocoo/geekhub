@@ -3,7 +3,7 @@
  * Unit tests for useDatabase hooks, especially optimistic update behavior
  */
 
-import { describe, it, expect, mock, beforeEach, afterEach } from 'bun:test';
+import { describe, it, expect, mock } from 'bun:test';
 import { act } from 'react';
 import { QueryClient } from '@tanstack/react-query';
 import { FeedViewModel } from '@/types/feed-view-model';

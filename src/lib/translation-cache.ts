@@ -45,7 +45,7 @@ export function saveTranslationToCache(entry: TranslationCacheEntry): void {
 
   try {
     const cached = localStorage.getItem(CACHE_KEY);
-    let cache: TranslationCache = cached ? JSON.parse(cached) : {};
+    const cache: TranslationCache = cached ? JSON.parse(cached) : {};
 
     // Add new entry
     cache[entry.articleId] = entry;

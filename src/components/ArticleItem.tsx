@@ -78,6 +78,7 @@ export const ArticleItem = memo(forwardRef<HTMLButtonElement, ArticleItemProps>(
                 {/* Article image */}
                 {article.image && (
                     <div className="w-20 h-20 flex-shrink-0 relative">
+                        {/* eslint-disable-next-line @next/next/no-img-element -- dynamic proxy URL with error fallback not suitable for next/image */}
                         <img
                             src={getProxyImageUrl(article.image, article.url ? getRefererFromUrl(article.url) : undefined)}
                             alt={article.title}

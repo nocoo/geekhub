@@ -20,11 +20,13 @@ import {
 describe('parseRssHubUrl', () => {
   describe('invalid inputs', () => {
     it('should return invalid for null input', () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- testing invalid input types
       const result = parseRssHubUrl(null as any);
       expect(result.isValid).toBe(false);
     });
 
     it('should return invalid for undefined input', () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- testing invalid input types
       const result = parseRssHubUrl(undefined as any);
       expect(result.isValid).toBe(false);
     });
@@ -35,6 +37,7 @@ describe('parseRssHubUrl', () => {
     });
 
     it('should return invalid for non-string input', () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- testing invalid input types
       const result = parseRssHubUrl(123 as any);
       expect(result.isValid).toBe(false);
     });

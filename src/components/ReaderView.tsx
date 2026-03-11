@@ -1,5 +1,5 @@
 import parse from 'html-react-parser';
-import { ExternalLink, Bookmark, Share2, Expand, Minimize2, Image, ImageOff, Bug, Clock, Sparkles, Languages, ChevronRight } from 'lucide-react';
+import { ExternalLink, Bookmark, Share2, Expand, Minimize2, Image as ImageIcon, ImageOff, Bug, Clock, Sparkles, Languages, ChevronRight } from 'lucide-react';
 import { Article, useBookmarkArticle, useUnbookmarkArticle, useSaveForLater, useRemoveFromLater } from '@/hooks/useDatabase';
 import { Button } from '@/components/ui/button';
 import { useState, useCallback, useEffect, useRef } from 'react';
@@ -148,7 +148,7 @@ export function ReaderView({ article, onBack, className }: ReaderViewProps) {
       unsubscribeStarred();
       unsubscribeLater();
     };
-  }, [article?.id, user?.id, queryClient]);
+  }, [article?.id, user, queryClient]);
 
   // Handle bookmark toggle
   const handleBookmark = useCallback(() => {
@@ -271,6 +271,7 @@ export function ReaderView({ article, onBack, className }: ReaderViewProps) {
         behavior: 'smooth'
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only scroll on article identity change, not content updates
   }, [article?.id]);
 
   // Use enhanced content if available, otherwise use original content
@@ -477,7 +478,7 @@ export function ReaderView({ article, onBack, className }: ReaderViewProps) {
                 {fullWidth ? <Minimize2 className="w-4 h-4" /> : <Expand className="w-4 h-4" />}
               </Button>
               <Button variant="ghost" size="icon" className="h-8 w-8" title="Toggle images" onClick={toggleImages}>
-                {showImages ? <Image className="w-4 h-4" /> : <ImageOff className="w-4 h-4" />}
+                {showImages ? <ImageIcon className="w-4 h-4" /> : <ImageOff className="w-4 h-4" />}
               </Button>
               <Button variant="ghost" size="icon" className="h-8 w-8" title="Debug info" onClick={handleDebug}>
                 <Bug className="w-4 h-4" />
@@ -543,6 +544,7 @@ export function ReaderView({ article, onBack, className }: ReaderViewProps) {
               </div>
             </div>
           ) : processedContent ? parse(processedContent, {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             replace: (domNode: any) => {
               if (domNode.type === 'tag') {
                 // Remove MS Word XML namespace tags (o:p, w:, m:, etc.)

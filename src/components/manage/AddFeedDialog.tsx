@@ -24,7 +24,7 @@ interface AddFeedDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   categories: Category[];
-  onSuccess: (feed: any) => void;
+  onSuccess: (feed: Record<string, unknown>) => void;
   defaultCategoryId?: string;
 }
 
@@ -78,7 +78,13 @@ export function AddFeedDialog({ open, onOpenChange, categories, onSuccess, defau
 
     setLoading(true);
     try {
-      const payload: any = {
+      const payload: {
+        url: string;
+        category_id: string | null;
+        title?: string;
+        description?: string;
+        rsshub?: typeof settings.rsshub;
+      } = {
         url: trimmedUrl,
         category_id: categoryId || null,
         title: title.trim() || undefined,
@@ -134,7 +140,11 @@ export function AddFeedDialog({ open, onOpenChange, categories, onSuccess, defau
 
     setValidating(true);
     try {
-      const payload: any = { url: trimmedUrl, validate_only: true };
+      const payload: {
+        url: string;
+        validate_only: boolean;
+        rsshub?: typeof settings.rsshub;
+      } = { url: trimmedUrl, validate_only: true };
 
       // Send RssHub settings if enabled
       if (settings.rsshub?.enabled) {

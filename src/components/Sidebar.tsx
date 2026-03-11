@@ -47,7 +47,7 @@ function FeedItem({ feed, selectedFeed, isKeyboardSelected, onSelectFeed, onFetc
 
   // Reset error when feed changes
   useEffect(() => {
-    setImgError(false);
+    setImgError(false); // eslint-disable-line react-hooks/set-state-in-effect -- intentional reset when favicon URL changes
   }, [feed.faviconUrl]);
 
   return (
@@ -64,6 +64,7 @@ function FeedItem({ feed, selectedFeed, isKeyboardSelected, onSelectFeed, onFetc
         )}
       >
         {feed.faviconUrl && !imgError ? (
+          /* eslint-disable-next-line @next/next/no-img-element -- dynamic favicon URL with onError fallback */
           <img
             src={feed.faviconUrl}
             alt=""
@@ -198,8 +199,8 @@ export function Sidebar({ selectedFeed, onSelectFeed, className }: SidebarProps 
     try {
       await deleteCategory.mutateAsync(deleteConfirm.id);
       toast.success('分类删除成功');
-    } catch (error: any) {
-      toast.error(error.message || `确定要删除「${deleteConfirm.name}」吗？`);
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : `确定要删除「${deleteConfirm.name}」吗？`);
     } finally {
       setDeleteConfirm(null);
     }
@@ -212,8 +213,8 @@ export function Sidebar({ selectedFeed, onSelectFeed, className }: SidebarProps 
       await deleteFeed.mutateAsync(deleteConfirm.id);
       toast.success('订阅源删除成功');
       refreshFeeds();
-    } catch (error: any) {
-      toast.error(error.message || `确定要删除「${deleteConfirm.name}」吗？`);
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : `确定要删除「${deleteConfirm.name}」吗？`);
     } finally {
       setDeleteConfirm(null);
     }
@@ -255,7 +256,7 @@ export function Sidebar({ selectedFeed, onSelectFeed, className }: SidebarProps 
   // Keyboard navigation
   const getNavigableItems = useCallback(() => {
     if (!feedGroups) return [];
-    const items: { type: 'category' | 'feed'; id: string; data: any }[] = [];
+    const items: { type: 'category' | 'feed'; id: string; data: FeedViewModel | { id: string; name: string; color: string; icon: string } }[] = [];
 
     feedGroups.forEach(group => {
       if (group.category) {

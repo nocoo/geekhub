@@ -3,14 +3,14 @@ import { createSmartSupabaseClient } from '@/lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
 
 // GET /api/data/storage - Get estimated Supabase storage size
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const { client: supabase, user } = await createSmartSupabaseClient();
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const serviceClient = createClient(
+    const _serviceClient = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_KEY!
     );

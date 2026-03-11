@@ -41,7 +41,7 @@ export function useToggleAutoTranslate() {
 
       return { previousFeeds };
     },
-    onError: (_error, { feedId, enabled }, context) => {
+    onError: (_error, { feedId: _feedId, enabled: _enabled }, context) => {
       // Rollback on error
       if (context?.previousFeeds) {
         queryClient.setQueryData(['feedViewModels', user?.id], context.previousFeeds);
@@ -99,9 +99,9 @@ export function useFetchFeed() {
  * This is a read-only hook for UI display
  */
 export function useIsFeedFetching(feedId: string | null): boolean {
-  // eslint-disable-next-line react-hooks/rules-of-hooks
+   
   const { isFeedFetching } = useFeedFetch();
-  // eslint-disable-next-line react-hooks/rules-of-hooks
+   
   return feedId ? isFeedFetching(feedId) : false;
 }
 
@@ -195,17 +195,10 @@ export function useMarkAsRead() {
 
       return { previousArticles, previousFeeds, feedId };
     },
-    onSuccess: (data: any, { feedId }) => {
-      // Update unread count from server response if available
-      if (data?.unreadCount !== undefined && data?.unreadCount !== null) {
-        queryClient.setQueryData<FeedViewModel[]>(['feedViewModels', user?.id], (old = []) =>
-          old.map(feed =>
-            feed.id === feedId
-              ? { ...feed, unreadCount: data.unreadCount }
-              : feed
-          )
-        );
-      }
+    onSuccess: (_data, { feedId }) => {
+      // Invalidate to get accurate count from server
+      queryClient.invalidateQueries({ queryKey: ['feedViewModels', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['articles', user?.id, feedId] });
     },
     onSettled: (_data, error) => {
       if (error) {

@@ -108,6 +108,7 @@ async function fetchWithProxy(url: string): Promise<string> {
       'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
       'Accept-Language': 'en,zh-CN;q=0.9,zh;q=0.8',
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any);
 
   if (!response.ok) {
@@ -183,16 +184,9 @@ export async function GET() {
     }
 
     return NextResponse.json({ feeds });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
-
-interface ProxyConfig {
-  enabled: boolean;
-  autoDetect: boolean;
-  host: string;
-  port: string;
 }
 
 interface RssHubConfig {
@@ -281,7 +275,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ feed }, { status: 201 });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

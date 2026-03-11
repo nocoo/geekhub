@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 interface AddCategoryDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess: (category: any) => void;
+  onSuccess: (category: { id: string; name: string; color: string; icon: string }) => void;
 }
 
 const CATEGORY_COLORS = [

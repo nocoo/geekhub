@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useState, useMemo, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Rss, CheckCheck, Eye, EyeOff, RefreshCw, Languages, ChevronRight } from 'lucide-react';
+import { CheckCheck, Eye, EyeOff, RefreshCw, Languages, ChevronRight } from 'lucide-react';
 import { Article } from '@/hooks/useDatabase';
 import { useMarkAllAsRead, useMarkAsRead, useToggleAutoTranslate, useFetchFeed, useIsFeedFetching } from '@/hooks/useFeedActions';
 import { useAuth } from '@/contexts/AuthContext';
@@ -10,7 +10,6 @@ import { useFormatTime } from '@/lib/format-time';
 import { useSettings } from '@/lib/settings';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/sonner';
-import { getProxyImageUrl, getRefererFromUrl } from '@/lib/image-proxy';
 import { getTranslationFromCache } from '@/lib/translation-cache';
 import { getTranslationQueue } from '@/lib/translation-queue';
 import { ArticleItem } from './ArticleItem';
@@ -59,7 +58,7 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
       }
       return article;
     });
-  }, [articles, autoTranslate]);
+  }, [articles, effectiveAutoTranslate]);
 
   // Track articles read in current feed session (cleared when switching feeds)
   const sessionReadIdsRef = useRef<Set<string>>(new Set());
@@ -110,7 +109,7 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
   // Check if article should be displayed as read (including session read)
   const isArticleRead = useCallback((article: Article) => {
     return article.isRead || (!!article.id && sessionReadIdsRef.current.has(article.id));
-  }, [forceUpdate]); // Add forceUpdate as dependency to trigger re-render
+  }, []); // Add forceUpdate as dependency to trigger re-render
 
   // Filter articles: show if unread OR was just read in this session
   const filteredArticles = useMemo(() => {

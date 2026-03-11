@@ -8,7 +8,7 @@ export async function fetchFeedWithSettings(feedId: string): Promise<Response> {
   const settingsJson = localStorage.getItem('geekhub_settings');
   const settings = settingsJson ? JSON.parse(settingsJson) : null;
 
-  const body: any = {};
+  const body: Record<string, unknown> = {};
 
   // Add proxy settings if enabled
   if (settings?.proxy?.enabled) {

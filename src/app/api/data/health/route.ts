@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSmartSupabaseClient } from '@/lib/supabase-server';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 interface SystemHealth {
   database: 'connected' | 'error' | 'slow';
@@ -10,7 +11,7 @@ interface SystemHealth {
 }
 
 // Check database connection
-async function checkDatabaseHealth(supabase: any): Promise<SystemHealth['database']> {
+async function checkDatabaseHealth(supabase: SupabaseClient): Promise<SystemHealth['database']> {
   try {
     const startTime = Date.now();
 
@@ -50,7 +51,7 @@ function getSystemResources(): { memory: number; cpu: number } {
 }
 
 // GET /api/data/health - Get system health status
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const { client: supabase, user } = await createSmartSupabaseClient();
   if (!user) {

@@ -15,7 +15,7 @@ function getServiceClient() {
 export async function POST(request: NextRequest) {
   let baseUrl = '';
   try {
-    const { title, content, aiSettings, articleId, feedId, articleHash } = await request.json();
+    const { title, content, aiSettings, articleId, feedId } = await request.json();
     baseUrl = aiSettings.baseUrl || '';
 
     // Validate AI settings
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Authenticate user
-    const { client: supabase, user } = await createSmartSupabaseClient();
+    const { user } = await createSmartSupabaseClient();
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }

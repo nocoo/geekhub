@@ -26,6 +26,7 @@ export async function POST(request: NextRequest) {
       const response = await fetch(testUrl, {
         dispatcher: proxyAgent,
         signal: controller.signal,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any);
 
       clearTimeout(timeoutId);
@@ -44,9 +45,9 @@ export async function POST(request: NextRequest) {
           error: `HTTP ${response.status}: ${response.statusText}`,
         });
       }
-    } catch (abortError: any) {
+    } catch (abortError: unknown) {
       clearTimeout(timeoutId);
-      if (abortError.name === 'AbortError') {
+      if (abortError instanceof Error && abortError.name === 'AbortError') {
         return NextResponse.json({
           success: false,
           error: 'Connection timeout (5s)',
@@ -54,10 +55,10 @@ export async function POST(request: NextRequest) {
       }
       throw abortError;
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json({
       success: false,
-      error: error.message || 'Unknown error',
+      error: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 }

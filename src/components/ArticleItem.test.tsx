@@ -22,7 +22,7 @@ describe('ArticleItem', () => {
         image: null,
     };
 
-    const mockFormatTime = mock((date: string) => '10 mins ago');
+    const mockFormatTime = mock((_date: string) => '10 mins ago');
     const mockOnSelect = mock(() => { });
 
     it('should render article details correctly', () => {

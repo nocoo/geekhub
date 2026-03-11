@@ -4,7 +4,7 @@ import { extractFirstImage, transformArticleToViewModel } from './article-view-m
 describe('extractFirstImage', () => {
   it('should return null for empty html', () => {
     expect(extractFirstImage('')).toBeNull();
-    expect(extractFirstImage(null as any)).toBeNull();
+    expect(extractFirstImage(null as unknown as string)).toBeNull();
   });
 
   it('should extract image from standard img tag', () => {

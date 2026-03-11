@@ -34,21 +34,20 @@ export function useViewModelAction<
 
     return useMutation({
         ...mutationOptions,
-        onSuccess: (...args: any[]) => {
+        onSuccess: (data, variables, onMutateResult, context) => {
             if (successMessage) {
                 toast.success(successMessage);
             }
             if (mutationOptions.onSuccess) {
-                return (mutationOptions.onSuccess as any)(...args);
+                return mutationOptions.onSuccess(data, variables, onMutateResult, context);
             }
         },
-        onError: (...args: any[]) => {
-            const error = args[0];
+        onError: (error, variables, onMutateResult, context) => {
             const message = errorMessage || (error instanceof Error ? error.message : '操作失败');
             toast.error(message);
 
             if (mutationOptions.onError) {
-                return (mutationOptions.onError as any)(...args);
+                return mutationOptions.onError(error, variables, onMutateResult, context);
             }
         },
     });

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Plus, Rss, Edit, Trash2, FolderPlus, RefreshCw, FileText, Activity } from 'lucide-react';
+import { Plus, Rss, Edit, Trash2, FolderPlus, RefreshCw, FileText } from 'lucide-react';
 import { AddCategoryDialog } from '@/components/manage/AddCategoryDialog';
 import { AddFeedDialog } from '@/components/manage/AddFeedDialog';
 import { EditCategoryDialog } from '@/components/manage/EditCategoryDialog';
@@ -68,7 +68,7 @@ function FeedListItem({ feed, fetchingFeeds, onViewLogs, onFetchFeed, onEditFeed
   const [imgError, setImgError] = useState(false);
 
   useEffect(() => {
-    setImgError(false);
+    setImgError(false); // eslint-disable-line react-hooks/set-state-in-effect -- intentional reset when favicon URL changes
   }, [feed.favicon_url]);
 
   return (
@@ -78,6 +78,7 @@ function FeedListItem({ feed, fetchingFeeds, onViewLogs, onFetchFeed, onEditFeed
     >
       <div className="flex items-center gap-3 flex-1 min-w-0">
         {feed.favicon_url && !imgError ? (
+          /* eslint-disable-next-line @next/next/no-img-element -- dynamic favicon URL with onError fallback */
           <img
             src={feed.favicon_url}
             alt=""
@@ -198,6 +199,7 @@ export function ManagePopup({ open, onOpenChange }: ManagePopupProps) {
     if (open) {
       loadData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadData is not memoized, only re-fetch when user/open changes
   }, [user, open]);
 
   // 删除分类

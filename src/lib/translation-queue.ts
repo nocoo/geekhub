@@ -2,6 +2,7 @@ import pLimit from 'p-limit';
 import { flushSync } from 'react-dom';
 import type { QueryClient } from '@tanstack/react-query';
 import type { Article } from '@/hooks/useDatabase';
+import type { AISettings } from '@/lib/settings';
 import {
   getTranslationFromCache,
   saveTranslationToCache,
@@ -13,7 +14,7 @@ export interface TranslationRequest {
   feedId: string;
   userId: string | undefined;
   queryClient: QueryClient;
-  aiSettings: any;
+  aiSettings: AISettings;
   onSuccess?: (articleId: string, translation: { translatedTitle: string; translatedDescription: string }) => void;
 }
 
@@ -82,7 +83,7 @@ class TranslationQueue {
     }
   }
 
-  private async fetchTranslation(article: Article, aiSettings: any): Promise<{ translatedTitle: string; translatedDescription: string }> {
+  private async fetchTranslation(article: Article, aiSettings: AISettings): Promise<{ translatedTitle: string; translatedDescription: string }> {
     const response = await fetch('/api/ai/translate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
