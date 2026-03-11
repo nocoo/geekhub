@@ -62,7 +62,7 @@ wait_for_url "$HEALTH_URL" "Dev server"
 echo "==> Running API E2E tests..."
 E2E_BASE_URL="http://127.0.0.1:${E2E_PORT}" \
 MOCK_SERVER_URL="http://127.0.0.1:${MOCK_PORT}" \
-  bun test tests/e2e/
+  bun test ./tests/e2e/*.test.ts
 
 E2E_EXIT=$?
 
