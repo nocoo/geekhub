@@ -522,14 +522,14 @@ scripts/run-api-e2e.sh
 
 | # | Commit message | 内容 | 验证 |
 |---|---------------|------|------|
-| 6 | `test(e2e): add mock server and E2E infrastructure` | 创建 `tests/e2e/mock-server.ts`, `setup.ts`, `helpers.ts`, `fixtures/`, `.env.test`, `scripts/run-api-e2e.sh` | mock server 启动返回假响应；runner 脚本能启/停 server |
-| 7 | `test(e2e): add health and feeds CRUD E2E tests` | `health.test.ts` + `feeds.test.ts`（P0 纯 Supabase 部分） | E2E 通过 |
-| 8 | `test(e2e): add categories and articles E2E tests` | `categories.test.ts` + `articles.test.ts` | E2E 通过 |
-| 9 | `test(e2e): add AI route E2E tests with mock OpenAI` | `ai.test.ts`（4 条 AI 路由，请求体 baseUrl 指向 mock） | E2E 通过 |
-| 10 | `test(e2e): add external URL route E2E tests with mock` | `rss.test.ts` + `image-proxy.test.ts` + feeds POST/fetch（请求参数指向 mock） | E2E 通过 |
-| 11 | `test(e2e): add data, logs, blogs E2E tests` | `data.test.ts` + `logs.test.ts`（含 SSE 超时断言）+ `blogs.test.ts` | E2E 通过 |
-| 12 | `chore: add API E2E to pre-push hook` | `.husky/pre-push` 追加 `scripts/run-api-e2e.sh` | push 时自动跑 E2E |
-| 13 | `docs: update testing docs to reflect 4-layer architecture` | 更新 `docs/04-testing.md`，更新 `docs/08-test-improvement-plan.md` 标记已完成 | 文档准确反映现状 |
+| 6 | ✅ `test(e2e): add mock server and E2E infrastructure` | 创建 `tests/e2e/mock-server.ts`, `setup.ts`, `helpers.ts`, `fixtures/`, `.env.test`, `scripts/run-api-e2e.sh` | mock server 启动返回假响应；runner 脚本能启/停 server |
+| 7 | ✅ `test(e2e): add health and feeds CRUD E2E tests` | `health.test.ts` + `feeds.test.ts`（P0 纯 Supabase 部分） | E2E 通过 |
+| 8 | ✅ `test(e2e): add categories and articles E2E tests` | `categories.test.ts` + `articles.test.ts` | E2E 通过 |
+| 9 | ✅ `test(e2e): add AI route E2E tests with mock OpenAI` | `ai.test.ts`（4 条 AI 路由，请求体 baseUrl 指向 mock） | E2E 通过 |
+| 10 | ✅ `test(e2e): add external URL route E2E tests with mock` | `rss.test.ts` + `image-proxy.test.ts` + feeds POST/fetch（请求参数指向 mock） | E2E 通过 |
+| 11 | ✅ `test(e2e): add data, logs, blogs E2E tests` | `data.test.ts` + `logs.test.ts`（含 SSE 超时断言）+ `blogs.test.ts` | E2E 通过 |
+| 12 | ✅ `chore: add API E2E to pre-push hook` | `.husky/pre-push` 追加 `scripts/run-api-e2e.sh` | push 时自动跑 E2E |
+| 13 | ✅ `docs: update testing docs to reflect 4-layer architecture` | 更新 `docs/04-testing.md`，更新 `docs/08-test-improvement-plan.md` 标记已完成 | 文档准确反映现状 |
 
 ---
 
@@ -552,6 +552,6 @@ scripts/run-api-e2e.sh
 
 ## 相关文档
 
-- [测试规范](04-testing.md) — 当前测试文档（将在 commit #13 更新）
+- [测试规范](04-testing.md) — 四层测试架构文档
 - [API 参考](05-api-reference.md) — 36 个 route 的完整文档
 - [开发指南](03-development.md) — 开发环境搭建
