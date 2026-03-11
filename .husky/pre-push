@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# pre-push: L1 coverage gate (L3 API E2E will be added in commit #12)
+set -euo pipefail
+
+echo "==> pre-push: running coverage check..."
+bash scripts/check-coverage.sh
+
+echo "==> pre-push: all checks passed."

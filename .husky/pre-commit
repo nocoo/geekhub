@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# pre-commit: L1 unit tests + L2 lint (< 30s target)
+set -euo pipefail
+
+echo "==> pre-commit: running lint..."
+bunx eslint --max-warnings 0 .
+
+echo "==> pre-commit: running unit tests..."
+bun test
+
+echo "==> pre-commit: all checks passed."

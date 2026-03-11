@@ -514,7 +514,7 @@ scripts/run-api-e2e.sh
 |---|---------------|------|------|
 | 1 | ✅ `fix(test): migrate 3 test files from vitest to bun:test` | 修复 feed-actions, article-actions, useFeedActions 的 import 和 mock API | `bun test` 全通过 |
 | 2 | ✅ `chore: add coverage check script` | 创建 `scripts/check-coverage.sh` | 脚本可执行，覆盖率输出正确 |
-| 3 | `chore: strengthen eslint config with strict rules` | 升级 `eslint.config.mjs`，安装所需依赖 | `eslint --max-warnings 0 .` 通过 |
+| 3 | ✅ `chore: strengthen eslint config with strict rules` | 升级 `eslint.config.mjs`，安装所需依赖 | `eslint --max-warnings 0 .` 通过 |
 | 4 | `chore: setup husky and configure git hooks` | 安装 husky，创建 `.husky/pre-commit`（lint + UT）和 `.husky/pre-push`（覆盖率门禁），删除旧 `.git/hooks/pre-commit` | `git commit` 触发 lint + UT；`git push` 触发覆盖率检查 |
 | 5 | `chore: add test and lint scripts to package.json` | 添加 `prepare`, `test:coverage`, `test:e2e`, `lint` scripts | scripts 可执行 |
 
