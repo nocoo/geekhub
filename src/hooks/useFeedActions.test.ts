@@ -6,7 +6,7 @@
  * by directly testing the QueryClient manipulation patterns.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { QueryClient } from '@tanstack/react-query';
 import { FeedViewModel } from '@/types/feed-view-model';
 
@@ -14,7 +14,6 @@ describe('useFeedActions Optimistic Updates', () => {
   let queryClient: QueryClient;
 
   beforeEach(() => {
-    vi.clearAllMocks();
     queryClient = new QueryClient({
       defaultOptions: {
         queries: {

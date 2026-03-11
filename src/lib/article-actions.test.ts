@@ -3,24 +3,24 @@
  * TDD tests for article actions service layer
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, mock, beforeEach } from 'bun:test';
 
 // Mock fetch globally
-global.fetch = vi.fn();
+const mockFetch = mock(() => Promise.resolve(new Response()));
+global.fetch = mockFetch as unknown as typeof fetch;
 
 describe('Article Actions Service', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    mockFetch.mockClear();
   });
 
   describe('fetchFullContent', () => {
     it('should fetch full content successfully', async () => {
       const mockContent = '<html><body>Full content here</body></html>';
-      const mockResponse = {
-        ok: true,
-        json: vi.fn().mockResolvedValue({ success: true, content: mockContent }),
-      };
-      (global.fetch as unknown as vi.Mock).mockResolvedValue(mockResponse);
+      const mockJson = mock(() => Promise.resolve({ success: true, content: mockContent }));
+      mockFetch.mockImplementation(() =>
+        Promise.resolve({ ok: true, json: mockJson } as unknown as Response)
+      );
 
       const { fetchFullContent } = await import('./article-actions');
 
@@ -35,11 +35,10 @@ describe('Article Actions Service', () => {
     });
 
     it('should throw error when API fails', async () => {
-      const mockResponse = {
-        ok: false,
-        json: vi.fn().mockResolvedValue({ error: 'Failed to fetch' }),
-      };
-      (global.fetch as unknown as vi.Mock).mockResolvedValue(mockResponse);
+      const mockJson = mock(() => Promise.resolve({ error: 'Failed to fetch' }));
+      mockFetch.mockImplementation(() =>
+        Promise.resolve({ ok: false, json: mockJson } as unknown as Response)
+      );
 
       const { fetchFullContent } = await import('./article-actions');
 
@@ -48,11 +47,10 @@ describe('Article Actions Service', () => {
     });
 
     it('should throw error when response has no content', async () => {
-      const mockResponse = {
-        ok: true,
-        json: vi.fn().mockResolvedValue({ success: true, content: null }),
-      };
-      (global.fetch as unknown as vi.Mock).mockResolvedValue(mockResponse);
+      const mockJson = mock(() => Promise.resolve({ success: true, content: null }));
+      mockFetch.mockImplementation(() =>
+        Promise.resolve({ ok: true, json: mockJson } as unknown as Response)
+      );
 
       const { fetchFullContent } = await import('./article-actions');
 
@@ -64,20 +62,19 @@ describe('Article Actions Service', () => {
   describe('translateContent', () => {
     it('should translate content successfully', async () => {
       const mockTranslatedContent = 'Translated content here';
-      const mockResponse = {
-        ok: true,
-        json: vi.fn().mockResolvedValue({ translatedContent: mockTranslatedContent }),
-      };
-      (global.fetch as unknown as vi.Mock).mockResolvedValue(mockResponse);
+      const mockJson = mock(() => Promise.resolve({ translatedContent: mockTranslatedContent }));
+      mockFetch.mockImplementation(() =>
+        Promise.resolve({ ok: true, json: mockJson } as unknown as Response)
+      );
 
       const { translateContent } = await import('./article-actions');
 
       const aiSettings = {
-        provider: 'openai' as const,
+        enabled: true,
+        provider: 'openai',
         baseUrl: 'https://api.openai.com',
         model: 'gpt-4',
         apiKey: 'test-key',
-        temperature: 0.3,
       };
 
       const result = await translateContent('article-123', 'Original content', aiSettings);
@@ -95,20 +92,19 @@ describe('Article Actions Service', () => {
     });
 
     it('should throw error when translation fails', async () => {
-      const mockResponse = {
-        ok: false,
-        json: vi.fn().mockResolvedValue({ error: 'Translation failed' }),
-      };
-      (global.fetch as unknown as vi.Mock).mockResolvedValue(mockResponse);
+      const mockJson = mock(() => Promise.resolve({ error: 'Translation failed' }));
+      mockFetch.mockImplementation(() =>
+        Promise.resolve({ ok: false, json: mockJson } as unknown as Response)
+      );
 
       const { translateContent } = await import('./article-actions');
 
       const aiSettings = {
-        provider: 'openai' as const,
+        enabled: true,
+        provider: 'openai',
         baseUrl: 'https://api.openai.com',
         model: 'gpt-4',
         apiKey: 'test-key',
-        temperature: 0.3,
       };
 
       await expect(translateContent('article-123', 'Original content', aiSettings))
@@ -118,11 +114,10 @@ describe('Article Actions Service', () => {
 
   describe('bookmarkArticle', () => {
     it('should bookmark article successfully', async () => {
-      const mockResponse = {
-        ok: true,
-        json: vi.fn().mockResolvedValue({ success: true }),
-      };
-      (global.fetch as unknown as vi.Mock).mockResolvedValue(mockResponse);
+      const mockJson = mock(() => Promise.resolve({ success: true }));
+      mockFetch.mockImplementation(() =>
+        Promise.resolve({ ok: true, json: mockJson } as unknown as Response)
+      );
 
       const { bookmarkArticle } = await import('./article-actions');
 
@@ -136,11 +131,10 @@ describe('Article Actions Service', () => {
     });
 
     it('should bookmark without notes', async () => {
-      const mockResponse = {
-        ok: true,
-        json: vi.fn().mockResolvedValue({ success: true }),
-      };
-      (global.fetch as unknown as vi.Mock).mockResolvedValue(mockResponse);
+      const mockJson = mock(() => Promise.resolve({ success: true }));
+      mockFetch.mockImplementation(() =>
+        Promise.resolve({ ok: true, json: mockJson } as unknown as Response)
+      );
 
       const { bookmarkArticle } = await import('./article-actions');
 
@@ -154,11 +148,10 @@ describe('Article Actions Service', () => {
     });
 
     it('should throw error when bookmark fails', async () => {
-      const mockResponse = {
-        ok: false,
-        json: vi.fn().mockResolvedValue({ error: 'Failed to bookmark' }),
-      };
-      (global.fetch as unknown as vi.Mock).mockResolvedValue(mockResponse);
+      const mockJson = mock(() => Promise.resolve({ error: 'Failed to bookmark' }));
+      mockFetch.mockImplementation(() =>
+        Promise.resolve({ ok: false, json: mockJson } as unknown as Response)
+      );
 
       const { bookmarkArticle } = await import('./article-actions');
 
@@ -168,11 +161,10 @@ describe('Article Actions Service', () => {
 
   describe('unbookmarkArticle', () => {
     it('should unbookmark article successfully', async () => {
-      const mockResponse = {
-        ok: true,
-        json: vi.fn().mockResolvedValue({ success: true }),
-      };
-      (global.fetch as unknown as vi.Mock).mockResolvedValue(mockResponse);
+      const mockJson = mock(() => Promise.resolve({ success: true }));
+      mockFetch.mockImplementation(() =>
+        Promise.resolve({ ok: true, json: mockJson } as unknown as Response)
+      );
 
       const { unbookmarkArticle } = await import('./article-actions');
 
@@ -184,11 +176,10 @@ describe('Article Actions Service', () => {
     });
 
     it('should throw error when unbookmark fails', async () => {
-      const mockResponse = {
-        ok: false,
-        json: vi.fn().mockResolvedValue({ error: 'Failed to remove bookmark' }),
-      };
-      (global.fetch as unknown as vi.Mock).mockResolvedValue(mockResponse);
+      const mockJson = mock(() => Promise.resolve({ error: 'Failed to remove bookmark' }));
+      mockFetch.mockImplementation(() =>
+        Promise.resolve({ ok: false, json: mockJson } as unknown as Response)
+      );
 
       const { unbookmarkArticle } = await import('./article-actions');
 
@@ -198,11 +189,10 @@ describe('Article Actions Service', () => {
 
   describe('saveForLater', () => {
     it('should save article for later successfully', async () => {
-      const mockResponse = {
-        ok: true,
-        json: vi.fn().mockResolvedValue({ success: true }),
-      };
-      (global.fetch as unknown as vi.Mock).mockResolvedValue(mockResponse);
+      const mockJson = mock(() => Promise.resolve({ success: true }));
+      mockFetch.mockImplementation(() =>
+        Promise.resolve({ ok: true, json: mockJson } as unknown as Response)
+      );
 
       const { saveForLater } = await import('./article-actions');
 
@@ -216,11 +206,10 @@ describe('Article Actions Service', () => {
     });
 
     it('should throw error when save fails', async () => {
-      const mockResponse = {
-        ok: false,
-        json: vi.fn().mockResolvedValue({ error: 'Failed to save' }),
-      };
-      (global.fetch as unknown as vi.Mock).mockResolvedValue(mockResponse);
+      const mockJson = mock(() => Promise.resolve({ error: 'Failed to save' }));
+      mockFetch.mockImplementation(() =>
+        Promise.resolve({ ok: false, json: mockJson } as unknown as Response)
+      );
 
       const { saveForLater } = await import('./article-actions');
 
@@ -230,11 +219,10 @@ describe('Article Actions Service', () => {
 
   describe('removeFromLater', () => {
     it('should remove article from later successfully', async () => {
-      const mockResponse = {
-        ok: true,
-        json: vi.fn().mockResolvedValue({ success: true }),
-      };
-      (global.fetch as unknown as vi.Mock).mockResolvedValue(mockResponse);
+      const mockJson = mock(() => Promise.resolve({ success: true }));
+      mockFetch.mockImplementation(() =>
+        Promise.resolve({ ok: true, json: mockJson } as unknown as Response)
+      );
 
       const { removeFromLater } = await import('./article-actions');
 
@@ -246,11 +234,10 @@ describe('Article Actions Service', () => {
     });
 
     it('should throw error when remove fails', async () => {
-      const mockResponse = {
-        ok: false,
-        json: vi.fn().mockResolvedValue({ error: 'Failed to remove' }),
-      };
-      (global.fetch as unknown as vi.Mock).mockResolvedValue(mockResponse);
+      const mockJson = mock(() => Promise.resolve({ error: 'Failed to remove' }));
+      mockFetch.mockImplementation(() =>
+        Promise.resolve({ ok: false, json: mockJson } as unknown as Response)
+      );
 
       const { removeFromLater } = await import('./article-actions');
 
