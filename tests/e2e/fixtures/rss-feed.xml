@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Mock Tech Blog</title>
+    <link>http://127.0.0.1:14000</link>
+    <description>A mock RSS feed for E2E testing</description>
+    <language>en-us</language>
+    <lastBuildDate>Mon, 10 Mar 2026 12:00:00 GMT</lastBuildDate>
+    <item>
+      <title>First Mock Article</title>
+      <link>http://127.0.0.1:14000/mock-article</link>
+      <description>This is the first mock article for E2E testing.</description>
+      <pubDate>Mon, 10 Mar 2026 12:00:00 GMT</pubDate>
+      <guid>mock-article-001</guid>
+    </item>
+    <item>
+      <title>Second Mock Article</title>
+      <link>http://127.0.0.1:14000/mock-article?id=2</link>
+      <description>This is the second mock article for E2E testing.</description>
+      <pubDate>Sun, 09 Mar 2026 12:00:00 GMT</pubDate>
+      <guid>mock-article-002</guid>
+    </item>
+  </channel>
+</rss>
