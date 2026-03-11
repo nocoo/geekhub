@@ -12,19 +12,13 @@ import { toast } from 'sonner';
 import { parseRssHubUrl, isRssHubUrl } from '@/lib/rsshub';
 import { useSettings } from '@/lib/settings';
 import { Rss, AlertTriangle } from 'lucide-react';
-
-interface Category {
-  id: string;
-  name: string;
-  color: string;
-  icon: string;
-}
+import type { Category, Feed } from '@/hooks/useDatabase';
 
 interface AddFeedDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   categories: Category[];
-  onSuccess: (feed: Record<string, unknown>) => void;
+  onSuccess: (feed: Feed) => void;
   defaultCategoryId?: string;
 }
 

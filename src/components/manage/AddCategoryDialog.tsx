@@ -9,11 +9,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import type { Category } from '@/hooks/useDatabase';
 
 interface AddCategoryDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess: (category: { id: string; name: string; color: string; icon: string }) => void;
+  onSuccess: (category: Category) => void;
 }
 
 const CATEGORY_COLORS = [
