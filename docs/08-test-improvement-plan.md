@@ -27,7 +27,7 @@
 |----|---------|------|------|
 | L1 UT | 覆盖率 ≥ 90%，pre-commit 门禁 | 332 tests / 24 files，pre-commit 仅跑 `bun test`，无覆盖率门禁 | 无覆盖率阈值拦截；3 个文件误用 vitest API |
 | L2 Lint | ESLint strict，零错误零警告，pre-commit | ESLint 仅 Next.js 默认 config，未在 pre-commit 触发 | 非 strict；未集成 hook |
-| L3 API E2E | 100% API route 有 E2E，pre-push | 36 个 route / 45 个 handler，0 个 E2E 测试，无 pre-push hook | 从零搭建 |
+| L3 API E2E | 100% API route 有 E2E，pre-push | 36 个 route / 46 个 handler，0 个 E2E 测试，无 pre-push hook | 从零搭建 |
 | L4 BDD E2E | Playwright 核心主干流程，按需 | 无 Playwright，无 BDD | 从零搭建（本期不含） |
 
 ### 问题清单
@@ -40,7 +40,7 @@
 3. **pre-commit 不完整**: 只跑 UT，不跑 Lint，不检查覆盖率
 4. **pre-push 不存在**: 无法阻止带有 API 回归的代码推送
 5. **Lint 宽松**: 无 `@typescript-eslint/strict`，无零警告要求
-6. **36 个 API route / 45 个 handler 零 E2E**: API 协议无任何保护
+6. **36 个 API route / 46 个 handler 零 E2E**: API 协议无任何保护
 
 ---
 
@@ -84,7 +84,7 @@ on-demand (后续 Phase)
 
 ## API Route 完整清单
 
-共 **36 个 route 文件 / 45 个 HTTP handler**，按外部依赖类型分四类。
+共 **36 个 route 文件 / 46 个 HTTP handler**，按外部依赖类型分四类。
 
 ### (D) 纯 Supabase 路由 — 26 个文件
 
@@ -204,36 +204,51 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=<local-supabase-anon-key>
 
 ### .env.test 文件与加载机制
 
-创建 `.env.test`（进版本控制，含占位符）和 `.env.test.local`（不进版本控制，含真实值）。
+两层文件，`dotenv-cli` 按顺序加载（后者覆盖前者）：
 
-**加载方式**：E2E runner 脚本使用 `dotenv-cli` 显式注入：
+| 文件 | 版本控制 | 内容 |
+|------|---------|------|
+| `.env.test` | 进 git | 默认值（含完整 key 和非敏感默认值，如 `DEV_MODE_ENABLED=true`、`MOCK_SERVER_URL`） |
+| `.env.test.local` | 不进 git（`.gitignore`） | 仅覆盖敏感项（`DEV_USER_ID`, `SUPABASE_SERVICE_KEY`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`） |
+
+**加载方式**：E2E runner 脚本使用 `dotenv-cli` 同时加载两层：
 
 ```bash
-# scripts/run-api-e2e.sh
-bunx dotenv-cli -e .env.test.local -- next dev --port 13000
+# scripts/run-api-e2e.sh — 先加载模板默认值，再用本地文件覆盖敏感项
+bunx dotenv-cli -e .env.test -e .env.test.local -- next dev --port 13000
 ```
 
-这样不会污染开发者的 `.env.local`。
+`dotenv-cli` 多 `-e` 参数时后面的文件优先，所以 `.env.test.local` 中的值会覆盖 `.env.test` 中的同名 key。开发者只需在 `.env.test.local` 中填写 3 个敏感值即可，其余全部由 `.env.test` 提供默认值。
 
-### .env.test 模板
+### .env.test 模板（进版本控制，含默认值）
 
 ```bash
 # === L3 API E2E Test Environment ===
-# Copy to .env.test.local and fill in real values
+# Non-sensitive defaults. Secrets are overridden by .env.test.local.
 
 # Auth bypass (Layer 1 + 2)
-NODE_ENV=development
 DEV_MODE_ENABLED=true
-DEV_USER_ID=                         # Your local Supabase user UUID
+DEV_USER_ID=00000000-0000-0000-0000-000000000000
 DEV_USER_EMAIL=test@geekhub.local
 
-# Supabase (local instance)
+# Supabase (local instance — keys must be overridden in .env.test.local)
 NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
+NEXT_PUBLIC_SUPABASE_ANON_KEY=placeholder-override-in-env-test-local
+SUPABASE_SERVICE_KEY=placeholder-override-in-env-test-local
+
+# Mock server
+MOCK_SERVER_URL=http://127.0.0.1:14000
+```
+
+### .env.test.local 模板（不进版本控制，仅敏感值）
+
+```bash
+# === Local overrides — DO NOT commit ===
+# Get these values from `supabase status` after starting local Supabase
+
+DEV_USER_ID=                         # Your actual local Supabase user UUID
 NEXT_PUBLIC_SUPABASE_ANON_KEY=       # From `supabase status`
 SUPABASE_SERVICE_KEY=                # From `supabase status`
-
-# Mock server (for AI + external URL routes)
-MOCK_SERVER_URL=http://127.0.0.1:14000
 ```
 
 ---
@@ -381,8 +396,8 @@ scripts/check-coverage.sh
 ```
 tests/
 └── e2e/
-    ├── mock-server.ts     # Bun.serve mock (port 14000)
-    ├── setup.ts           # E2E 环境初始化 (启动 mock server)
+    ├── mock-server.ts     # Bun.serve mock (port 14000)，可独立运行也可被 import
+    ├── setup.ts           # E2E 环境初始化 (常量、preload 配置，不启动 server)
     ├── helpers.ts         # 公共工具 (fetch wrapper, auth helper, SSE reader)
     ├── fixtures/          # 固定测试数据
     │   ├── rss-feed.xml   # 假 RSS feed
@@ -401,12 +416,13 @@ tests/
 ```
 
 创建 `scripts/run-api-e2e.sh`：
-1. 加载 `.env.test.local` 变量（通过 `dotenv-cli`）
-2. 启动 mock server（`bun tests/e2e/mock-server.ts &`，port 14000）
-3. 启动 Next.js dev server（`bunx dotenv-cli -e .env.test.local -- next dev --port 13000`）
-4. 等待 server ready（轮询 `/api/health`，超时 30s）
-5. 运行 `bun test tests/e2e/`
-6. 关闭 mock server + dev server，汇报结果
+1. 启动 mock server（`bun tests/e2e/mock-server.ts &`，port 14000，**唯一启动点**）
+2. 启动 Next.js dev server（`bunx dotenv-cli -e .env.test -e .env.test.local -- next dev --port 13000`）
+3. 等待 server ready（轮询 `/api/health`，超时 30s）
+4. 运行 `bun test tests/e2e/`
+5. 关闭 mock server + dev server，汇报结果
+
+> **Mock server 职责归属**：runner 脚本是 mock server 的唯一启动者。`setup.ts` 仅负责常量定义（BASE_URL、MOCK_URL 等）和 preload 配置，**不**启动 mock server。测试文件通过 `setup.ts` 导出的常量访问 mock server。
 
 创建 `.env.test`（模板，进版本控制）和在 `.gitignore` 中添加 `.env.test.local`。
 
@@ -519,16 +535,18 @@ scripts/run-api-e2e.sh
 
 ## 覆盖率验证矩阵
 
-执行完毕后，所有 handler 应有对应 E2E（除 test-proxy）：
+执行完毕后，所有可测 handler 应有对应 E2E：
 
-| 类型 | Route 文件数 | Handler 数 | E2E 测试 |
+| 类型 | Route 文件数 | Handler 数 | E2E 覆盖 |
 |------|-------------|-----------|----------|
 | (D) 纯 Supabase | 26 | 34 | 34 |
 | (A) AI API | 4 | 4 | 4 |
 | (B) 外部 URL | 5 | 6 | 6 |
 | (C) SSE | 1 | 1 | 1 |
-| (X) 跳过 | 1 | 0 | 0 (标记 @skip) |
-| **合计** | **36** | **45** | **45** (1 skip) |
+| (X) 跳过 | 1 | 1 | 0 (@skip) |
+| **合计** | **36***| **46** | **45 covered, 1 skipped** |
+
+> *Route 文件数合计为 36（非 37），因为 `/api/feeds/route.ts` 同时出现在 (D) 和 (B) 中（GET 在 D，POST 在 B），但只是一个文件。
 
 ---
 
