@@ -1,5 +1,35 @@
 # Changelog
 
+## [0.2.1] - 2026-03-11
+
+### Tests
+
+- Implement 4-layer test architecture (L1 UT, L2 Lint, L3 API E2E, L4 BDD E2E)
+- Add 67 API E2E tests across 10 test files covering all RESTful endpoints
+- Add mock server infrastructure (Bun.serve at port 14000) for AI and external URL routes
+- Migrate 3 test files from vitest to bun:test
+- Add coverage for useArticleActions hooks, boosting coverage from 87% to 93%
+
+### Chores
+
+- Setup husky with pre-commit (UT + lint) and pre-push (coverage + API E2E) hooks
+- Add coverage check script with 90% threshold enforcement
+- Strengthen ESLint config with strict rules and zero-warning policy
+- Add test, lint, and E2E scripts to package.json
+
+### Fixes
+
+- Fix env loading order for E2E (dotenv-cli first-file-wins)
+- Seed test user automatically in E2E runner
+- Fix explicit glob path for E2E test discovery (bunfig.toml root workaround)
+- Add site_url column and fix auth trigger permissions in DB migration
+- Gitignore supabase local temp files
+
+### Docs
+
+- Update testing docs to reflect 4-layer architecture
+- Add test improvement plan (docs/08)
+
 ## [0.2.0] - 2026-03-11
 
 ### Features

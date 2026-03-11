@@ -22,7 +22,7 @@ import packageJson from "../../../../package.json";
  *                   example: ok
  *                 version:
  *                   type: string
- *                   example: 0.2.0
+ *                   example: 0.2.1
  */
 export async function GET() {
   return NextResponse.json({
