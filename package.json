@@ -6,8 +6,10 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "eslint --max-warnings 0 .",
     "test": "bun test",
+    "test:coverage": "bash scripts/check-coverage.sh",
+    "test:e2e": "bash scripts/run-api-e2e.sh",
     "prepare": "husky"
   },
   "dependencies": {
