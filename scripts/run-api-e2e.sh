@@ -12,6 +12,10 @@ HEALTH_URL="http://127.0.0.1:${E2E_PORT}/api/health"
 MOCK_HEALTH_URL="http://127.0.0.1:${MOCK_PORT}/mock-httpbin"
 MAX_WAIT=30  # seconds
 
+# E2E test user (must match .env.test values)
+E2E_USER_ID="e2e00000-0000-4000-a000-000000000001"
+E2E_USER_EMAIL="e2e-test@geekhub.local"
+
 MOCK_PID=""
 DEV_PID=""
 
@@ -39,6 +43,35 @@ wait_for_url() {
   echo "  ${label} ready (${elapsed}s)"
 }
 
+# ---------- 0. Load env and seed test user ----------
+cd "$PROJECT_DIR"
+
+# Load env: .env.test.local (secrets) first, then .env.test (defaults).
+# dotenv-cli does NOT override: first file wins, so secrets must come first.
+ENV_ARGS=""
+[[ -f .env.test.local ]] && ENV_ARGS="-e .env.test.local"
+ENV_ARGS="$ENV_ARGS -e .env.test"
+
+# Read Supabase URL and service key from the loaded env
+# shellcheck disable=SC2086
+eval "$(bunx dotenv-cli $ENV_ARGS -- bash -c 'echo "SB_URL=$NEXT_PUBLIC_SUPABASE_URL"; echo "SB_SERVICE_KEY=$SUPABASE_SERVICE_KEY"')"
+
+echo "==> Seeding E2E test user (${E2E_USER_EMAIL})..."
+SEED_RESULT=$(curl -sf "${SB_URL}/auth/v1/admin/users" \
+  -H "Authorization: Bearer ${SB_SERVICE_KEY}" \
+  -H "apikey: ${SB_SERVICE_KEY}" \
+  -H "Content-Type: application/json" \
+  -d "{\"id\":\"${E2E_USER_ID}\",\"email\":\"${E2E_USER_EMAIL}\",\"password\":\"test-password-e2e\",\"email_confirm\":true}" 2>&1 || true)
+
+if echo "$SEED_RESULT" | grep -q '"id"'; then
+  echo "  Test user created: ${E2E_USER_ID}"
+elif echo "$SEED_RESULT" | grep -q 'already_exists\|duplicate'; then
+  echo "  Test user already exists: ${E2E_USER_ID}"
+else
+  echo "  WARN: Could not create test user: ${SEED_RESULT}"
+  echo "  (Continuing — tests may fail if auth.users FK is enforced)"
+fi
+
 # ---------- 1. Start mock server ----------
 echo "==> Starting mock server on port ${MOCK_PORT}..."
 MOCK_PORT="$MOCK_PORT" bun "$PROJECT_DIR/tests/e2e/mock-server.ts" &
@@ -47,11 +80,6 @@ wait_for_url "$MOCK_HEALTH_URL" "Mock server"
 
 # ---------- 2. Start Next.js dev server ----------
 echo "==> Starting Next.js dev server on port ${E2E_PORT}..."
-cd "$PROJECT_DIR"
-
-# Load env: .env.test (defaults) + .env.test.local (secrets override)
-ENV_ARGS="-e .env.test"
-[[ -f .env.test.local ]] && ENV_ARGS="$ENV_ARGS -e .env.test.local"
 
 # shellcheck disable=SC2086
 bunx dotenv-cli $ENV_ARGS -- next dev --turbopack --port "$E2E_PORT" &
