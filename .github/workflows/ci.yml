@@ -12,6 +12,7 @@ jobs:
     uses: nocoo/base-ci/.github/workflows/bun-quality.yml@v2026
     with:
       test-command: "bun run test"
-      typecheck-command: "true"
+      typecheck-command: "bunx tsc --noEmit"
+      osv-config: "osv-scanner.toml"
       enable-l2: "false"
     secrets: inherit
