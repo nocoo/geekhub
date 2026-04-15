@@ -1,0 +1,79 @@
+[[IgnoredVulns]]
+id = "GHSA-23c5-xmqv-rm74"
+reason = "Indirect dependency, no direct exposure"
+
+[[IgnoredVulns]]
+id = "GHSA-25h7-pfq9-p65f"
+reason = "Indirect dependency, no direct exposure"
+
+[[IgnoredVulns]]
+id = "GHSA-2mjp-6q6p-2qxm"
+reason = "Indirect dependency, no direct exposure"
+
+[[IgnoredVulns]]
+id = "GHSA-3ppc-4f35-3m26"
+reason = "Indirect dependency, no direct exposure"
+
+[[IgnoredVulns]]
+id = "GHSA-3v7f-55p6-f55p"
+reason = "Indirect dependency, no direct exposure"
+
+[[IgnoredVulns]]
+id = "GHSA-3x4c-7xq6-9pq8"
+reason = "Indirect dependency, no direct exposure"
+
+[[IgnoredVulns]]
+id = "GHSA-4992-7rv2-5pvq"
+reason = "Indirect dependency, no direct exposure"
+
+[[IgnoredVulns]]
+id = "GHSA-7r86-cg39-jmmj"
+reason = "Indirect dependency, no direct exposure"
+
+[[IgnoredVulns]]
+id = "GHSA-c2c7-rcm5-vvqj"
+reason = "Indirect dependency, no direct exposure"
+
+[[IgnoredVulns]]
+id = "GHSA-f269-vfmq-vjvj"
+reason = "Indirect dependency, no direct exposure"
+
+[[IgnoredVulns]]
+id = "GHSA-f886-m6hf-6m8v"
+reason = "Indirect dependency, no direct exposure"
+
+[[IgnoredVulns]]
+id = "GHSA-ggv3-7p47-pfv8"
+reason = "Indirect dependency, no direct exposure"
+
+[[IgnoredVulns]]
+id = "GHSA-h27x-g6w4-24gq"
+reason = "Indirect dependency, no direct exposure"
+
+[[IgnoredVulns]]
+id = "GHSA-jcc7-9wpm-mj36"
+reason = "Indirect dependency, no direct exposure"
+
+[[IgnoredVulns]]
+id = "GHSA-mq59-m269-xvcx"
+reason = "Indirect dependency, no direct exposure"
+
+[[IgnoredVulns]]
+id = "GHSA-phc3-fgpg-7m6h"
+reason = "Indirect dependency, no direct exposure"
+
+[[IgnoredVulns]]
+id = "GHSA-q4gf-8mx6-v5v3"
+reason = "Indirect dependency, no direct exposure"
+
+[[IgnoredVulns]]
+id = "GHSA-rf6f-7fwh-wjgh"
+reason = "Indirect dependency, no direct exposure"
+
+[[IgnoredVulns]]
+id = "GHSA-v9p9-hfj2-hcw8"
+reason = "Indirect dependency, no direct exposure"
+
+[[IgnoredVulns]]
+id = "GHSA-vrm6-8vpv-qv8q"
+reason = "Indirect dependency, no direct exposure"
