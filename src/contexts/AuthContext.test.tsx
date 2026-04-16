@@ -2,8 +2,11 @@
  * @file AuthContext.test.tsx
  * Tests for AuthContext.
  *
- * Mocks @supabase/ssr (the underlying package) instead of the path-aliased
- * wrapper so mock.module works reliably across Bun versions.
+ * Mocks both @supabase/ssr and the path-aliased wrapper so mock.module works
+ * reliably across Bun versions and platforms (macOS + Linux CI).
+ *
+ * The @supabase/ssr mock preserves createServerClient (used by other modules)
+ * and only overrides createBrowserClient, which is what AuthContext consumes.
  */
 
 import { describe, it, expect, mock, beforeEach, afterEach } from 'bun:test';
@@ -25,20 +28,30 @@ const mockOnAuthStateChange = mock(
     },
 );
 
-// Mock the wrapper module at both path forms — avoids path-alias resolution
-// issues across different Bun versions.
+const fakeClient = () => ({
+    auth: {
+        getSession: mockGetSession,
+        onAuthStateChange: mockOnAuthStateChange,
+        signOut: mockSignOut,
+        signInWithOAuth: mockSignInWithOAuth,
+    },
+});
+
+// Mock the wrapper module at path-alias and relative forms.
 const supabaseMock = () => ({
-    createClient: () => ({
-        auth: {
-            getSession: mockGetSession,
-            onAuthStateChange: mockOnAuthStateChange,
-            signOut: mockSignOut,
-            signInWithOAuth: mockSignInWithOAuth,
-        },
-    }),
+    createClient: () => fakeClient(),
 });
 mock.module('@/lib/supabase-browser', supabaseMock);
 mock.module('../lib/supabase-browser', supabaseMock);
+
+// Also mock @supabase/ssr — the package that supabase-browser.ts imports.
+// This catches cases where the path-alias mock doesn't intercept on certain
+// Bun versions / platforms. We stub createServerClient as a passthrough so
+// other test files that mock it themselves aren't broken by a missing export.
+mock.module('@supabase/ssr', () => ({
+    createBrowserClient: () => fakeClient(),
+    createServerClient: () => fakeClient(),
+}));
 
 // Import *after* mock.module so the mock is picked up
 const { AuthProvider, useAuth } = await import('./AuthContext');
