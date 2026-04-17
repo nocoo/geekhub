@@ -10,7 +10,8 @@
     "test": "bun test",
     "test:coverage": "bash scripts/check-coverage.sh",
     "test:e2e": "bash scripts/run-api-e2e.sh",
-    "prepare": "husky"
+    "prepare": "husky",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",
@@ -61,5 +62,10 @@
     "postcss": "^8.5.8",
     "tailwindcss": "^3.4.19",
     "typescript": "^5.9.3"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --max-warnings=0"
+    ]
   }
 }
