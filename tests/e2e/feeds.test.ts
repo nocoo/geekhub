@@ -1,6 +1,9 @@
 import { describe, test, expect } from "bun:test";
 import { apiGet, apiPost, apiPut, apiDelete, expectJson } from "./helpers";
 import { MOCK_URL } from "./setup";
+import { DB_AVAILABLE } from "./db-available";
+
+const describeDb = DB_AVAILABLE ? describe : describe.skip;
 
 /**
  * Feeds CRUD E2E tests.
@@ -11,7 +14,7 @@ import { MOCK_URL } from "./setup";
 
 let feedId: string;
 
-describe("Feeds API", () => {
+describeDb("Feeds API", () => {
   // ── List feeds (empty state) ──────────────────────────────────────
 
   test("GET /api/feeds returns 200 with feeds array", async () => {

@@ -1,5 +1,8 @@
 import { describe, test, expect } from "bun:test";
 import { apiGet, expectJson } from "./helpers";
+import { DB_AVAILABLE } from "./db-available";
+
+const describeDb = DB_AVAILABLE ? describe : describe.skip;
 
 /**
  * Blogs API E2E tests.
@@ -7,7 +10,7 @@ import { apiGet, expectJson } from "./helpers";
  * Covers GET /api/blogs — blog discovery list.
  */
 
-describe("Blogs API", () => {
+describeDb("Blogs API", () => {
   test("GET /api/blogs returns 200 with blogs, tags, and pagination", async () => {
     const res = await apiGet("/api/blogs");
     const body = await expectJson<{

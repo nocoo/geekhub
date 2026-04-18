@@ -1,5 +1,8 @@
 import { describe, test, expect } from "bun:test";
 import { apiGet, apiPost, expectJson } from "./helpers";
+import { DB_AVAILABLE } from "./db-available";
+
+const describeDb = DB_AVAILABLE ? describe : describe.skip;
 
 /**
  * Data API E2E tests.
@@ -8,7 +11,7 @@ import { apiGet, apiPost, expectJson } from "./helpers";
  * logs, feeds, cleanup, and cleanup-articles.
  */
 
-describe("Data API", () => {
+describeDb("Data API", () => {
   // ── Stats ───────────────────────────────────────────────────────────
 
   test("GET /api/data/stats returns 200 with stats object", async () => {
