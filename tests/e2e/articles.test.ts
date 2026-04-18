@@ -1,6 +1,9 @@
 import { describe, test, expect } from "bun:test";
 import { apiGet, apiPost, apiDelete, expectJson } from "./helpers";
 import { MOCK_URL } from "./setup";
+import { DB_AVAILABLE } from "./db-available";
+
+const describeDb = DB_AVAILABLE ? describe : describe.skip;
 
 /**
  * Articles action E2E tests (read, unread, bookmark, read-later).
@@ -47,7 +50,7 @@ async function pollForArticles(fId: string): Promise<string | null> {
   return null;
 }
 
-describe("Articles API", () => {
+describeDb("Articles API", () => {
   // ── Setup: create feed and fetch articles ───────────────────────
 
   test("setup: create a feed from mock RSS", async () => {

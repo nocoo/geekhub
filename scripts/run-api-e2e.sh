@@ -56,20 +56,35 @@ ENV_ARGS="$ENV_ARGS -e .env.test"
 # shellcheck disable=SC2086
 eval "$(bunx dotenv-cli $ENV_ARGS -- bash -c 'echo "SB_URL=$NEXT_PUBLIC_SUPABASE_URL"; echo "SB_SERVICE_KEY=$SUPABASE_SERVICE_KEY"')"
 
-echo "==> Seeding E2E test user (${E2E_USER_EMAIL})..."
-SEED_RESULT=$(curl -sf "${SB_URL}/auth/v1/admin/users" \
-  -H "Authorization: Bearer ${SB_SERVICE_KEY}" \
-  -H "apikey: ${SB_SERVICE_KEY}" \
-  -H "Content-Type: application/json" \
-  -d "{\"id\":\"${E2E_USER_ID}\",\"email\":\"${E2E_USER_EMAIL}\",\"password\":\"test-password-e2e\",\"email_confirm\":true}" 2>&1 || true)
+# Probe Supabase reachability so DB-dependent tests can self-skip when needed
+# (e.g. CI without local Supabase). Treats placeholder service keys as unavailable.
+SUPABASE_AVAILABLE="false"
+if [[ -n "${SB_URL:-}" && -n "${SB_SERVICE_KEY:-}" && "$SB_SERVICE_KEY" != placeholder-* ]]; then
+  if curl -sf -m 3 "${SB_URL}/auth/v1/health" -H "apikey: ${SB_SERVICE_KEY}" > /dev/null 2>&1; then
+    SUPABASE_AVAILABLE="true"
+  fi
+fi
+export SUPABASE_AVAILABLE
+echo "==> Supabase available: ${SUPABASE_AVAILABLE}"
 
-if echo "$SEED_RESULT" | grep -q '"id"'; then
-  echo "  Test user created: ${E2E_USER_ID}"
-elif echo "$SEED_RESULT" | grep -q 'already_exists\|duplicate'; then
-  echo "  Test user already exists: ${E2E_USER_ID}"
+if [[ "$SUPABASE_AVAILABLE" == "true" ]]; then
+  echo "==> Seeding E2E test user (${E2E_USER_EMAIL})..."
+  SEED_RESULT=$(curl -sf "${SB_URL}/auth/v1/admin/users" \
+    -H "Authorization: Bearer ${SB_SERVICE_KEY}" \
+    -H "apikey: ${SB_SERVICE_KEY}" \
+    -H "Content-Type: application/json" \
+    -d "{\"id\":\"${E2E_USER_ID}\",\"email\":\"${E2E_USER_EMAIL}\",\"password\":\"test-password-e2e\",\"email_confirm\":true}" 2>&1 || true)
+
+  if echo "$SEED_RESULT" | grep -q '"id"'; then
+    echo "  Test user created: ${E2E_USER_ID}"
+  elif echo "$SEED_RESULT" | grep -q 'already_exists\|duplicate'; then
+    echo "  Test user already exists: ${E2E_USER_ID}"
+  else
+    echo "  WARN: Could not create test user: ${SEED_RESULT}"
+    echo "  (Continuing — tests may fail if auth.users FK is enforced)"
+  fi
 else
-  echo "  WARN: Could not create test user: ${SEED_RESULT}"
-  echo "  (Continuing — tests may fail if auth.users FK is enforced)"
+  echo "==> Skipping test-user seed (Supabase unreachable). DB-dependent tests will be skipped."
 fi
 
 # ---------- 1. Start mock server ----------
@@ -90,6 +105,7 @@ wait_for_url "$HEALTH_URL" "Dev server"
 echo "==> Running API E2E tests..."
 E2E_BASE_URL="http://127.0.0.1:${E2E_PORT}" \
 MOCK_SERVER_URL="http://127.0.0.1:${MOCK_PORT}" \
+SUPABASE_AVAILABLE="${SUPABASE_AVAILABLE}" \
   bun test ./tests/e2e/*.test.ts
 
 E2E_EXIT=$?

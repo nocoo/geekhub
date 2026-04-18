@@ -1,5 +1,8 @@
 import { describe, test, expect } from "bun:test";
 import { apiGet, apiPost, apiPut, apiDelete, expectJson } from "./helpers";
+import { DB_AVAILABLE } from "./db-available";
+
+const describeDb = DB_AVAILABLE ? describe : describe.skip;
 
 /**
  * Categories CRUD E2E tests.
@@ -10,7 +13,7 @@ import { apiGet, apiPost, apiPut, apiDelete, expectJson } from "./helpers";
 
 let categoryId: string;
 
-describe("Categories API", () => {
+describeDb("Categories API", () => {
   // ── List categories (baseline) ──────────────────────────────────
 
   test("GET /api/categories returns 200 with categories array", async () => {
