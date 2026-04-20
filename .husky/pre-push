@@ -12,3 +12,6 @@ echo "==> pre-push: running API E2E tests..."
 bash scripts/run-api-e2e.sh
 
 echo "==> pre-push: all checks passed."
+
+# G2b: dependency vulnerability scan
+osv-scanner scan --lockfile=bun.lock --config=osv-scanner.toml
