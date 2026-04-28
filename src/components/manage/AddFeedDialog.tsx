@@ -46,7 +46,7 @@ export function AddFeedDialog({ open, onOpenChange, categories, onSuccess, defau
   // Update categoryId when defaultCategoryId changes or dialog opens
   useEffect(() => {
     if (open) {
-      setCategoryId(defaultCategoryId || '');
+      setCategoryId(defaultCategoryId || ''); // eslint-disable-line react-hooks/set-state-in-effect -- intentional reset of form field when dialog opens
     }
   }, [open, defaultCategoryId]);
 
