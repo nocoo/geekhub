@@ -35,7 +35,13 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
   const fetchFeed = useFetchFeed();
   const isFeedFetching = useIsFeedFetching(feedId);
   const [showRead, setShowRead] = useState(false);
-  const [, forceUpdate] = useState({});
+  const [sessionReadIds, setSessionReadIds] = useState<Set<string>>(() => new Set());
+  const [trackedFeedId, setTrackedFeedId] = useState<string | null>(feedId);
+
+  if (trackedFeedId !== feedId) {
+    setTrackedFeedId(feedId);
+    setSessionReadIds(new Set());
+  }
 
   // Get current feed's ViewModel for unread count and auto_translate
   const feedViewModel = useFeedViewModel(feedId);
@@ -60,20 +66,12 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
     });
   }, [articles, effectiveAutoTranslate]);
 
-  // Track articles read in current feed session (cleared when switching feeds)
-  const sessionReadIdsRef = useRef<Set<string>>(new Set());
-
   // Ref for the article list container and selected article
   const listContainerRef = useRef<HTMLDivElement>(null);
   const selectedArticleRef = useRef<HTMLButtonElement>(null);
   const intersectionObserverRef = useRef<IntersectionObserver | null>(null);
   const visibleArticlesRef = useRef<Set<string>>(new Set());
   const translateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Clear session read IDs when feed changes
-  useEffect(() => {
-    sessionReadIdsRef.current.clear();
-  }, [feedId]);
 
   // Scroll selected article into view
   const scrollToSelectedArticle = useCallback(() => {
@@ -108,8 +106,8 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
 
   // Check if article should be displayed as read (including session read)
   const isArticleRead = useCallback((article: Article) => {
-    return article.isRead || (!!article.id && sessionReadIdsRef.current.has(article.id));
-  }, []); // Add forceUpdate as dependency to trigger re-render
+    return article.isRead || (!!article.id && sessionReadIds.has(article.id));
+  }, [sessionReadIds]);
 
   // Filter articles: show if unread OR was just read in this session
   const filteredArticles = useMemo(() => {
@@ -124,16 +122,22 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
     }
 
     // Show articles that are unread OR were read in this session
-    return articlesWithCachedTranslations.filter(a => !a.isRead || (a.id && sessionReadIdsRef.current.has(a.id)));
-  }, [articlesWithCachedTranslations, showRead, feedId]);
+    return articlesWithCachedTranslations.filter(a => !a.isRead || (a.id && sessionReadIds.has(a.id)));
+  }, [articlesWithCachedTranslations, showRead, feedId, sessionReadIds]);
 
   // Handle article selection - mark as read and track in session
   const handleSelectArticle = useCallback((article: Article) => {
     if (!article.isRead && article.id && feedId) {
       // Add to session read IDs to keep it visible
-      sessionReadIdsRef.current.add(article.id);
+      const id = article.id;
+      setSessionReadIds(prev => {
+        if (prev.has(id)) return prev;
+        const next = new Set(prev);
+        next.add(id);
+        return next;
+      });
       // Mark as read in database
-      markAsRead.mutate({ articleId: article.id, feedId });
+      markAsRead.mutate({ articleId: id, feedId });
     }
     onSelectArticle(article);
   }, [feedId, markAsRead, onSelectArticle]);
@@ -269,14 +273,13 @@ export function ArticleList({ articles, selectedArticle, onSelectArticle, isLoad
       const unreadArticles = articles.filter(a => !a.isRead && a.id);
 
       // Optimistically add to session read IDs for immediate UI update
-      unreadArticles.forEach(article => {
-        if (article.id) {
-          sessionReadIdsRef.current.add(article.id);
-        }
+      setSessionReadIds(prev => {
+        const next = new Set(prev);
+        unreadArticles.forEach(article => {
+          if (article.id) next.add(article.id);
+        });
+        return next;
       });
-
-      // Force re-render to update the UI immediately
-      forceUpdate({});
 
       // Show toast notification
       toast.success(`已将 ${unreadArticles.length} 篇文章标记为已读`);

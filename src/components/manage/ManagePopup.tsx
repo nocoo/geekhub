@@ -197,7 +197,7 @@ export function ManagePopup({ open, onOpenChange }: ManagePopupProps) {
 
   useEffect(() => {
     if (open) {
-      loadData();
+      loadData(); // eslint-disable-line react-hooks/set-state-in-effect -- fetch on dialog open is the intended sync trigger
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- loadData is not memoized, only re-fetch when user/open changes
   }, [user, open]);

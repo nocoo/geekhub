@@ -38,8 +38,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
-      setUser(devUser);  
-      setLoading(false);  
+      setUser(devUser); // eslint-disable-line react-hooks/set-state-in-effect -- dev-mode auth bootstrap during initial mount
+      setLoading(false);
       return;
     }
 

@@ -282,7 +282,7 @@ export function Sidebar({ selectedFeed, onSelectFeed, className }: SidebarProps 
   useEffect(() => {
     if (feedGroups && feedGroups.length > 0 && !hasInitializedCategories) {
       const categoryIds = feedGroups.filter(g => g.category).map(g => g.category!.id);
-      setExpandedCategories(new Set(categoryIds));
+      setExpandedCategories(new Set(categoryIds)); // eslint-disable-line react-hooks/set-state-in-effect -- one-time auto-expand on initial feed load
       setHasInitializedCategories(true);
     }
   }, [feedGroups, hasInitializedCategories]);

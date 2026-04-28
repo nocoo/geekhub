@@ -235,7 +235,7 @@ export function DataManagerPanel({ open, onOpenChange }: DataManagerPanelProps) 
   // Load data when dialog opens
   useEffect(() => {
     if (open) {
-      loadDataManagerData();
+      loadDataManagerData(); // eslint-disable-line react-hooks/set-state-in-effect -- fetch on dialog open is the intended sync trigger
     }
   }, [open, loadDataManagerData]);
 

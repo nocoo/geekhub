@@ -107,7 +107,7 @@ export function ReaderView({ article, onBack, className }: ReaderViewProps) {
   // Update bookmark and read later status when article changes or cache updates
   useEffect(() => {
     if (!article?.id || !user) {
-      setIsBookmarked(false);
+      setIsBookmarked(false); // eslint-disable-line react-hooks/set-state-in-effect -- reset derived status when article/user becomes unavailable
       setIsReadLater(false);
       return;
     }
@@ -211,7 +211,7 @@ export function ReaderView({ article, onBack, className }: ReaderViewProps) {
 
   // Reset enhanced content when article changes
   useEffect(() => {
-    setEnhancedContent(null);
+    setEnhancedContent(null); // eslint-disable-line react-hooks/set-state-in-effect -- intentional reset when article changes
     setShowTranslation(false);
     setTranslatedContent(null);
   }, [article?.id]);
@@ -221,7 +221,7 @@ export function ReaderView({ article, onBack, className }: ReaderViewProps) {
     if (!article?.id) return;
     const cached = getContentTranslationCache(article.id);
     if (cached) {
-      setTranslatedContent(cached);
+      setTranslatedContent(cached); // eslint-disable-line react-hooks/set-state-in-effect -- hydrating from localStorage cache on article change
       setShowTranslation(true);
     }
   }, [article?.id]);
