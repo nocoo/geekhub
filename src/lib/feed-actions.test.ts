@@ -59,6 +59,17 @@ describe('Feed Actions Service', () => {
 
       await expect(toggleAutoTranslate('feed-123', true)).rejects.toThrow('Failed to update');
     });
+
+    it('should use default error when json parsing fails', async () => {
+      const mockJson = vi.fn(() => Promise.reject(new Error('Parse error')));
+      mockFetch.mockImplementation(() =>
+        Promise.resolve({ ok: false, json: mockJson } as unknown as Response)
+      );
+
+      const { toggleAutoTranslate } = await import('./feed-actions');
+
+      await expect(toggleAutoTranslate('feed-123', true)).rejects.toThrow('Failed to update auto-translate');
+    });
   });
 
   describe('fetchFeed', () => {
@@ -100,6 +111,17 @@ describe('Feed Actions Service', () => {
       const { fetchFeed } = await import('./feed-actions');
 
       await expect(fetchFeed('feed-123')).rejects.toThrow('Fetch failed');
+    });
+
+    it('should use default error when json parsing fails', async () => {
+      const mockJson = vi.fn(() => Promise.reject(new Error('Parse error')));
+      mockFetch.mockImplementation(() =>
+        Promise.resolve({ ok: false, json: mockJson } as unknown as Response)
+      );
+
+      const { fetchFeed } = await import('./feed-actions');
+
+      await expect(fetchFeed('feed-123')).rejects.toThrow('Failed to fetch feed');
     });
   });
 

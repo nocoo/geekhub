@@ -2,8 +2,7 @@
  * @file AuthContext.test.tsx
  * Tests for AuthContext.
  *
- * Mocks both @supabase/ssr and the path-aliased wrapper so mock.module works
- * reliably across Bun versions and platforms (macOS + Linux CI).
+ * Mocks both @supabase/ssr and the path-aliased wrapper via vi.mock.
  *
  * The @supabase/ssr mock preserves createServerClient (used by other modules)
  * and only overrides createBrowserClient, which is what AuthContext consumes.
@@ -61,11 +60,11 @@ vi.mock('@supabase/ssr', () => ({
     createServerClient: () => fakeClient(),
 }));
 
-// Import *after* mock.module so the mock is picked up
+// Import *after* vi.mock so the mock is picked up
 const { AuthProvider, useAuth } = await import('./AuthContext');
 
-// TODO: AuthContext tests timeout in CI (bun 1.3.12) due to mock.module differences
-// They pass locally on bun 1.3.5. Re-enable when bun mock.module is stable.
+// TODO: AuthContext tests timeout in jsdom under React 19 act/waitFor flow.
+// Re-enable once the React 19 + jsdom interaction is resolved.
 describe.skip('AuthContext', () => {
     afterEach(cleanup);
 

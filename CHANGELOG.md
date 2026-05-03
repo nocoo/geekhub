@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased]
+
+### Tests
+
+- Migrate L1 unit-test runner from `bun:test` to `vitest` with v8 coverage provider
+- Enforce coverage thresholds (95% statements/functions/lines, 90% branches) via `vitest.config.ts`
+- Update all test imports from `bun:test` to `vitest`
+
 ## [0.2.1] - 2026-03-11
 
 ### Tests
@@ -7,7 +15,7 @@
 - Implement 4-layer test architecture (L1 UT, L2 Lint, L3 API E2E, L4 BDD E2E)
 - Add 67 API E2E tests across 10 test files covering all RESTful endpoints
 - Add mock server infrastructure (Bun.serve at port 14000) for AI and external URL routes
-- Migrate 3 test files from vitest to bun:test
+- Unify L1 test imports under a single test framework
 - Add coverage for useArticleActions hooks, boosting coverage from 87% to 93%
 
 ### Chores

@@ -57,6 +57,18 @@ describe('Article Actions Service', () => {
       await expect(fetchFullContent('article-123', 'https://example.com/article'))
         .rejects.toThrow('Failed to fetch full content');
     });
+
+    it('should use default error when json parsing fails on error response', async () => {
+      const mockJson = vi.fn(() => Promise.reject(new Error('Parse error')));
+      mockFetch.mockImplementation(() =>
+        Promise.resolve({ ok: false, json: mockJson } as unknown as Response)
+      );
+
+      const { fetchFullContent } = await import('./article-actions');
+
+      await expect(fetchFullContent('article-123', 'https://example.com/article'))
+        .rejects.toThrow('Failed to fetch full content');
+    });
   });
 
   describe('translateContent', () => {
@@ -93,6 +105,26 @@ describe('Article Actions Service', () => {
 
     it('should throw error when translation fails', async () => {
       const mockJson = vi.fn(() => Promise.resolve({ error: 'Translation failed' }));
+      mockFetch.mockImplementation(() =>
+        Promise.resolve({ ok: false, json: mockJson } as unknown as Response)
+      );
+
+      const { translateContent } = await import('./article-actions');
+
+      const aiSettings = {
+        enabled: true,
+        provider: 'openai',
+        baseUrl: 'https://api.openai.com',
+        model: 'gpt-4',
+        apiKey: 'test-key',
+      };
+
+      await expect(translateContent('article-123', 'Original content', aiSettings))
+        .rejects.toThrow('Translation failed');
+    });
+
+    it('should use default error when json parsing fails on error response', async () => {
+      const mockJson = vi.fn(() => Promise.reject(new Error('Parse error')));
       mockFetch.mockImplementation(() =>
         Promise.resolve({ ok: false, json: mockJson } as unknown as Response)
       );
@@ -157,6 +189,17 @@ describe('Article Actions Service', () => {
 
       await expect(bookmarkArticle('article-123')).rejects.toThrow('Failed to bookmark');
     });
+
+    it('should use default error when json parsing fails', async () => {
+      const mockJson = vi.fn(() => Promise.reject(new Error('Parse error')));
+      mockFetch.mockImplementation(() =>
+        Promise.resolve({ ok: false, json: mockJson } as unknown as Response)
+      );
+
+      const { bookmarkArticle } = await import('./article-actions');
+
+      await expect(bookmarkArticle('article-123')).rejects.toThrow('Failed to bookmark article');
+    });
   });
 
   describe('unbookmarkArticle', () => {
@@ -177,6 +220,17 @@ describe('Article Actions Service', () => {
 
     it('should throw error when unbookmark fails', async () => {
       const mockJson = vi.fn(() => Promise.resolve({ error: 'Failed to remove bookmark' }));
+      mockFetch.mockImplementation(() =>
+        Promise.resolve({ ok: false, json: mockJson } as unknown as Response)
+      );
+
+      const { unbookmarkArticle } = await import('./article-actions');
+
+      await expect(unbookmarkArticle('article-123')).rejects.toThrow('Failed to remove bookmark');
+    });
+
+    it('should use default error when json parsing fails', async () => {
+      const mockJson = vi.fn(() => Promise.reject(new Error('Parse error')));
       mockFetch.mockImplementation(() =>
         Promise.resolve({ ok: false, json: mockJson } as unknown as Response)
       );
@@ -215,6 +269,17 @@ describe('Article Actions Service', () => {
 
       await expect(saveForLater('article-123')).rejects.toThrow('Failed to save');
     });
+
+    it('should use default error when json parsing fails', async () => {
+      const mockJson = vi.fn(() => Promise.reject(new Error('Parse error')));
+      mockFetch.mockImplementation(() =>
+        Promise.resolve({ ok: false, json: mockJson } as unknown as Response)
+      );
+
+      const { saveForLater } = await import('./article-actions');
+
+      await expect(saveForLater('article-123')).rejects.toThrow('Failed to save article');
+    });
   });
 
   describe('removeFromLater', () => {
@@ -242,6 +307,17 @@ describe('Article Actions Service', () => {
       const { removeFromLater } = await import('./article-actions');
 
       await expect(removeFromLater('article-123')).rejects.toThrow('Failed to remove');
+    });
+
+    it('should use default error when json parsing fails', async () => {
+      const mockJson = vi.fn(() => Promise.reject(new Error('Parse error')));
+      mockFetch.mockImplementation(() =>
+        Promise.resolve({ ok: false, json: mockJson } as unknown as Response)
+      );
+
+      const { removeFromLater } = await import('./article-actions');
+
+      await expect(removeFromLater('article-123')).rejects.toThrow('Failed to remove article');
     });
   });
 });
