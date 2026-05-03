@@ -106,7 +106,7 @@ echo "==> Running API E2E tests..."
 E2E_BASE_URL="http://127.0.0.1:${E2E_PORT}" \
 MOCK_SERVER_URL="http://127.0.0.1:${MOCK_PORT}" \
 SUPABASE_AVAILABLE="${SUPABASE_AVAILABLE}" \
-  bun test ./tests/e2e/*.test.ts
+  bunx vitest run --config vitest.e2e.config.ts
 
 E2E_EXIT=$?
 
