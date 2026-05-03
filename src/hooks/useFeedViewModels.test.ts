@@ -3,7 +3,7 @@
  * Unit tests for FeedViewModel transformation and grouping logic
  */
 
-import { describe, it, expect } from 'bun:test';
+import { describe, it, expect } from 'vitest';
 import { FeedViewModel, FeedGroupViewModel, CategoryViewModel } from '@/types/feed-view-model';
 
 // Import the actual transformation function from source to ensure consistency

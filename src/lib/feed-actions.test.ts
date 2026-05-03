@@ -3,10 +3,10 @@
  * TDD tests for feed actions service layer
  */
 
-import { describe, it, expect, mock, beforeEach } from 'bun:test';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock fetch globally
-const mockFetch = mock(() => Promise.resolve(new Response()));
+const mockFetch = vi.fn(() => Promise.resolve(new Response()));
 global.fetch = mockFetch as unknown as typeof fetch;
 
 describe('Feed Actions Service', () => {
@@ -16,7 +16,7 @@ describe('Feed Actions Service', () => {
 
   describe('toggleAutoTranslate', () => {
     it('should call API to enable auto-translate', async () => {
-      const mockJson = mock(() => Promise.resolve({ success: true }));
+      const mockJson = vi.fn(() => Promise.resolve({ success: true }));
       mockFetch.mockImplementation(() =>
         Promise.resolve({ ok: true, json: mockJson } as unknown as Response)
       );
@@ -33,7 +33,7 @@ describe('Feed Actions Service', () => {
     });
 
     it('should call API to disable auto-translate', async () => {
-      const mockJson = mock(() => Promise.resolve({ success: true }));
+      const mockJson = vi.fn(() => Promise.resolve({ success: true }));
       mockFetch.mockImplementation(() =>
         Promise.resolve({ ok: true, json: mockJson } as unknown as Response)
       );
@@ -50,7 +50,7 @@ describe('Feed Actions Service', () => {
     });
 
     it('should throw error when API fails', async () => {
-      const mockJson = mock(() => Promise.resolve({ error: 'Failed to update' }));
+      const mockJson = vi.fn(() => Promise.resolve({ error: 'Failed to update' }));
       mockFetch.mockImplementation(() =>
         Promise.resolve({ ok: false, json: mockJson } as unknown as Response)
       );
@@ -63,7 +63,7 @@ describe('Feed Actions Service', () => {
 
   describe('fetchFeed', () => {
     it('should call feed fetch API', async () => {
-      const mockJson = mock(() => Promise.resolve({ success: true }));
+      const mockJson = vi.fn(() => Promise.resolve({ success: true }));
       mockFetch.mockImplementation(() =>
         Promise.resolve({ ok: true, json: mockJson } as unknown as Response)
       );
@@ -79,7 +79,7 @@ describe('Feed Actions Service', () => {
     });
 
     it('should work without feed title', async () => {
-      const mockJson = mock(() => Promise.resolve({ success: true }));
+      const mockJson = vi.fn(() => Promise.resolve({ success: true }));
       mockFetch.mockImplementation(() =>
         Promise.resolve({ ok: true, json: mockJson } as unknown as Response)
       );
@@ -92,7 +92,7 @@ describe('Feed Actions Service', () => {
     });
 
     it('should throw error when fetch fails', async () => {
-      const mockJson = mock(() => Promise.resolve({ error: 'Fetch failed' }));
+      const mockJson = vi.fn(() => Promise.resolve({ error: 'Fetch failed' }));
       mockFetch.mockImplementation(() =>
         Promise.resolve({ ok: false, json: mockJson } as unknown as Response)
       );
@@ -105,7 +105,7 @@ describe('Feed Actions Service', () => {
 
   describe('markAllAsRead', () => {
     it('should call mark all as read API', async () => {
-      const mockJson = mock(() => Promise.resolve({ success: true }));
+      const mockJson = vi.fn(() => Promise.resolve({ success: true }));
       mockFetch.mockImplementation(() =>
         Promise.resolve({ ok: true, json: mockJson } as unknown as Response)
       );
@@ -120,7 +120,7 @@ describe('Feed Actions Service', () => {
     });
 
     it('should throw error when API fails', async () => {
-      const mockJson = mock(() => Promise.resolve({ error: 'Failed to mark all as read' }));
+      const mockJson = vi.fn(() => Promise.resolve({ error: 'Failed to mark all as read' }));
       mockFetch.mockImplementation(() =>
         Promise.resolve({ ok: false, json: mockJson } as unknown as Response)
       );
@@ -131,7 +131,7 @@ describe('Feed Actions Service', () => {
     });
 
     it('should use default error message when json parsing fails', async () => {
-      const mockJson = mock(() => Promise.reject(new Error('Parse error')));
+      const mockJson = vi.fn(() => Promise.reject(new Error('Parse error')));
       mockFetch.mockImplementation(() =>
         Promise.resolve({ ok: false, json: mockJson } as unknown as Response)
       );
@@ -144,7 +144,7 @@ describe('Feed Actions Service', () => {
 
   describe('markArticleAsRead', () => {
     it('should call mark article as read API', async () => {
-      const mockJson = mock(() => Promise.resolve({ success: true }));
+      const mockJson = vi.fn(() => Promise.resolve({ success: true }));
       mockFetch.mockImplementation(() =>
         Promise.resolve({ ok: true, json: mockJson } as unknown as Response)
       );
@@ -161,7 +161,7 @@ describe('Feed Actions Service', () => {
     });
 
     it('should throw error when API fails', async () => {
-      const mockJson = mock(() => Promise.resolve({ error: 'Failed to mark as read' }));
+      const mockJson = vi.fn(() => Promise.resolve({ error: 'Failed to mark as read' }));
       mockFetch.mockImplementation(() =>
         Promise.resolve({ ok: false, json: mockJson } as unknown as Response)
       );
@@ -172,7 +172,7 @@ describe('Feed Actions Service', () => {
     });
 
     it('should use default error message when json parsing fails', async () => {
-      const mockJson = mock(() => Promise.reject(new Error('Parse error')));
+      const mockJson = vi.fn(() => Promise.reject(new Error('Parse error')));
       mockFetch.mockImplementation(() =>
         Promise.resolve({ ok: false, json: mockJson } as unknown as Response)
       );
@@ -186,7 +186,7 @@ describe('Feed Actions Service', () => {
   describe('getFeedViewModel', () => {
     it('should return feed view model on success', async () => {
       const mockFeed = { id: 'feed-123', title: 'Test Feed', url: 'https://example.com/feed' };
-      const mockJson = mock(() => Promise.resolve({ feed: mockFeed }));
+      const mockJson = vi.fn(() => Promise.resolve({ feed: mockFeed }));
       mockFetch.mockImplementation(() =>
         Promise.resolve({ ok: true, json: mockJson } as unknown as Response)
       );
@@ -200,7 +200,7 @@ describe('Feed Actions Service', () => {
     });
 
     it('should return null when API fails', async () => {
-      const mockJson = mock(() => Promise.resolve({}));
+      const mockJson = vi.fn(() => Promise.resolve({}));
       mockFetch.mockImplementation(() =>
         Promise.resolve({ ok: false, json: mockJson } as unknown as Response)
       );

@@ -1,4 +1,4 @@
-import { describe, test, expect } from "bun:test";
+import { describe, test, expect } from "vitest";
 import { apiGet, expectJson } from "./helpers";
 import { MOCK_URL } from "./setup";
 

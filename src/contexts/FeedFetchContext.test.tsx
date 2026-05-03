@@ -3,7 +3,7 @@
  * Tests for FeedFetchContext.
  */
 
-import { describe, it, expect, mock, beforeEach, afterEach } from 'bun:test';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, cleanup } from '@testing-library/react';
 import { FeedFetchProvider, useFeedFetch } from './FeedFetchContext';
 import React, { ReactNode } from 'react';
@@ -11,13 +11,15 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createTestQueryClient } from '@/test/test-utils';
 
 // Mock dependencies
-const mockUseSSEEvents = mock(() => { });
+const { mockUseSSEEvents } = vi.hoisted(() => ({
+    mockUseSSEEvents: vi.fn(() => { }),
+}));
 
-mock.module('./SSEContext', () => ({
+vi.mock('./SSEContext', () => ({
     useFeedFetchEvents: mockUseSSEEvents,
 }));
 
-mock.module('./AuthContext', () => ({
+vi.mock('./AuthContext', () => ({
     useAuth: () => ({ user: { id: 'user-123' } }),
 }));
 
@@ -29,7 +31,7 @@ describe('FeedFetchContext', () => {
         mockUseSSEEvents.mockClear();
         queryClient = createTestQueryClient();
         // Spy on invalidateQueries
-        queryClient.invalidateQueries = mock(() => Promise.resolve()) as typeof queryClient.invalidateQueries;
+        queryClient.invalidateQueries = vi.fn(() => Promise.resolve()) as typeof queryClient.invalidateQueries;
     });
 
     it('should manage fetching state', () => {

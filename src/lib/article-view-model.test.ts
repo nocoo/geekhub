@@ -6,7 +6,7 @@
  * Run: bun test -- article-view-model.test.ts
  */
 
-import { describe, it, expect } from 'bun:test';
+import { describe, it, expect } from 'vitest';
 import { ArticleViewModelService } from './article-view-model';
 import type { createClient } from '@supabase/supabase-js';
 
@@ -64,7 +64,7 @@ describe('ArticleViewModelService', () => {
       expect(result).toHaveProperty('articles');
       expect(result).toHaveProperty('total');
       expect(result).toHaveProperty('lastUpdated');
-      expect(result.articles).toBeArray();
+      expect(Array.isArray(result.articles)).toBe(true);
       expect(result.feed.id).toBe('feed-id');
       expect(result.feed.title).toBe('Test Feed');
     });

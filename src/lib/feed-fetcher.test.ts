@@ -7,6 +7,7 @@
  */
 
 import crypto from "crypto";
+import { describe, it, expect } from 'vitest';
 
 // Import types for testing (we'll mock the implementation)
 interface FeedInfo {

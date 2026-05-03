@@ -1,6 +1,6 @@
-import { describe, test, expect, mock, beforeEach } from 'bun:test';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
 
-const mockParseURL = mock(() => Promise.resolve({
+const mockParseURL = vi.fn(() => Promise.resolve({
   title: 'Test Feed',
   description: 'A test feed',
   link: 'https://example.com',
@@ -20,7 +20,7 @@ const mockParseURL = mock(() => Promise.resolve({
   ],
 }));
 
-mock.module('rss-parser', () => ({
+vi.mock('rss-parser', () => ({
   default: class MockParser {
     parseURL = mockParseURL;
   },

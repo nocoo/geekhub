@@ -9,46 +9,54 @@
  * and only overrides createBrowserClient, which is what AuthContext consumes.
  */
 
-import { describe, it, expect, mock, beforeEach, afterEach } from 'bun:test';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, waitFor, act, cleanup } from '@testing-library/react';
 import React, { ReactNode } from 'react';
 
 // ── shared mock fns ──────────────────────────────────────────────────
-const mockGetSession = mock(() =>
-    Promise.resolve({ data: { session: null }, error: null }),
-);
-const mockSignOut = mock(() => Promise.resolve({ error: null }));
-const mockSignInWithOAuth = mock(() => Promise.resolve({ error: null }));
+const {
+    mockGetSession,
+    mockSignOut,
+    mockSignInWithOAuth,
+    mockOnAuthStateChange,
+    fakeClient,
+    supabaseMock,
+} = vi.hoisted(() => {
+    const mockGetSession = vi.fn(() =>
+        Promise.resolve({ data: { session: null }, error: null }),
+    );
+    const mockSignOut = vi.fn(() => Promise.resolve({ error: null }));
+    const mockSignInWithOAuth = vi.fn(() => Promise.resolve({ error: null }));
+    const mockOnAuthStateChange = vi.fn(
+        (_cb: (event: string, session: { user: Record<string, unknown> } | null) => void) => {
+            return { data: { subscription: { unsubscribe: vi.fn(() => {}) } } };
+        },
+    );
+    const fakeClient = () => ({
+        auth: {
+            getSession: mockGetSession,
+            onAuthStateChange: mockOnAuthStateChange,
+            signOut: mockSignOut,
+            signInWithOAuth: mockSignInWithOAuth,
+        },
+    });
+    const supabaseMock = () => ({
+        createClient: () => fakeClient(),
+    });
+    return { mockGetSession, mockSignOut, mockSignInWithOAuth, mockOnAuthStateChange, fakeClient, supabaseMock };
+});
 
 let authStateCallback: ((event: string, session: { user: Record<string, unknown> } | null) => void) | undefined;
-const mockOnAuthStateChange = mock(
-    (cb: (event: string, session: { user: Record<string, unknown> } | null) => void) => {
-        authStateCallback = cb;
-        return { data: { subscription: { unsubscribe: mock(() => {}) } } };
-    },
-);
-
-const fakeClient = () => ({
-    auth: {
-        getSession: mockGetSession,
-        onAuthStateChange: mockOnAuthStateChange,
-        signOut: mockSignOut,
-        signInWithOAuth: mockSignInWithOAuth,
-    },
-});
 
 // Mock the wrapper module at path-alias and relative forms.
-const supabaseMock = () => ({
-    createClient: () => fakeClient(),
-});
-mock.module('@/lib/supabase-browser', supabaseMock);
-mock.module('../lib/supabase-browser', supabaseMock);
+vi.mock('@/lib/supabase-browser', supabaseMock);
+vi.mock('../lib/supabase-browser', supabaseMock);
 
 // Also mock @supabase/ssr — the package that supabase-browser.ts imports.
 // This catches cases where the path-alias mock doesn't intercept on certain
 // Bun versions / platforms. We stub createServerClient as a passthrough so
 // other test files that mock it themselves aren't broken by a missing export.
-mock.module('@supabase/ssr', () => ({
+vi.mock('@supabase/ssr', () => ({
     createBrowserClient: () => fakeClient(),
     createServerClient: () => fakeClient(),
 }));
@@ -71,7 +79,7 @@ describe.skip('AuthContext', () => {
         mockOnAuthStateChange.mockImplementation(
             (cb: (event: string, session: { user: Record<string, unknown> } | null) => void) => {
                 authStateCallback = cb;
-                return { data: { subscription: { unsubscribe: mock(() => {}) } } };
+                return { data: { subscription: { unsubscribe: vi.fn(() => {}) } } };
             },
         );
         mockSignOut.mockClear();
@@ -165,7 +173,7 @@ describe.skip('AuthContext', () => {
 
     it('should throw error when useAuth is used outside AuthProvider', () => {
         // Suppress React error boundary console output during this test
-        const spy = mock(() => {});
+        const spy = vi.fn(() => {});
         const origError = console.error;
         console.error = spy;
 

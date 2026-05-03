@@ -3,7 +3,7 @@
  * Integration tests for article action hooks with optimistic updates and rollbacks.
  */
 
-import { describe, it, expect, mock, beforeEach, afterEach } from 'bun:test';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHookWithProviders, createTestQueryClient } from '@/test/test-utils';
 import {
   useBookmarkArticle,
@@ -18,15 +18,15 @@ import { waitFor, cleanup } from '@testing-library/react';
 import { act } from 'react';
 
 // Mock sonner
-mock.module('sonner', () => ({
+vi.mock('sonner', () => ({
     toast: {
-        success: mock(() => { }),
-        error: mock(() => { }),
+        success: vi.fn(() => { }),
+        error: vi.fn(() => { }),
     },
 }));
 
 // Mock global fetch
-const mockFetch = mock(() => Promise.resolve({
+const mockFetch = vi.fn(() => Promise.resolve({
     ok: true,
     json: () => Promise.resolve({ success: true }),
 }));

@@ -1,5 +1,5 @@
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
-import { describe, it, expect, mock, afterEach } from 'bun:test';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { ArticleItem } from './ArticleItem';
 import { Article } from '@/hooks/useDatabase';
 
@@ -22,8 +22,8 @@ describe('ArticleItem', () => {
         image: null,
     };
 
-    const mockFormatTime = mock((_date: string) => '10 mins ago');
-    const mockOnSelect = mock(() => { });
+    const mockFormatTime = vi.fn((_date: string) => '10 mins ago');
+    const mockOnSelect = vi.fn(() => { });
 
     it('should render article details correctly', () => {
         render(

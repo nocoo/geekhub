@@ -3,7 +3,7 @@
  * Unit tests for pure logic in FeedViewModel lib
  */
 
-import { describe, it, expect } from 'bun:test';
+import { describe, it, expect } from 'vitest';
 import { transformToViewModel, calculateFeedGroups, FeedApiResponse } from './feed-view-model';
 import { FeedViewModel } from '@/types/feed-view-model';
 
