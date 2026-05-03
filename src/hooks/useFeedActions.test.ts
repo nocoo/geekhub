@@ -6,7 +6,7 @@
  * by directly testing the QueryClient manipulation patterns.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { QueryClient } from '@tanstack/react-query';
 import { FeedViewModel } from '@/types/feed-view-model';
 

@@ -1,11 +1,11 @@
-import { describe, test, expect, mock, beforeEach, spyOn } from 'bun:test';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { FeedLogger, LogLevel, type FetchLogEntry } from './logger';
 
-const mockInsert = mock(() => Promise.resolve({ error: null }));
-const mockSelect = mock(() => ({
-  eq: mock(() => ({
-    order: mock(() => ({
-      limit: mock(() => Promise.resolve({ 
+const mockInsert = vi.fn(() => Promise.resolve({ error: null }));
+const mockSelect = vi.fn(() => ({
+  eq: vi.fn(() => ({
+    order: vi.fn(() => ({
+      limit: vi.fn(() => Promise.resolve({ 
         data: [
           { fetched_at: '2026-02-01T00:00:00Z', level: 'INFO', action: 'FETCH', url: 'https://example.com' },
           { fetched_at: '2026-02-02T00:00:00Z', level: 'SUCCESS', action: 'PARSE', url: 'https://example.com' },
@@ -15,12 +15,12 @@ const mockSelect = mock(() => ({
     })),
   })),
 }));
-const mockFrom = mock(() => ({
+const mockFrom = vi.fn(() => ({
   insert: mockInsert,
   select: mockSelect,
 }));
 
-mock.module('@supabase/supabase-js', () => ({
+vi.mock('@supabase/supabase-js', () => ({
   createClient: () => ({
     from: mockFrom,
   }),
@@ -207,7 +207,7 @@ describe('FeedLogger', () => {
 
   describe('clearLogs()', () => {
     test('logs warning about unsupported operation', async () => {
-      const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       const logger = new FeedLogger('feed-123', 'urlhash123');
       
       await logger.clearLogs();
@@ -219,7 +219,7 @@ describe('FeedLogger', () => {
 
   describe('error handling', () => {
     test('handles database insert error gracefully', async () => {
-      const errorSpy = spyOn(console, 'error').mockImplementation(() => {});
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       mockInsert.mockImplementationOnce(() => Promise.reject(new Error('DB error')));
       
       const logger = new FeedLogger('feed-123', 'urlhash123');

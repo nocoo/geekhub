@@ -1,4 +1,4 @@
-import { describe, test, expect } from 'bun:test';
+import { describe, test, expect } from 'vitest';
 import { getProxyImageUrl, getRefererFromUrl } from './image-proxy';
 
 describe('image-proxy', () => {

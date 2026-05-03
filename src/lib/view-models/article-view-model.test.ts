@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'bun:test';
+import { describe, it, expect } from 'vitest';
 import { extractFirstImage, transformArticleToViewModel } from './article-view-model';
 
 describe('extractFirstImage', () => {

@@ -1,4 +1,4 @@
-import { describe, test, expect, mock, beforeEach, spyOn } from 'bun:test';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { render, screen } from '@testing-library/react';
 import React from 'react';
@@ -74,7 +74,7 @@ describe('SSEContext', () => {
     });
 
     test('closes EventSource on unmount', () => {
-      const closeSpy = spyOn(MockEventSource.prototype, 'close');
+      const closeSpy = vi.spyOn(MockEventSource.prototype, 'close');
       
       const { unmount } = render(
         <SSEProvider>
@@ -101,7 +101,7 @@ describe('SSEContext', () => {
 
   describe('useSSE', () => {
     test('throws error when used outside provider', () => {
-      const consoleSpy = spyOn(console, 'error').mockImplementation(() => {});
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       
       expect(() => {
         renderHook(() => useSSE());
@@ -142,7 +142,7 @@ describe('SSEContext', () => {
       
       const { result } = renderHook(() => useSSE(), { wrapper });
       
-      const callback = mock(() => {});
+      const callback = vi.fn(() => {});
       let unsubscribe: () => void;
       
       act(() => {
@@ -157,7 +157,7 @@ describe('SSEContext', () => {
     });
 
     test('callback receives fetch-complete events', async () => {
-      const callback = mock(() => {});
+      const callback = vi.fn(() => {});
       
       const TestComponent = () => {
         const { onFetchComplete } = useSSE();
@@ -193,7 +193,7 @@ describe('SSEContext', () => {
 
   describe('onLogsInit', () => {
     test('callback receives init events', async () => {
-      const callback = mock(() => {});
+      const callback = vi.fn(() => {});
       
       const TestComponent = () => {
         const { onLogsInit } = useSSE();
@@ -223,7 +223,7 @@ describe('SSEContext', () => {
 
   describe('onLogsUpdate', () => {
     test('callback receives update events', async () => {
-      const callback = mock(() => {});
+      const callback = vi.fn(() => {});
       
       const TestComponent = () => {
         const { onLogsUpdate } = useSSE();
@@ -253,7 +253,7 @@ describe('SSEContext', () => {
 
   describe('system events', () => {
     test('logs system messages', async () => {
-      const logSpy = spyOn(console, 'log').mockImplementation(() => {});
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       
       render(
         <SSEProvider>
@@ -292,7 +292,7 @@ describe('SSEContext', () => {
     });
 
     test('handles invalid JSON in fetch-complete event', async () => {
-      const errorSpy = spyOn(console, 'error').mockImplementation(() => {});
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       
       render(
         <SSEProvider>
@@ -311,7 +311,7 @@ describe('SSEContext', () => {
     });
 
     test('handles invalid JSON in init event', async () => {
-      const errorSpy = spyOn(console, 'error').mockImplementation(() => {});
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       
       render(
         <SSEProvider>
@@ -330,7 +330,7 @@ describe('SSEContext', () => {
     });
 
     test('handles invalid JSON in update event', async () => {
-      const errorSpy = spyOn(console, 'error').mockImplementation(() => {});
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       
       render(
         <SSEProvider>
@@ -349,7 +349,7 @@ describe('SSEContext', () => {
     });
 
     test('handles invalid JSON in system event', async () => {
-      const errorSpy = spyOn(console, 'error').mockImplementation(() => {});
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       
       render(
         <SSEProvider>
@@ -380,7 +380,7 @@ describe('SSEContext', () => {
     });
 
     test('subscribes to fetch-complete events', () => {
-      const callback = mock(() => {});
+      const callback = vi.fn(() => {});
       const wrapper = ({ children }: { children: React.ReactNode }) => (
         <SSEProvider>{children}</SSEProvider>
       );
@@ -413,7 +413,7 @@ describe('SSEContext', () => {
     });
 
     test('subscribes to init events', () => {
-      const callback = mock(() => {});
+      const callback = vi.fn(() => {});
       const wrapper = ({ children }: { children: React.ReactNode }) => (
         <SSEProvider>{children}</SSEProvider>
       );
@@ -430,7 +430,7 @@ describe('SSEContext', () => {
     });
 
     test('subscribes to update events', () => {
-      const callback = mock(() => {});
+      const callback = vi.fn(() => {});
       const wrapper = ({ children }: { children: React.ReactNode }) => (
         <SSEProvider>{children}</SSEProvider>
       );
@@ -447,8 +447,8 @@ describe('SSEContext', () => {
     });
 
     test('subscribes to both init and update events', () => {
-      const onInit = mock(() => {});
-      const onUpdate = mock(() => {});
+      const onInit = vi.fn(() => {});
+      const onUpdate = vi.fn(() => {});
       const wrapper = ({ children }: { children: React.ReactNode }) => (
         <SSEProvider>{children}</SSEProvider>
       );

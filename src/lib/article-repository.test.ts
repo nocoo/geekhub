@@ -6,7 +6,7 @@
  * Run: bun test -- article-repository.test.ts
  */
 
-import { describe, it, expect } from 'bun:test';
+import { describe, it, expect } from 'vitest';
 import { ArticleRepository } from './article-repository';
 import type { createClient } from '@supabase/supabase-js';
 

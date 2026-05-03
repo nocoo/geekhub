@@ -3,37 +3,37 @@
  * Unit tests for useDatabase hooks, especially optimistic update behavior
  */
 
-import { describe, it, expect, mock } from 'bun:test';
+import { describe, it, expect, vi } from 'vitest';
 import { act } from 'react';
 import { QueryClient } from '@tanstack/react-query';
 import { FeedViewModel } from '@/types/feed-view-model';
 
 // Mock the supabase client
-mock.module('@/lib/supabase-browser', () => ({
-  createClient: mock(() => ({
+vi.mock('@/lib/supabase-browser', () => ({
+  createClient: vi.fn(() => ({
     auth: {
-      getUser: mock(),
+      getUser: vi.fn(),
     },
-    from: mock(() => ({
-      select: mock(() => ({
-        eq: mock(() => ({
-          single: mock(),
-          order: mock(),
+    from: vi.fn(() => ({
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          single: vi.fn(),
+          order: vi.fn(),
         })),
-        in: mock(),
+        in: vi.fn(),
       })),
-      insert: mock(() => ({
-        select: mock(() => ({
-          single: mock(),
-        })),
-      })),
-      update: mock(() => ({
-        select: mock(() => ({
-          single: mock(),
+      insert: vi.fn(() => ({
+        select: vi.fn(() => ({
+          single: vi.fn(),
         })),
       })),
-      delete: mock(() => ({
-        eq: mock(),
+      update: vi.fn(() => ({
+        select: vi.fn(() => ({
+          single: vi.fn(),
+        })),
+      })),
+      delete: vi.fn(() => ({
+        eq: vi.fn(),
       })),
     })),
   })),

@@ -6,7 +6,7 @@ echo "==> pre-push: running production build..."
 bun run build
 
 echo "==> pre-push: running coverage check..."
-bash scripts/check-coverage.sh
+bun run test:coverage
 
 echo "==> pre-push: running API E2E tests..."
 bash scripts/run-api-e2e.sh

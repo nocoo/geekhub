@@ -6,7 +6,7 @@
  * Run: bun test -- translation-queue.test.ts
  */
 
-import { describe, it, expect } from 'bun:test';
+import { describe, it, expect } from 'vitest';
 import type { TranslationRequest } from './translation-queue';
 import type { Article } from '@/hooks/useDatabase';
 import type { QueryClient } from '@tanstack/react-query';

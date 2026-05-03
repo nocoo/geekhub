@@ -23,12 +23,12 @@
 
 ```
 pre-commit (快速，< 30s)
-├── L1 UT     bun test                    332+ tests
+├── L1 UT     bun run test                338+ tests
 └── L2 Lint   eslint --max-warnings 0     zero errors, zero warnings
 
 pre-push (完整，2-3 min)
-├── L1 UT + 覆盖率   scripts/check-coverage.sh   ≥ 90% 行覆盖率
-└── L3 API E2E       scripts/run-api-e2e.sh       45 handlers covered
+├── L1 UT + 覆盖率   bun run test:coverage         95% 门禁 (90% branches)
+└── L3 API E2E       scripts/run-api-e2e.sh        45 handlers covered
 
 on-demand (按需)
 └── L4 BDD E2E       Playwright (future)
@@ -36,9 +36,9 @@ on-demand (按需)
 
 | 层 | 目标 | 工具 | 触发时机 |
 |----|------|------|---------|
-| L1 UT | 业务逻辑 90%+ 覆盖 | bun:test | pre-commit, pre-push |
+| L1 UT | 业务逻辑 95%+ 覆盖 | vitest | pre-commit, pre-push |
 | L2 Lint | 代码质量零瑕疵 | ESLint strict | pre-commit |
-| L3 API E2E | 100% API route 覆盖 | bun:test + Next.js dev server | pre-push |
+| L3 API E2E | 100% API route 覆盖 | vitest + Next.js dev server | pre-push |
 | L4 BDD E2E | 核心用户流程 | Playwright (future) | 按需 |
 
 ---
@@ -70,31 +70,35 @@ on-demand (按需)
 
 ## L1 单元测试
 
-### 框架：bun:test
+### 框架：vitest
 
-GeekHub 使用 Bun 内置测试框架，配置在 `bunfig.toml`：
+GeekHub 使用 vitest 运行 L1 单元测试，配置在 `vitest.config.ts`：
 
-```toml
-[test]
-preload = ["./src/test/setup.ts"]
-root = "./src"
+```typescript
+test: {
+  environment: 'jsdom',
+  globals: false,
+  setupFiles: ['./src/test/setup.ts'],
+  include: ['src/**/*.test.{ts,tsx}'],
+  coverage: { provider: 'v8', thresholds: { statements: 95, functions: 95, lines: 95, branches: 90 } },
+}
 ```
 
 ### 运行命令
 
 ```bash
-bun test                    # 运行所有 L1 单元测试
-bun test src/lib/rss.test.ts  # 运行单个文件
-bun test --filter "RSS"     # 过滤匹配
-bun test --watch            # 监听模式
-bun test --coverage         # 查看覆盖率
+bun run test                                # 运行所有 L1 单元测试
+bun run test src/lib/rss.test.ts            # 运行单个文件
+bun run test -- -t "RSS"                    # 过滤匹配
+bun run test -- --watch                     # 监听模式
+bun run test:coverage                       # 查看覆盖率
 ```
 
 ### package.json scripts
 
 ```bash
-bun run test              # bun test
-bun run test:coverage     # scripts/check-coverage.sh (90% 门禁)
+bun run test              # vitest run
+bun run test:coverage     # vitest run --coverage (95% 门禁)
 bun run lint              # eslint --max-warnings 0 .
 bun run test:e2e          # scripts/run-api-e2e.sh
 ```
@@ -103,38 +107,41 @@ bun run test:e2e          # scripts/run-api-e2e.sh
 
 | 指标 | 目标 |
 |------|------|
-| 行覆盖率 | ≥ 90% |
+| Statements | ≥ 95% |
+| Functions  | ≥ 95% |
+| Lines      | ≥ 95% |
+| Branches   | ≥ 90% |
 
-覆盖率门禁脚本 `scripts/check-coverage.sh` 在 pre-push 阶段执行。
+覆盖率门禁通过 vitest 自带的 `coverage.thresholds` 在 pre-push 阶段执行。
 
 ### 当前 L1 测试覆盖
 
 | 模块 | 测试文件 | 测试数 |
 |------|----------|--------|
-| 业务逻辑 | `src/lib/*.test.ts` | 10 个文件 |
+| 业务逻辑 | `src/lib/*.test.ts` | 10+ 个文件 |
 | Hooks | `src/hooks/*.test.ts` | 4 个文件 |
-| Context | `src/contexts/*.test.tsx` | 2 个文件 |
+| Context | `src/contexts/*.test.tsx` | 3 个文件 |
 | 组件 | `src/components/*.test.tsx` | 1 个文件 |
-| **合计** | **24 个文件** | **332+ tests** |
+| **合计** | **24 个文件** | **338+ tests** |
 
-### Mock 规范（bun:test）
+### Mock 规范（vitest）
 
 ```typescript
-import { mock, spyOn } from 'bun:test'
+import { vi } from 'vitest'
 
 // 创建 mock 函数
-const mockFn = mock(() => 'mocked value')
+const mockFn = vi.fn(() => 'mocked value')
 
 // spy 现有函数
-const spy = spyOn(object, 'method')
+const spy = vi.spyOn(object, 'method')
 
 // mock 模块
-mock.module('module-name', () => ({
-  default: mock(() => 'mocked'),
+vi.mock('module-name', () => ({
+  default: vi.fn(() => 'mocked'),
 }))
 ```
 
-> **注意**：不使用 vitest API（`vi.fn()`, `vi.mock()` 等）。所有测试统一使用 `bun:test` API。
+> **注意**：所有 L1 测试统一使用 vitest API（`vi.fn()`, `vi.mock()`, `vi.spyOn()` 等）。L3 E2E 测试同样使用 vitest 运行（不依赖 mock API）。
 
 ---
 
@@ -193,7 +200,7 @@ Runner 脚本 `scripts/run-api-e2e.sh` 负责：
 1. 启动 mock server（port 14000）
 2. 启动 Next.js dev server（port 13000，加载 `.env.test` + `.env.test.local`）
 3. 等待 server ready（轮询 `/api/health`，30s 超时）
-4. 运行 `bun test tests/e2e/`
+4. 运行 `vitest run tests/e2e/`
 5. 清理：关闭所有 server
 
 ### 环境配置

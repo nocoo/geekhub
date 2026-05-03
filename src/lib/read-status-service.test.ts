@@ -1,42 +1,50 @@
-import { describe, test, expect, mock, beforeEach, spyOn } from 'bun:test';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { ReadStatusService } from './read-status-service';
 
-const mockUpsert = mock(() => Promise.resolve({ error: null }));
-const mockUpdate = mock(() => ({
-  eq: mock(() => ({
-    eq: mock(() => Promise.resolve({ error: null })),
-  })),
-}));
-const mockMaybeSingle = mock(() => Promise.resolve({ data: { id: 'article-1', hash: 'hash-1' } }));
-const mockSelectEq = mock(() => ({
-  eq: mock(() => ({
-    eq: mock(() => mockMaybeSingle()),
+const {
+  mockUpsert,
+  mockMaybeSingle,
+  mockSelect,
+  mockFrom,
+  mockCookies,
+} = vi.hoisted(() => {
+  const mockUpsert = vi.fn(() => Promise.resolve({ error: null }));
+  const mockUpdate = vi.fn(() => ({
+    eq: vi.fn(() => ({
+      eq: vi.fn(() => Promise.resolve({ error: null })),
+    })),
+  }));
+  const mockMaybeSingle = vi.fn(() => Promise.resolve({ data: { id: 'article-1', hash: 'hash-1' } }));
+  const mockSelectEq = vi.fn(() => ({
+    eq: vi.fn(() => ({
+      eq: vi.fn(() => mockMaybeSingle()),
+      maybeSingle: mockMaybeSingle,
+    })),
+    in: vi.fn(() => ({
+      eq: vi.fn(() => Promise.resolve({ data: [{ id: 'article-1' }, { id: 'article-2' }] })),
+    })),
     maybeSingle: mockMaybeSingle,
-  })),
-  in: mock(() => ({
-    eq: mock(() => Promise.resolve({ data: [{ id: 'article-1' }, { id: 'article-2' }] })),
-  })),
-  maybeSingle: mockMaybeSingle,
-}));
-const mockSelect = mock(() => ({
-  eq: mockSelectEq,
-}));
-const mockFrom = mock(() => ({
-  select: mockSelect,
-  upsert: mockUpsert,
-  update: mockUpdate,
-}));
+  }));
+  const mockSelect = vi.fn(() => ({
+    eq: mockSelectEq,
+  }));
+  const mockFrom = vi.fn(() => ({
+    select: mockSelect,
+    upsert: mockUpsert,
+    update: mockUpdate,
+  }));
+  const mockCookies = vi.fn(() => ({
+    getAll: () => [],
+    set: () => {},
+  }));
+  return { mockUpsert, mockMaybeSingle, mockSelect, mockFrom, mockCookies };
+});
 
-const mockCookies = mock(() => ({
-  getAll: () => [],
-  set: () => {},
-}));
-
-mock.module('next/headers', () => ({
+vi.mock('next/headers', () => ({
   cookies: mockCookies,
 }));
 
-mock.module('@supabase/ssr', () => ({
+vi.mock('@supabase/ssr', () => ({
   createServerClient: () => ({
     from: mockFrom,
     auth: {
@@ -148,7 +156,7 @@ describe('ReadStatusService', () => {
 
     test('returns false when article not found', async () => {
       mockMaybeSingle.mockImplementationOnce(() => Promise.resolve({ data: null }));
-      const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       
       const service = new ReadStatusService('user-123');
       const result = await service.markAsReadByHash('feed-1', 'nonexistent-hash');
@@ -171,7 +179,7 @@ describe('ReadStatusService', () => {
 
     test('returns 0 on error', async () => {
       mockUpsert.mockImplementationOnce(() => Promise.resolve({ error: new Error('DB error') }));
-      const errorSpy = spyOn(console, 'error').mockImplementation(() => {});
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       
       const service = new ReadStatusService('user-123');
       const result = await service.markAllAsRead('feed-1', ['article-1']);
@@ -203,7 +211,7 @@ describe('ReadStatusService', () => {
 
     test('returns false when article not found', async () => {
       mockMaybeSingle.mockImplementationOnce(() => Promise.resolve({ data: null }));
-      const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       
       const service = new ReadStatusService('user-123');
       const result = await service.markAsUnreadByHash('feed-1', 'nonexistent-hash');

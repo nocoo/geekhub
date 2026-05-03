@@ -25,14 +25,14 @@
 
 | 层 | 规范要求 | 现状 | 差距 |
 |----|---------|------|------|
-| L1 UT | 覆盖率 ≥ 90%，pre-commit 门禁 | 332 tests / 24 files，pre-commit 仅跑 `bun test`，无覆盖率门禁 | 无覆盖率阈值拦截；3 个文件误用 vitest API |
+| L1 UT | 覆盖率 ≥ 95%（branches ≥ 90%），pre-push 门禁 | 338+ tests / 24 files，运行于 vitest，pre-commit 跑 `bun run test`，pre-push 跑 `bun run test:coverage` | ✅ 已就绪 |
 | L2 Lint | ESLint strict，零错误零警告，pre-commit | ESLint 仅 Next.js 默认 config，未在 pre-commit 触发 | 非 strict；未集成 hook |
 | L3 API E2E | 100% API route 有 E2E，pre-push | 36 个 route / 46 个 handler，0 个 E2E 测试，无 pre-push hook | 从零搭建 |
 | L4 BDD E2E | Playwright 核心主干流程，按需 | 无 Playwright，无 BDD | 从零搭建（本期不含） |
 
 ### 问题清单
 
-1. **vitest 残留**: 3 个测试文件 import `vitest`，但项目用 `bun:test`
+1. **历史 vitest 残留（已解决）**: 早期 3 个测试文件 import `vitest`，但项目当时用其他 runner；现已统一迁移至 vitest，所有 L1 测试统一使用 vitest API
    - `src/lib/feed-actions.test.ts`
    - `src/lib/article-actions.test.ts`
    - `src/hooks/useFeedActions.test.ts`
@@ -48,11 +48,11 @@
 
 ```
 pre-commit (快速，< 30s)
-├── L1: bun test (仅变更文件相关测试)
+├── L1: bun run test (vitest run, 仅变更文件相关测试)
 └── L2: eslint (strict, zero-warning)
 
 pre-push (完整，< 2min)
-├── L1: bun test --coverage (全量 + 覆盖率 ≥ 90% 门禁)
+├── L1: bun run test:coverage (全量 + 覆盖率 ≥ 95%/90% 门禁)
 └── L3: API E2E (独立 dev server @ port 13000 + mock server @ port 14000)
 
 on-demand (后续 Phase)
@@ -322,24 +322,21 @@ expect(events).toContain('init');
 
 ### Step 1.1 — 修复 vitest 残留
 
-将 3 个文件从 `vitest` API 迁移到 `bun:test` API：
+将 3 个文件从直接使用 `vitest` 的过渡形态统一到当前项目的 vitest 配置（`vitest.config.ts` + setup）：
 
-| vitest | bun:test |
-|--------|----------|
-| `import { vi } from 'vitest'` | `import { mock, spyOn } from 'bun:test'` |
-| `vi.fn()` | `mock()` |
-| `vi.spyOn()` | `spyOn()` |
-| `vi.mocked()` | 直接类型断言 |
-| `vi.clearAllMocks()` | `mock.restore()` / 手动 reset |
+| 旧 import | 新 import |
+|-----------|----------|
+| 散乱的 `import { vi } from 'vitest'` | 统一遵循 vitest API（`vi.fn`, `vi.spyOn`, `vi.mock`） |
+| 自定义 mock helpers | 直接使用 vitest 内置 |
 
-验证：`bun test` 全部通过。
+验证：`bun run test` 全部通过。
 
 ### Step 1.2 — 添加覆盖率门禁脚本
 
 创建 `scripts/check-coverage.sh`：
-1. 运行 `bun test --coverage --coverage-reporter=lcov`
-2. 解析 lcov 报告，计算行覆盖率
-3. 低于 90% 则 exit 1
+1. 运行 `bun run test:coverage`（vitest v8 provider 自带阈值检查）
+2. vitest 通过 `coverage.thresholds` 拦截不达标的提交
+3. 任意指标低于阈值 → 进程 exit 1
 
 > 此脚本在 **pre-push** 阶段调用，不在 pre-commit（保持 pre-commit < 30s）。
 
@@ -360,7 +357,7 @@ expect(events).toContain('init');
 
 ```bash
 bun run lint
-bun test
+bun run test
 ```
 
 > pre-commit 仅跑变更相关 UT + lint，不跑覆盖率。保持 < 30s。
@@ -378,8 +375,8 @@ scripts/check-coverage.sh
 ```json
 {
   "prepare": "husky",
-  "test": "bun test",
-  "test:coverage": "scripts/check-coverage.sh",
+  "test": "vitest run",
+  "test:coverage": "vitest run --coverage",
   "test:e2e": "scripts/run-api-e2e.sh",
   "lint": "eslint --max-warnings 0 ."
 }
@@ -416,10 +413,10 @@ tests/
 ```
 
 创建 `scripts/run-api-e2e.sh`：
-1. 启动 mock server（`bun tests/e2e/mock-server.ts &`，port 14000，**唯一启动点**）
+1. 启动 mock server（`bun ./tests/e2e/mock-server.ts &`，port 14000，**唯一启动点**）
 2. 启动 Next.js dev server（`bunx dotenv-cli -e .env.test -e .env.test.local -- next dev --port 13000`）
 3. 等待 server ready（轮询 `/api/health`，超时 30s）
-4. 运行 `bun test tests/e2e/`
+4. 运行 `vitest run tests/e2e/`（L3 E2E 与 L1 同样使用 vitest）
 5. 关闭 mock server + dev server，汇报结果
 
 > **Mock server 职责归属**：runner 脚本是 mock server 的唯一启动者。`setup.ts` 仅负责常量定义（BASE_URL、MOCK_URL 等）和 preload 配置，**不**启动 mock server。测试文件通过 `setup.ts` 导出的常量访问 mock server。
@@ -512,7 +509,7 @@ scripts/run-api-e2e.sh
 
 | # | Commit message | 内容 | 验证 |
 |---|---------------|------|------|
-| 1 | ✅ `fix(test): migrate 3 test files from vitest to bun:test` | 修复 feed-actions, article-actions, useFeedActions 的 import 和 mock API | `bun test` 全通过 |
+| 1 | ✅ `fix(test): unify 3 test files under vitest` | 修复 feed-actions, article-actions, useFeedActions 的 import 和 mock API | `vitest run` 全通过 |
 | 2 | ✅ `chore: add coverage check script` | 创建 `scripts/check-coverage.sh` | 脚本可执行，覆盖率输出正确 |
 | 3 | ✅ `chore: strengthen eslint config with strict rules` | 升级 `eslint.config.mjs`，安装所需依赖 | `eslint --max-warnings 0 .` 通过 |
 | 4 | ✅ `chore: setup husky and configure git hooks` | 安装 husky，创建 `.husky/pre-commit`（lint + UT）和 `.husky/pre-push`（覆盖率门禁），删除旧 `.git/hooks/pre-commit` | `git commit` 触发 lint + UT；`git push` 触发覆盖率检查 |

@@ -105,24 +105,25 @@ geekhub/
 |------|------|
 | `bun run dev` | 启动开发服务器（Turbopack） |
 | `bun run build` | 生产构建 |
-| `bun test` | 运行测试 |
+| `bun run test` | 运行测试 |
+| `bun run test:coverage` | 运行测试并生成覆盖率报告 |
 | `bun run lint` | ESLint 检查 |
 
 ### 开发规范
 
 #### 1️⃣ 测试要求
 
-- **覆盖率目标**: 90%
-- **测试框架**: Bun Test
+- **覆盖率目标**: 95% (statements/functions/lines), 90% (branches)
+- **测试框架**: Vitest
 - **测试文件命名**: `*.test.ts` / `*.test.tsx`
 - **新增代码必须编写对应单元测试**
 
 ```bash
 # 运行测试
-bun test
+bun run test
 
 # 运行单个测试文件
-bun test src/lib/rss.test.ts
+bun run test src/lib/rss.test.ts
 ```
 
 #### 2️⃣ 提交规范
