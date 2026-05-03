@@ -38,7 +38,7 @@ on-demand (按需)
 |----|------|------|---------|
 | L1 UT | 业务逻辑 95%+ 覆盖 | vitest | pre-commit, pre-push |
 | L2 Lint | 代码质量零瑕疵 | ESLint strict | pre-commit |
-| L3 API E2E | 100% API route 覆盖 | bun:test + Next.js dev server | pre-push |
+| L3 API E2E | 100% API route 覆盖 | vitest + Next.js dev server | pre-push |
 | L4 BDD E2E | 核心用户流程 | Playwright (future) | 按需 |
 
 ---
@@ -141,7 +141,7 @@ vi.mock('module-name', () => ({
 }))
 ```
 
-> **注意**：所有 L1 测试统一使用 vitest API（`vi.fn()`, `vi.mock()`, `vi.spyOn()` 等）。L3 E2E 测试仍使用 `bun:test` 运行（不依赖 mock API）。
+> **注意**：所有 L1 测试统一使用 vitest API（`vi.fn()`, `vi.mock()`, `vi.spyOn()` 等）。L3 E2E 测试同样使用 vitest 运行（不依赖 mock API）。
 
 ---
 
@@ -200,7 +200,7 @@ Runner 脚本 `scripts/run-api-e2e.sh` 负责：
 1. 启动 mock server（port 14000）
 2. 启动 Next.js dev server（port 13000，加载 `.env.test` + `.env.test.local`）
 3. 等待 server ready（轮询 `/api/health`，30s 超时）
-4. 运行 `bun test tests/e2e/`
+4. 运行 `vitest run tests/e2e/`
 5. 清理：关闭所有 server
 
 ### 环境配置

@@ -32,7 +32,7 @@
 
 ### 问题清单
 
-1. **历史 vitest 残留（已解决）**: 早期 3 个测试文件 import `vitest`，但项目当时用 `bun:test`；现已统一迁移至 vitest，所有 L1 测试统一使用 vitest API
+1. **历史 vitest 残留（已解决）**: 早期 3 个测试文件 import `vitest`，但项目当时用其他 runner；现已统一迁移至 vitest，所有 L1 测试统一使用 vitest API
    - `src/lib/feed-actions.test.ts`
    - `src/lib/article-actions.test.ts`
    - `src/hooks/useFeedActions.test.ts`
@@ -413,10 +413,10 @@ tests/
 ```
 
 创建 `scripts/run-api-e2e.sh`：
-1. 启动 mock server（`bun tests/e2e/mock-server.ts &`，port 14000，**唯一启动点**）
+1. 启动 mock server（`bun ./tests/e2e/mock-server.ts &`，port 14000，**唯一启动点**）
 2. 启动 Next.js dev server（`bunx dotenv-cli -e .env.test -e .env.test.local -- next dev --port 13000`）
 3. 等待 server ready（轮询 `/api/health`，超时 30s）
-4. 运行 `bun test tests/e2e/`（L3 E2E 仍由 bun:test 跑，与 L1 vitest 解耦）
+4. 运行 `vitest run tests/e2e/`（L3 E2E 与 L1 同样使用 vitest）
 5. 关闭 mock server + dev server，汇报结果
 
 > **Mock server 职责归属**：runner 脚本是 mock server 的唯一启动者。`setup.ts` 仅负责常量定义（BASE_URL、MOCK_URL 等）和 preload 配置，**不**启动 mock server。测试文件通过 `setup.ts` 导出的常量访问 mock server。
@@ -509,7 +509,7 @@ scripts/run-api-e2e.sh
 
 | # | Commit message | 内容 | 验证 |
 |---|---------------|------|------|
-| 1 | ✅ `fix(test): migrate 3 test files from vitest to bun:test` | 修复 feed-actions, article-actions, useFeedActions 的 import 和 mock API | `bun test` 全通过 |
+| 1 | ✅ `fix(test): unify 3 test files under vitest` | 修复 feed-actions, article-actions, useFeedActions 的 import 和 mock API | `vitest run` 全通过 |
 | 2 | ✅ `chore: add coverage check script` | 创建 `scripts/check-coverage.sh` | 脚本可执行，覆盖率输出正确 |
 | 3 | ✅ `chore: strengthen eslint config with strict rules` | 升级 `eslint.config.mjs`，安装所需依赖 | `eslint --max-warnings 0 .` 通过 |
 | 4 | ✅ `chore: setup husky and configure git hooks` | 安装 husky，创建 `.husky/pre-commit`（lint + UT）和 `.husky/pre-push`（覆盖率门禁），删除旧 `.git/hooks/pre-commit` | `git commit` 触发 lint + UT；`git push` 触发覆盖率检查 |
