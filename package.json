@@ -68,6 +68,25 @@
   "overrides": {
     "postcss": ">=8.5.10"
   },
+  "trustedDependencies": [
+    "unrs-resolver",
+    "sharp",
+    "@img/sharp-darwin-arm64",
+    "@img/sharp-darwin-x64",
+    "@img/sharp-linux-arm64",
+    "@img/sharp-linux-x64",
+    "@img/sharp-libvips-darwin-arm64",
+    "@img/sharp-libvips-darwin-x64",
+    "@img/sharp-libvips-linux-arm64",
+    "@img/sharp-libvips-linux-x64",
+    "next",
+    "@next/swc-darwin-arm64",
+    "@next/swc-darwin-x64",
+    "@next/swc-linux-x64-gnu",
+    "@next/swc-linux-arm64-gnu",
+    "esbuild",
+    "lightningcss"
+  ],
   "lint-staged": {
     "*.{ts,tsx}": [
       "eslint --max-warnings=0"
