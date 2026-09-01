@@ -34,7 +34,7 @@
     "clsx": "^2.1.1",
     "html-react-parser": "^5.2.17",
     "lucide-react": "^0.462.0",
-    "next": "16.2.8",
+    "next": "16.2.11",
     "next-themes": "^1.0.0-beta.0",
     "openai": "^6.38.0",
     "p-limit": "^7.3.0",
@@ -44,7 +44,7 @@
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.6.0",
     "tailwindcss-animate": "^1.0.7",
-    "undici": "^7.28.0"
+    "undici": "^7.29.0"
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.19",
@@ -60,16 +60,18 @@
     "eslint-config-next": "16.2.7",
     "husky": "^9.1.7",
     "jsdom": "^29.1.1",
-    "postcss": "^8.5.14",
+    "postcss": "^8.5.23",
     "tailwindcss": "^3.4.19",
     "typescript": "^5.9.3",
     "vitest": "^4.1.6"
   },
   "overrides": {
     "@babel/core": ">=7.29.6 <8",
-    "js-yaml": ">=4.2.0 <5",
-    "postcss": ">=8.5.10",
-    "undici": ">=7.28.0 <8",
+    "js-yaml": ">=4.3.1 <5",
+    "nanoid": ">=3.3.18 <4",
+    "postcss": ">=8.5.23 <9",
+    "sharp": ">=0.35.0 <0.36",
+    "undici": ">=7.29.0 <8",
     "vite": ">=8.0.16 <9",
     "ws": ">=8.20.1 <9.0.0"
   },
