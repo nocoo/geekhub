@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/brand/icon-rounded.png" alt="GeekHub logo" width="180" height="180" />
+</p>
+
 # 📰 GeekHub
 
 <div align="center">
@@ -228,3 +232,5 @@ OPENAI_MODEL=gpt-4o-mini
 Made with ❤️ by [lizheng](https://github.com/lizheng)
 
 </div>
+
+Logo assets and usage: [guide](docs/09-logo-usage.md) · [identity study](https://hexly.ai/logos/geekhub).

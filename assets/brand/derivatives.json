@@ -1,0 +1,70 @@
+{
+  "source": "logo.png",
+  "files": [
+    {
+      "path": "public/logo-24.png",
+      "role": "transparent",
+      "size": 24,
+      "sha256": "591824c7e6e463ca8f8d1debd121d25706d9f905c43b015b0a65d1f47b17871d"
+    },
+    {
+      "path": "public/logo-32.png",
+      "role": "transparent",
+      "size": 32,
+      "sha256": "a22c53b9503a38a8b5665b1f2d6663aba50f776a825a99666676fd6f18ef7c0c"
+    },
+    {
+      "path": "public/logo-48.png",
+      "role": "transparent",
+      "size": 48,
+      "sha256": "b6e9b69ae09390a5dee03cb0ebc0313202cfc8a6736631ba0c238ce0e73b3c58"
+    },
+    {
+      "path": "public/logo-64.png",
+      "role": "transparent",
+      "size": 64,
+      "sha256": "983fb6d546252e4406aafb5ad0d2b2859a4288e28b33560d71ce76795c2db90c"
+    },
+    {
+      "path": "public/logo-128.png",
+      "role": "transparent",
+      "size": 128,
+      "sha256": "16cfee3459acd3436837a5b5067a5aab3a4550e49613b5aa0a7bca74b7d7efac"
+    },
+    {
+      "path": "public/logo-192.png",
+      "role": "transparent",
+      "size": 192,
+      "sha256": "2306c5f6b8d8602d9c75e0a551e0245e8273ee4f3169cf0a6f8372e215aca88d"
+    },
+    {
+      "path": "public/logo-256.png",
+      "role": "transparent",
+      "size": 256,
+      "sha256": "1add6f26e72e8ce52861da28a67ad62f4f6f88d8f47355893917b8409251a935"
+    },
+    {
+      "path": "public/logo-512.png",
+      "role": "transparent",
+      "size": 512,
+      "sha256": "4ab483cc86006f2c4f1246649b69d89c3113470e324faac2b3d4532dbee9c8b2"
+    },
+    {
+      "path": "public/favicon.png",
+      "role": "transparent",
+      "size": 32,
+      "sha256": "a22c53b9503a38a8b5665b1f2d6663aba50f776a825a99666676fd6f18ef7c0c"
+    },
+    {
+      "path": "public/favicon.ico",
+      "role": "transparent",
+      "sha256": "661e169a880d53579fb2aa97e6bc72f2440299f7408ed99a687350dfd0fce99b"
+    },
+    {
+      "path": "public/apple-touch-icon.png",
+      "role": "platform-tile",
+      "size": 180,
+      "sha256": "71a1161065ae85bf87c35c8a5778d1eede229cd68101a019bbc4bf2923f6b6af"
+    }
+  ]
+}
