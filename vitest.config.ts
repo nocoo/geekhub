@@ -24,7 +24,6 @@ export default defineConfig({
                 'src/contexts/**',
                 'src/app/**',
                 'src/test/**',
-                'src/lib/mockData.ts',
                 'src/lib/supabase-browser.ts',
                 'src/lib/supabase-server.ts',
                 // Supabase + next/cookies server-side wrappers — covered by L3 API E2E tests
