@@ -487,6 +487,35 @@ GET /api/data/logs?level=error&limit=100
 
 ## 系统功能
 
+### 存活检查
+
+```http
+GET /api/live
+```
+
+公开、无认证。探测匿名 `feeds` 可读性（空结果视为连通）。
+
+成功 **200**：
+
+```json
+{
+  "status": "ok",
+  "version": "0.2.2"
+}
+```
+
+失败 **503**：
+
+```json
+{
+  "status": "error"
+}
+```
+
+`Cache-Control: no-store`。
+
+---
+
 ### 健康检查
 
 ```http

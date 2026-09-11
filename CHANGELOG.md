@@ -8,6 +8,12 @@
 - Enforce coverage thresholds (95% statements/functions/lines, 90% branches) via `vitest.config.ts`
 - Update all test imports from `bun:test` to `vitest`
 
+## [0.2.2] - 2026-09-11
+
+### Added
+
+- Public `GET /api/live` with anon Supabase `feeds` connectivity check, `status`/`version`, and `Cache-Control: no-store`
+
 ## [0.2.1] - 2026-03-11
 
 ### Tests

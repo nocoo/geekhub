@@ -93,6 +93,7 @@ on-demand (后续 Phase)
 | # | Route | Methods | 说明 |
 |---|-------|---------|------|
 | 1 | `/api/health` | GET | 健康检查，返回版本号（无 DB 调用） |
+| 1b | `/api/live` | GET | 公开存活检查；匿名 `feeds` SELECT，失败 503 |
 | 2 | `/api/articles/[id]/read` | POST | 标记已读 |
 | 3 | `/api/articles/[id]/unread` | POST | 标记未读 |
 | 4 | `/api/articles/[id]/bookmark` | POST, DELETE | 收藏/取消收藏 |
