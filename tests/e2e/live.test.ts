@@ -9,12 +9,13 @@ describe("GET /api/live", () => {
     expect(res.headers.get("cache-control")).toMatch(/no-store/i);
     const body = (await res.json()) as { status: string; version?: string };
 
+    expect(body.version).toBe(packageJson.version);
     if (DB_AVAILABLE) {
       expect(res.status).toBe(200);
       expect(body).toEqual({ status: "ok", version: packageJson.version });
     } else {
       expect(res.status).toBe(503);
-      expect(body).toEqual({ status: "error" });
+      expect(body).toEqual({ status: "error", version: packageJson.version });
     }
   });
 });

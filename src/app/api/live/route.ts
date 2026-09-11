@@ -7,7 +7,10 @@ export const dynamic = "force-dynamic";
 const headers = { "Cache-Control": "no-store" };
 
 function fail() {
-  return NextResponse.json({ status: "error" }, { status: 503, headers });
+  return NextResponse.json(
+    { status: "error", version: packageJson.version },
+    { status: 503, headers },
+  );
 }
 
 export async function GET() {

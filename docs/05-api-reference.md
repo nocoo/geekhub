@@ -508,7 +508,8 @@ GET /api/live
 
 ```json
 {
-  "status": "error"
+  "status": "error",
+  "version": "0.2.2"
 }
 ```
 
