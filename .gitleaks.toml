@@ -1,9 +1,23 @@
-[allowlist]
-description = "Allow common false positives"
-paths = [
-  '''(^|/)bun\.lock$''',
-  '''(^|/)pnpm-lock\.yaml$''',
-  '''(^|/)tests/''',
-  '''(^|/)src/test/''',
-  '''\.test\.(ts|tsx)$''',
-]
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Cloudflare Access application audience is a public JWT verification identifier, not a credential."
+condition = "AND"
+paths = ['''(^|/)wrangler\.jsonc$''']
+regexTarget = "line"
+regexes = ['''^\s*"CF_ACCESS_AUD":\s*"dea97ca87fa084ac45262eea06bc031fb6bfceccc761914d8bcd17c9dbc9501d"\s*,?$''']
+
+[[allowlists]]
+description = "Archived curl example uses the literal non-credential YOUR_TOKEN."
+condition = "AND"
+paths = ['''(^|/)docs/archieve/03-development\.md$''']
+regexTarget = "secret"
+regexes = ['''^YOUR_TOKEN$''']
+
+[[allowlists]]
+description = "Archived Supabase examples contain only a visibly truncated JWT header, ending in a literal ellipsis."
+condition = "AND"
+paths = ['''(^|/)docs/archieve/07-deployment\.md$''']
+regexTarget = "line"
+regexes = ['''^(NEXT_PUBLIC_SUPABASE_ANON_KEY|SUPABASE_SERVICE_ROLE_KEY)=eyJ[A-Za-z0-9_-]+\.{3}$''']

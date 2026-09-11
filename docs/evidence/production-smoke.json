@@ -1,0 +1,78 @@
+{
+	"capturedAt": "2026-09-11T22:52:15.700929+00:00",
+	"version": "1.2.0",
+	"origin": "https://geekhub.hexly.ai",
+	"publicDns": {
+		"cloudflare": ["104.21.57.80", "172.67.189.178"],
+		"google": ["104.21.57.80", "172.67.189.178"]
+	},
+	"resolution": "Public DNS answers used with curl --resolve; hostname and TLS certificate verification remain enabled. The system resolver had a cached NXDOMAIN.",
+	"checks": [
+		{
+			"path": "/api/live",
+			"status": 200,
+			"headers": {
+				"content-type": "application/json",
+				"cache-control": "no-store",
+				"x-content-type-options": "nosniff"
+			},
+			"body": {
+				"status": "ok",
+				"version": "1.2.0",
+				"storage": "d1"
+			}
+		},
+		{
+			"path": "/",
+			"status": 302,
+			"headers": {
+				"content-type": "text/html; charset=UTF-8",
+				"cache-control": "private, max-age=0, no-store, no-cache, must-revalidate, post-check=0, pre-check=0"
+			},
+			"accessRedirect": {
+				"host": "nocoo.cloudflareaccess.com",
+				"path": "/cdn-cgi/access/login/geekhub.hexly.ai",
+				"audienceMatches": true
+			}
+		},
+		{
+			"path": "/api/session",
+			"status": 302,
+			"headers": {
+				"content-type": "text/html; charset=UTF-8",
+				"cache-control": "private, max-age=0, no-store, no-cache, must-revalidate, post-check=0, pre-check=0"
+			},
+			"accessRedirect": {
+				"host": "nocoo.cloudflareaccess.com",
+				"path": "/cdn-cgi/access/login/geekhub.hexly.ai",
+				"audienceMatches": true
+			}
+		},
+		{
+			"path": "/logo-64.png",
+			"status": 302,
+			"headers": {
+				"content-type": "text/html; charset=UTF-8",
+				"cache-control": "private, max-age=0, no-store, no-cache, must-revalidate, post-check=0, pre-check=0"
+			},
+			"accessRedirect": {
+				"host": "nocoo.cloudflareaccess.com",
+				"path": "/cdn-cgi/access/login/geekhub.hexly.ai",
+				"audienceMatches": true
+			}
+		},
+		{
+			"path": "/assets/index-BGpyovG7.js",
+			"status": 302,
+			"headers": {
+				"content-type": "text/html; charset=UTF-8",
+				"cache-control": "private, max-age=0, no-store, no-cache, must-revalidate, post-check=0, pre-check=0"
+			},
+			"accessRedirect": {
+				"host": "nocoo.cloudflareaccess.com",
+				"path": "/cdn-cgi/access/login/geekhub.hexly.ai",
+				"audienceMatches": true
+			}
+		}
+	]
+}

@@ -1,258 +1,58 @@
-# 架构设计
+# 架构
 
-> 返回 [README](../README.md)
+GeekHub 是单用户应用。Cloudflare Access 控制入口；订阅、文章状态、偏好和 AI 设置共用一份数据，不按 Access subject 或历史 `user_id` 分区。
 
-## 概述
-
-GeekHub 采用**以数据库为中心**的架构设计，使用 Supabase (PostgreSQL) 存储所有数据，通过 Row Level Security (RLS) 实现多用户隔离。
-
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   抓取层         │    │   存储层         │    │   视图层         │
-│  FeedFetcher    │ -> │ Supabase (DB)   │ -> │ React Hooks /   │
-│  (RSS 解析)     │    │ (PostgreSQL)    │    │ ViewModel       │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-```
-
----
-
-## 技术栈
-
-| 层级 | 技术 | 说明 |
-|------|------|------|
-| **前端框架** | Next.js 16 (App Router) | 服务端渲染、API 路由 |
-| **UI 框架** | React 19 | 函数组件 + Hooks |
-| **类型系统** | TypeScript 5 (strict) | 严格类型检查 |
-| **UI 组件** | Radix UI + shadcn/ui | 无障碍、可定制 |
-| **样式** | TailwindCSS 3.4 | 原子化 CSS |
-| **状态管理** | React Context | Auth, SSE, FeedFetch |
-| **数据获取** | TanStack Query | 缓存、同步、乐观更新 |
-| **后端服务** | Supabase | PostgreSQL + Auth + RLS |
-| **RSS 解析** | rss-parser + cheerio | 标准 RSS/Atom 支持 |
-| **AI 集成** | OpenAI SDK | 摘要、翻译 |
-| **代理支持** | undici + https-proxy-agent | Clash 自动检测 |
-| **实时通信** | Server-Sent Events | 抓取进度推送 |
-
----
-
-## 系统架构图
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                           客户端 (Browser)                          │
-├─────────────────────────────────────────────────────────────────────┤
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐              │
-│  │ ArticleList  │  │ ReaderView   │  │   Sidebar    │   ...        │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘              │
-│         │                 │                 │                       │
-│  ┌──────┴─────────────────┴─────────────────┴───────┐              │
-│  │              React Context Layer                  │              │
-│  │  (AuthContext, SSEContext, FeedFetchContext)     │              │
-│  └──────────────────────┬───────────────────────────┘              │
-│                         │                                           │
-│  ┌──────────────────────┴───────────────────────────┐              │
-│  │              Custom Hooks Layer                   │              │
-│  │  (useFeedViewModels, useArticleActions, ...)     │              │
-│  └──────────────────────┬───────────────────────────┘              │
-└─────────────────────────┼───────────────────────────────────────────┘
-                          │ HTTP / SSE
-┌─────────────────────────┼───────────────────────────────────────────┐
-│                         ▼                                           │
-│  ┌──────────────────────────────────────────────────┐              │
-│  │              Next.js API Routes                   │   服务端     │
-│  │  /api/feeds, /api/articles, /api/ai, ...         │              │
-│  └──────────────────────┬───────────────────────────┘              │
-│                         │                                           │
-│  ┌──────────────────────┴───────────────────────────┐              │
-│  │              Service Layer (lib/)                 │              │
-│  │  FeedFetcher, ArticleActions, TranslationQueue   │              │
-│  └──────────────────────┬───────────────────────────┘              │
-│                         │                                           │
-│  ┌──────────────────────┴───────────────────────────┐              │
-│  │              Data Access Layer                    │              │
-│  │  Supabase Client (supabase-server.ts)            │              │
-│  └──────────────────────┬───────────────────────────┘              │
-└─────────────────────────┼───────────────────────────────────────────┘
-                          │
-┌─────────────────────────┼───────────────────────────────────────────┐
-│                         ▼                                           │
-│  ┌──────────────────────────────────────────────────┐              │
-│  │              Supabase (PostgreSQL)                │   数据层     │
-│  │  categories, feeds, articles, user_articles      │              │
-│  │  + Row Level Security (RLS)                      │              │
-│  └──────────────────────────────────────────────────┘              │
-└─────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart LR
+  Browser[React / Basalt] --> Access[Cloudflare Access]
+  Access --> Worker[Worker: SPA + Hono API]
+  Worker --> D1[(D1)]
+  Worker --> Queue[Feed Queue]
+  Cron[Cron 每 15 分钟] --> Queue
+  Queue --> Fetch[RSS / Atom 抓取]
+  Fetch --> D1
+  Worker --> AI[next-ai 配置 / AI SDK]
+  AI --> Provider[AI 服务商]
 ```
 
----
+## 边界
 
-## 目录结构
+- `src/web` 只运行在浏览器；通过 `/api/*` 读写数据。TanStack Query 管理服务端状态。
+- `src/worker` 只运行在 Worker；持有 D1、Queue 和密钥 binding。API 返回数据与必要的业务错误，不返回凭据。
+- `src/shared` 是浏览器安全的契约与校验。AI `/server` 入口不进入浏览器依赖图。
+- Basalt 提供 AppShell、Sidebar、AppHeader、ContentIsland、弹窗和通知；业务 CSS 使用库的 tokens，不重定义 `--basalt-*`。
 
-```
-src/
-├── app/                    # Next.js App Router
-│   ├── api/                # 36 个 API 路由
-│   │   ├── feeds/          # 订阅源管理
-│   │   ├── articles/       # 文章操作
-│   │   ├── categories/     # 分类管理
-│   │   ├── ai/             # AI 功能
-│   │   ├── data/           # 数据管理
-│   │   └── logs/           # 日志相关
-│   ├── auth/               # 认证回调
-│   ├── login/              # 登录页面
-│   ├── layout.tsx          # 根布局
-│   └── page.tsx            # 主页面
-│
-├── components/             # React 组件
-│   ├── ui/                 # shadcn/ui 基础组件 (22 个)
-│   ├── manage/             # 管理对话框 (6 个)
-│   ├── ArticleList.tsx     # 文章列表（无限滚动）
-│   ├── ReaderView.tsx      # 沉浸式阅读器
-│   ├── Sidebar.tsx         # 侧边栏
-│   ├── Header.tsx          # 顶栏
-│   └── ...
-│
-├── contexts/               # React Context
-│   ├── AuthContext.tsx     # Supabase 认证状态
-│   ├── SSEContext.tsx      # SSE 实时推送
-│   └── FeedFetchContext.tsx # 抓取状态管理
-│
-├── hooks/                  # 自定义 Hooks
-│   ├── useFeedViewModels.ts # 订阅源视图模型
-│   ├── useFeedActions.ts    # 订阅源 CRUD
-│   ├── useArticleActions.ts # 文章操作
-│   ├── useDatabase.ts       # 数据库操作
-│   └── ...
-│
-├── lib/                    # 核心业务逻辑
-│   ├── feed-fetcher.ts     # RSS 抓取（代理支持）
-│   ├── article-actions.ts  # 文章业务逻辑
-│   ├── feed-actions.ts     # 订阅源业务逻辑
-│   ├── translation-queue.ts # AI 翻译队列
-│   ├── rss.ts              # RSS 解析
-│   ├── settings.ts         # 用户设置
-│   ├── supabase-server.ts  # 服务端 Supabase 客户端
-│   ├── supabase-browser.ts # 浏览器端 Supabase 客户端
-│   └── ...
-│
-├── schemas/                # JSON Schema
-│   └── rss-cache.schema.json
-│
-└── types/                  # TypeScript 类型定义
-    ├── feed-view-model.ts
-    └── article-view-model.ts
+## 数据
 
-supabase/
-└── migrations/             # 数据库迁移文件
-    ├── 20260113000000_schema.sql
-    ├── 20260113000100_fix_feed_counts.sql
-    ├── 20260113000200_fix_trigger_auth.sql
-    └── 20260113000300_security_hardening.sql
-```
+| 表 | 内容 |
+| --- | --- |
+| `categories` | 分类名称、颜色、图标、排序 |
+| `feeds` | RSS 地址、分类、自动翻译、更新间隔、启停、抓取状态与租约 |
+| `articles` | 内容、来源 ID、已读／收藏／稍后阅读、AI 结果 |
+| `settings` | 固定 `id=1`，阅读偏好、AI 配置、加密凭据 |
+| `fetch_logs` | 抓取结果与耗时；30 天自动过期 |
+| `directory` | 精选博客、RSS 地址、标签、评分和导出元数据 |
 
----
+没有账户数据表，也没有文件系统文章缓存。所有在线 SQL 参数均绑定，文章状态与偏好按提交字段原子更新。外键负责删除订阅后的文章级联和删除分类后的未分类状态。清理旧文章始终保留收藏与稍后阅读。
 
-## 数据流
+文章以 `(feed_id, source_id)` 去重，重复队列投递不会清空阅读状态。列表按发布时间与 ID 做 keyset 分页。RSSHub 地址保留 `rsshub://` 形式，每次抓取从当前偏好解析实例 URL。
 
-### 1. 文章列表加载
+## 抓取与 AI
 
-```
-用户点击订阅源
-    ↓
-useFeedViewModels (Hook)
-    ↓
-TanStack Query 缓存检查
-    ↓ (缓存未命中)
-GET /api/feeds/[id]/articles
-    ↓
-Supabase 查询 (articles + user_articles JOIN)
-    ↓
-返回 ArticleViewModel[]
-    ↓
-ArticleList 渲染
-```
+手动刷新先获得租约，再发送 Queue 消息；Cron 每 15 分钟选择到期且启用的订阅，分批入队。消费者等待抓取、写入和日志完成后再 ack，失败后有限重试。网络请求有 15 秒超时，检查每次跳转的公开 HTTP(S) 地址，读取正文不超过 4 MiB。RSS 最多处理 200 篇，D1 每批 25 条。
 
-### 2. RSS 抓取流程
+HTML 在入库与渲染边界清理，去掉脚本、事件属性、不安全协议和嵌入元素。图片通过受限代理加载，禁止 SVG，限制类型和体积。保留原文链接供抓取受限时阅读。
 
-```
-用户点击 "刷新"
-    ↓
-POST /api/feeds/[id]/fetch
-    ↓
-FeedFetcher.fetch()
-    ├── 检测代理（Clash 端口）
-    ├── 发起 HTTP 请求
-    └── RSS 解析 (rss-parser)
-    ↓
-文章去重 (MD5 hash)
-    ↓
-批量插入 articles 表
-    ↓
-更新 fetch_status 缓存
-    ↓
-SSE 推送更新事件
-    ↓
-客户端自动刷新列表
-```
+AI 使用 `@nocoo/next-ai` 的公共契约、React 设置面板和 `/server` 配置解析。0.4.0 的模型工厂尚不接收自定义 fetch，因此请求层使用同系列 AI SDK 工厂，统一拒绝带凭据的重定向、限制响应体和超时。凭据以 AES-GCM 加密保存，应用上下文为 AAD；更换服务商或端点会清除旧密钥，防止转发给新站点。默认不自动重试付费请求，全文翻译限制为 45,000 字符。
 
-### 3. AI 翻译流程
+## 认证与环境
 
-```
-用户开启 "自动翻译"
-    ↓
-文章加载时检查翻译缓存
-    ↓ (缓存未命中)
-TranslationQueue.add()
-    ↓
-POST /api/ai/translate-content
-    ↓
-OpenAI API 调用
-    ↓
-结果写入翻译缓存
-    ↓
-UI 显示翻译内容
-```
+生产校验 Access RS256 JWT 的签名、issuer、audience、有效期、subject 和 email，缺失配置或验证失败即拒绝。单独的身份邮箱 header 不构成认证。写操作检查 Origin 和 Sec-Fetch-Site。
 
----
+本地身份仅在 `ENVIRONMENT=local` 且回环请求时可用；Caddy 域名还要求回环 peer。生产永不启用该分支。没有配置真实 AI 密钥时，本地返回明确标记的模拟输出。测试环境还需要 `RESOURCE_ENV=test` 和 SQLite `_test_marker`。
 
-## 关键设计决策
+健康接口 `/api/live` 在应用认证之前运行，仅报告版本与 D1 可用性。Cloudflare Access 的边缘策略可能额外保护它；公开监控应配置精确到该路径的 bypass，其他路径仍需登录。
 
-### 1. 为什么选择 Supabase？
+## 旧系统对应关系
 
-- **开箱即用的认证系统**：OAuth、邮箱登录
-- **Row Level Security (RLS)**：数据库级别的多用户隔离
-- **实时订阅**：支持数据库变更通知
-- **自托管选项**：完全数据自主
-
-### 2. 为什么使用 React Context 而非 Redux？
-
-- **简洁性**：三个 Context 足以覆盖全部状态需求
-- **服务端兼容**：与 Next.js App Router 无缝集成
-- **类型安全**：TypeScript 原生支持
-
-### 3. 代理自动检测机制
-
-```typescript
-// 检测顺序
-const PROXY_PORTS = [7890, 7891, 7897, 7898, 10808, 10809]
-
-// 逻辑
-1. 检查环境变量 HTTP_PROXY / HTTPS_PROXY
-2. 依次探测 Clash 常用端口
-3. 找到可用端口后缓存配置
-```
-
-### 4. 文章 Hash 策略
-
-```typescript
-// 用于去重
-article_hash = MD5(url + '|' + title + '|' + published_at)
-```
-
----
-
-## 相关文档
-
-- [数据库设计](06-database.md) - 表结构、关系、RLS 策略
-- [API 参考](05-api-reference.md) - 36 个 API 端点详解
-- [开发指南](03-development.md) - 本地开发环境搭建
+保留三栏阅读、分类与订阅、发现、RSSHub、全文、翻译、收藏、稍后阅读、偏好、统计和日志。原 Supabase 登录改为 Access；原文件缓存／数据目录管理由 D1 统计与清理替代；原日志 SSE 改为抓取期间轮询。原数据库和托管服务不会因代码归档被删除。

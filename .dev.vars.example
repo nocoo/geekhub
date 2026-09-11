@@ -1,0 +1,4 @@
+# bun run setup generates .dev.vars.local with a random key. Never commit the real file.
+AI_ENCRYPTION_KEY=replace-with-a-random-secret-at-least-32-characters
+# Optional: use your public lizheng.blog profile in local development. Ignored in production.
+LOCAL_USER_EMAIL=

@@ -1,0 +1,20 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  quality:
+    uses: nocoo/base-ci/.github/workflows/bun-quality.yml@aec4adc1a817c56790d1698329ef9398a15a754a  # v2026.5
+    with:
+      ignore-scripts: true
+      test-command: "bun run test:coverage"
+      typecheck-command: "bunx tsc --noEmit"
+      osv-config: "osv-scanner.toml"
+      enable-l2: "true"
+      l2-command: "bash scripts/run-api-e2e.sh"
+    secrets: inherit

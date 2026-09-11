@@ -1,0 +1,40 @@
+{
+	"worker": "geekhub",
+	"version": "1.2.0",
+	"workerVersionId": "d0b17247-75f3-431e-9c57-0eaf134bb993",
+	"uploadedAt": "2026-09-11T22:48:01.069093Z",
+	"workerTag": "v1.2.0",
+	"database": "geekhub-db",
+	"databaseId": "c502f821-0242-46c5-8bdf-f73dc7ad1ee7",
+	"queue": "geekhub-feed-refresh",
+	"queueId": "e307c91f94b34c9e928506b4abb85aef",
+	"cron": "*/15 * * * *",
+	"secretBindingVerified": true,
+	"accessAudienceMatches": true,
+	"workersDev": false,
+	"previewUrls": false,
+	"customDomain": "geekhub.hexly.ai",
+	"domainBound": true,
+	"domainEnabled": true,
+	"publicDnsVerified": ["Cloudflare DNS-over-HTTPS", "Google DNS-over-HTTPS"],
+	"productionHttpSmoke": "passed: public health v1.2.0; Access protects SPA, session API and static assets",
+	"smokeEvidence": "production-smoke.json",
+	"productionData": {
+		"categories": 7,
+		"feeds": 45,
+		"directoryBlogs": 1384,
+		"articlesAtVerification": 1546,
+		"testMarkerTables": 0
+	},
+	"archiveIntegrity": {
+		"sourceCommit": "d8d225b",
+		"comparedFiles": 209,
+		"byteDifferences": 0,
+		"gitTrackedArchives": 202,
+		"ignoredGeneratedMetadataFiles": 7
+	},
+	"limitations": [
+		"No authenticated production reader browser session was available; signed JWT behavior and reader flows were verified in L1/L2/L3.",
+		"Paid AI provider credentials were not exercised."
+	]
+}

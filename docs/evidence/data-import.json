@@ -1,0 +1,14 @@
+{
+	"verifiedAt": "2026-09-11T22:17:18.190477+00:00",
+	"target": "geekhub-db",
+	"counts": {
+		"categories": 7,
+		"feeds": 45,
+		"directory": 1384,
+		"unavailable_rss": 129,
+		"invalid_source_rss": 1
+	},
+	"subscriptionFieldsMatchLocalAndCsv": true,
+	"foreignKeyViolations": [],
+	"remoteTestResourcesCreated": false
+}

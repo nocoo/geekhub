@@ -1,0 +1,76 @@
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "geekhub",
+	"main": "src/worker/index.ts",
+	"compatibility_date": "2026-09-11",
+	"compatibility_flags": ["nodejs_compat"],
+	"workers_dev": false,
+	"preview_urls": false,
+	"routes": [{ "pattern": "geekhub.hexly.ai", "custom_domain": true }],
+	"assets": {
+		"binding": "ASSETS",
+		"not_found_handling": "single-page-application",
+		"run_worker_first": ["/api/*"]
+	},
+	"observability": { "enabled": true, "head_sampling_rate": 1 },
+	"vars": {
+		"ENVIRONMENT": "production",
+		"RESOURCE_ENV": "production",
+		"CF_ACCESS_TEAM_DOMAIN": "nocoo",
+		"CF_ACCESS_AUD": "dea97ca87fa084ac45262eea06bc031fb6bfceccc761914d8bcd17c9dbc9501d"
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "geekhub-db",
+			"database_id": "c502f821-0242-46c5-8bdf-f73dc7ad1ee7",
+			"migrations_dir": "migrations"
+		}
+	],
+	"queues": {
+		"producers": [{ "binding": "FEED_QUEUE", "queue": "geekhub-feed-refresh" }],
+		"consumers": [
+			{
+				"queue": "geekhub-feed-refresh",
+				"max_batch_size": 2,
+				"max_batch_timeout": 1,
+				"max_retries": 2
+			}
+		]
+	},
+	"triggers": { "crons": ["*/15 * * * *"] },
+	"env": {
+		"local": {
+			"name": "geekhub-local",
+			"workers_dev": false,
+			"routes": [],
+			"vars": {
+				"ENVIRONMENT": "local",
+				"RESOURCE_ENV": "local",
+				"LOCAL_USER_EMAIL": "",
+				"CF_ACCESS_TEAM_DOMAIN": "",
+				"CF_ACCESS_AUD": ""
+			},
+			"d1_databases": [
+				{
+					"binding": "DB",
+					"database_name": "geekhub-local",
+					"database_id": "local-geekhub",
+					"migrations_dir": "migrations"
+				}
+			],
+			"queues": {
+				"producers": [{ "binding": "FEED_QUEUE", "queue": "geekhub-local-refresh" }],
+				"consumers": [
+					{
+						"queue": "geekhub-local-refresh",
+						"max_batch_size": 1,
+						"max_batch_timeout": 1,
+						"max_retries": 0
+					}
+				]
+			},
+			"triggers": { "crons": [] }
+		}
+	}
+}

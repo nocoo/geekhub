@@ -1,0 +1,7 @@
+{
+	"hostname": "geekhub.hexly.ai",
+	"type": "CNAME",
+	"content": "123b8172e1be8cba.vercel-dns-017.com.",
+	"source": "Public DNS before the Worker migration",
+	"observedAt": "2026-09-11T22:19:07.271102+00:00"
+}
