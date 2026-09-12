@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   quality:
-    uses: nocoo/base-ci/.github/workflows/quality.yml@2ff6b0609183d5d5a24e98f941138fda48837b2f
+    uses: nocoo/base-ci/.github/workflows/quality.yml@ad43150de3a2be2fa464b5cd2f921dc4fa9f8f0f
     with:
       runtime-version: '1.4.0'
       node-version: '26.8.1'
@@ -29,7 +29,7 @@ jobs:
       coverage-artifact-name: coverage
 
   security:
-    uses: nocoo/base-ci/.github/workflows/security.yml@2ff6b0609183d5d5a24e98f941138fda48837b2f
+    uses: nocoo/base-ci/.github/workflows/security.yml@ad43150de3a2be2fa464b5cd2f921dc4fa9f8f0f
     with:
       package-manager: bun
       runtime-version: '1.4.0'
@@ -46,7 +46,7 @@ jobs:
       fail-fast: false
       matrix:
         tier: [l2, l3]
-    uses: nocoo/base-ci/.github/workflows/test-job.yml@2ff6b0609183d5d5a24e98f941138fda48837b2f
+    uses: nocoo/base-ci/.github/workflows/test-job.yml@ad43150de3a2be2fa464b5cd2f921dc4fa9f8f0f
     with:
       runtime-version: '1.4.0'
       node-version: '26.8.1'
@@ -62,4 +62,4 @@ jobs:
       artifact-retention-days: 14
 
   workflows:
-    uses: nocoo/base-ci/.github/workflows/workflow-lint.yml@2ff6b0609183d5d5a24e98f941138fda48837b2f
+    uses: nocoo/base-ci/.github/workflows/workflow-lint.yml@ad43150de3a2be2fa464b5cd2f921dc4fa9f8f0f
