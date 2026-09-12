@@ -10,30 +10,7 @@ import type {
 import { APP_VERSION } from "../../src/shared/version";
 import { dataStats, preferences } from "../../src/worker/data";
 import { app } from "../../src/worker/index";
-import { makeEnv } from "./support";
-
-function client(env: Env) {
-	return async <T = Record<string, unknown>>(
-		method: string,
-		path: string,
-		body?: unknown,
-		status = 200,
-	): Promise<T> => {
-		const response = await app.request(
-			`http://127.0.0.1/api${path}`,
-			{
-				method,
-				...(body === undefined
-					? {}
-					: { headers: { "content-type": "application/json" }, body: JSON.stringify(body) }),
-			},
-			env,
-		);
-		const result = await response.json();
-		expect(response.status, `${method} ${path}: ${JSON.stringify(result)}`).toBe(status);
-		return result as T;
-	};
-}
+import { client, makeEnv } from "./support";
 
 describe("reader API with SQLite SQL", () => {
 	test("health, identity, errors and bounded request bodies", async () => {

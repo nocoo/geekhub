@@ -76,7 +76,14 @@ export function demoArticleContent(title: string): string {
     <p>A database close to the reader stores each article. A queue takes care of the background work. The interface stays quiet while those pieces do their job.</p>
     <pre><code>const idea = await read();\nawait curiosity.follow(idea);</code></pre>
     <p>“${title}” is part of the GeekHub local reading collection. These demonstration articles live in the local SQLite database, ready for exploring the reader.</p>
-    <p>保持好奇，也保留一点耐心。你正在寻找的那一段文字，也许就在下一篇文章里。</p>`;
+    <p>保持好奇，也保留一点耐心。你正在寻找的那一段文字，也许就在下一篇文章里。</p>
+    ${
+			title === demoTitles[2]?.[0]
+				? `<table role="presentation" style="width:1600px"><tr><td><h2>让内容决定顺序</h2><p>这一段原本放在邮件的布局表格中。阅读时，它应当成为一个普通段落，按内容顺序自然展开。</p><figure><img src="https://${demoHost}/reading.png" alt="阅读示例插图"><figcaption>保留图片，也保留图片说明。</figcaption></figure></td></tr></table>
+    <h2>保留真正的数据表格</h2><table><caption>阅读方式对比</caption><thead><tr><th>内容</th><th>展示方式</th></tr></thead><tbody><tr><td>正文</td><td>自然段落与清楚的标题层级</td></tr><tr><td>图片</td><td>保持比例，适应可用宽度</td></tr><tr><td>代码</td><td><code>read | think | remember</code></td></tr></tbody></table>
+    <p><a href="https://example.com/reading#notes">进一步阅读</a></p>`
+				: ""
+		}`;
 }
 
 export function localFeedXml(url: URL): string {
@@ -84,4 +91,23 @@ export function localFeedXml(url: URL): string {
 	const source = demoSources[index];
 	if (!source) throw new Error("本地示例订阅源不存在");
 	return `<rss version="2.0"><channel><title>${source.title}</title><link>${source.site}</link><description>${source.description}</description>${(demoTitles[index] ?? []).map((title, i) => `<item><guid>${source.id}-${i}</guid><title>${title}</title><link>https://${demoHost}/articles/${source.id}-${i}</link><pubDate>${new Date(Date.now() - (index * 25 + i * 240) * 60_000).toUTCString()}</pubDate><author>${source.title}</author><description><![CDATA[${demoArticleContent(title)}]]></description></item>`).join("")}</channel></rss>`;
+}
+
+export function localDiagnosticResponse(url: URL): Response {
+	if (url.pathname.startsWith("/rss/")) {
+		try {
+			return new Response(localFeedXml(url), {
+				headers: { "content-type": "application/rss+xml" },
+			});
+		} catch {
+			return new Response("Missing feed", { status: 404 });
+		}
+	}
+	const source = demoSources.find((source) => url.pathname === `/site/${source.id}`);
+	if (source)
+		return new Response(
+			`<html><head><link rel="alternate" type="application/rss+xml" title="${source.title}" href="/rss/${source.id}?discovered=1"></head><body>${source.title}</body></html>`,
+			{ headers: { "content-type": "text/html" } },
+		);
+	return new Response("Not found", { status: 404 });
 }

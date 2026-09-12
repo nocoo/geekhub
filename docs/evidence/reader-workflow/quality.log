@@ -1,0 +1,146 @@
+$ bun run typecheck && bun run lint && bun run test:coverage && bun run build && bun run test:l2 && bun run test:l3 && bun run gate:security
+$ bun run cf-typegen && tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.worker.json && tsc --noEmit -p tsconfig.tools.json && tsc --noEmit -p tsconfig.test.json
+$ wrangler types --env local --include-runtime=false --strict-vars=false
+
+ ⛅️ wrangler 4.131.1
+────────────────────
+Generating project types...
+
+interface __BaseEnv_Env {
+	DB: D1Database;
+	FEED_QUEUE: Queue;
+	ENVIRONMENT: string;
+	RESOURCE_ENV: string;
+	LOCAL_USER_EMAIL: string;
+	CF_ACCESS_TEAM_DOMAIN: string;
+	CF_ACCESS_AUD: string;
+	AI_ENCRYPTION_KEY: string;
+}
+declare namespace Cloudflare {
+	interface GlobalProps {
+		mainModule: typeof import("./src/worker/index");
+	}
+	interface Env extends __BaseEnv_Env {}
+}
+interface Env extends __BaseEnv_Env {}
+type StringifyValues<EnvType extends Record<string, unknown>> = {
+	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
+};
+declare namespace NodeJS {
+	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "ENVIRONMENT" | "RESOURCE_ENV" | "LOCAL_USER_EMAIL" | "CF_ACCESS_TEAM_DOMAIN" | "CF_ACCESS_AUD" | "AI_ENCRYPTION_KEY">> {}
+}
+
+
+✨ Types written to worker-configuration.d.ts
+
+📣 Remember to rerun 'wrangler types' after you change your wrangler.jsonc file.
+
+$ biome check --error-on-warnings .
+Checked 92 files in 28ms. No fixes applied.
+$ vitest run --coverage
+
+ RUN  v5.0.0 /Users/nocoo/workspace/personal/geekhub
+      Coverage enabled with v8
+
+
+ Test Files  16 passed (16)
+      Tests  148 passed (148)
+   Start at  15:49:06
+   Duration  2.53s (tests 52%, import 19%, environment 16%, transform 10%, worker 2%)
+
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   99.77 |    97.93 |     100 |   99.91 |                   
+ shared            |     100 |    96.22 |     100 |     100 |                   
+  import.ts        |     100 |    94.11 |     100 |     100 | 57,82             
+ web/lib           |     100 |    98.77 |     100 |     100 |                   
+  ...view-model.ts |     100 |    96.87 |     100 |     100 | 78                
+  ...r-position.ts |     100 |       95 |     100 |     100 | 32                
+  ...view-model.ts |     100 |    97.26 |     100 |     100 | 134,348,378-389   
+ worker            |   99.49 |    96.41 |     100 |   99.81 |                   
+  ai.ts            |     100 |     97.1 |     100 |     100 | 26,123            
+  auth.ts          |     100 |    95.74 |     100 |     100 | 52,80             
+  data.ts          |   96.29 |    95.45 |     100 |     100 | 87                
+  diagnostics.ts   |     100 |    97.46 |     100 |     100 | 181,238           
+  feeds.ts         |     100 |    86.66 |     100 |     100 | 88,132            
+  index.ts         |   99.62 |    98.49 |     100 |     100 | 268,370           
+  local.ts         |      95 |       90 |     100 |   93.75 | 103               
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 99.77% ( 1333/1336 )
+Branches     : 97.93% ( 1042/1064 )
+Functions    : 100% ( 291/291 )
+Lines        : 99.91% ( 1189/1190 )
+================================================================================
+$ vite build
+vite v8.2.2 building worker environment for production...
+transforming...
+✓ 393 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/worker/.vite/manifest.json      0.15 kB │ gzip:   0.11 kB
+dist/worker/wrangler.json            2.03 kB │ gzip:   1.04 kB
+dist/worker/index.js             2,297.49 kB │ gzip: 534.01 kB │ map: 5,251.12 kB
+
+✓ built in 128ms
+vite v8.2.2 building client environment for production...
+transforming...
+✓ 2397 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/client/.assetsignore                       0.02 kB
+dist/client/index.html                          0.71 kB │ gzip:   0.46 kB
+dist/client/assets/index-Bhgt8_dC.css         129.58 kB │ gzip:  22.79 kB
+dist/client/assets/ReaderContent-Dr3YdL_r.js  256.24 kB │ gzip:  76.23 kB │ map: 1,470.96 kB
+dist/client/assets/index-BJJzlJQo.js          524.00 kB │ gzip: 163.50 kB │ map: 2,062.45 kB
+
+✓ built in 249ms
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+$ bun scripts/run-tests.ts l2
+L2: local Worker at http://127.0.0.1:17005, isolated SQLite at /Users/nocoo/workspace/personal/geekhub/.wrangler/tests/l2-2gsyhI
+L2 passed: 89 real HTTP checks, 33/33 API endpoints, queue, pagination, missing records, AI and cleanup.
+$ bun scripts/run-tests.ts l3
+L3: local Worker at http://127.0.0.1:27005, isolated SQLite at /Users/nocoo/workspace/personal/geekhub/.wrangler/tests/l3-k2LnOF
+
+Running 24 tests using 1 worker
+
+  ✓   1 [desktop] › tests/browser/reader.spec.ts:12:1 › reading, persistent states, AI summary, translation and original article (2.6s)
+  ✓   2 [desktop] › tests/browser/reader.spec.ts:54:1 › search, navigation and feed/category CRUD (4.8s)
+  ✓   3 [desktop] › tests/browser/reader.spec.ts:124:1 › reading preferences, public next-ai settings and logs (1.7s)
+  ✓   4 [desktop] › tests/browser/reader.spec.ts:163:1 › accessible reader, responsive layout and discovery (1.4s)
+  ✓   5 [desktop] › tests/browser/reader.spec.ts:199:1 › feed/category paths, browser history, search and article positions survive reloads (3.9s)
+  ✓   6 [desktop] › tests/browser/reader.spec.ts:266:1 › reload and history restore a later article page and both scroll containers (1.9s)
+  ✓   7 [desktop] › tests/browser/reader.spec.ts:320:1 › Markdown reading keeps images and data while removing source layout (1.1s)
+  ✓   8 [desktop] › tests/browser/reader.spec.ts:376:1 › keyboard navigation, reading actions and editable/modal guards (1.7s)
+  ✓   9 [desktop] › tests/browser/reader.spec.ts:460:1 › background updates preserve unread rows, scroll and prose until accepted (3.1s)
+  ✓  10 [desktop] › tests/browser/reader.spec.ts:606:1 › subscription and category ordering persists, including moving between groups (2.8s)
+  ✓  11 [desktop] › tests/browser/reader.spec.ts:704:1 › diagnostic scoring recommends a verified replacement for an unavailable feed (2.0s)
+  ✓  12 [desktop] › tests/browser/reader.spec.ts:754:1 › the feed-title diagnostic verifies a replacement and supports pausing without losing articles (3.6s)
+  ✓  13 [mobile] › tests/browser/reader.spec.ts:12:1 › reading, persistent states, AI summary, translation and original article (2.3s)
+  ✓  14 [mobile] › tests/browser/reader.spec.ts:54:1 › search, navigation and feed/category CRUD (3.9s)
+  ✓  15 [mobile] › tests/browser/reader.spec.ts:124:1 › reading preferences, public next-ai settings and logs (1.9s)
+  ✓  16 [mobile] › tests/browser/reader.spec.ts:163:1 › accessible reader, responsive layout and discovery (1.4s)
+  ✓  17 [mobile] › tests/browser/reader.spec.ts:199:1 › feed/category paths, browser history, search and article positions survive reloads (3.8s)
+  ✓  18 [mobile] › tests/browser/reader.spec.ts:266:1 › reload and history restore a later article page and both scroll containers (1.9s)
+  ✓  19 [mobile] › tests/browser/reader.spec.ts:320:1 › Markdown reading keeps images and data while removing source layout (1.5s)
+  ✓  20 [mobile] › tests/browser/reader.spec.ts:376:1 › keyboard navigation, reading actions and editable/modal guards (1.5s)
+  ✓  21 [mobile] › tests/browser/reader.spec.ts:460:1 › background updates preserve unread rows, scroll and prose until accepted (3.1s)
+  ✓  22 [mobile] › tests/browser/reader.spec.ts:606:1 › subscription and category ordering persists, including moving between groups (2.8s)
+  ✓  23 [mobile] › tests/browser/reader.spec.ts:704:1 › diagnostic scoring recommends a verified replacement for an unavailable feed (2.3s)
+  ✓  24 [mobile] › tests/browser/reader.spec.ts:754:1 › the feed-title diagnostic verifies a replacement and supports pausing without losing articles (4.4s)
+
+  24 passed (1.0m)
+$ bun scripts/security.ts
+Starting filesystem walk for root: /
+Scanned /Users/nocoo/workspace/personal/geekhub/bun.lock file and found 555 packages
+End status: 0 dirs visited, 1 inodes visited, 1 Extract calls, 13.870791ms elapsed, 13.871ms wall time
+3:50PM INF scanned ~1891136 bytes (1.89 MB) in 111ms
+3:50PM INF no leaks found
+G2 passed: gitleaks working-tree scan and OSV lockfile scan.

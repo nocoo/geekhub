@@ -1,0 +1,31 @@
+{
+	"checkedAt": "2026-09-12T06:48:54.650Z",
+	"baseURL": "https://geekhub.dev.hexly.ai",
+	"tlsVerification": true,
+	"checks": [
+		{
+			"mode": "desktop",
+			"categoryNavigation": true,
+			"independentCollapse": true,
+			"keyboardExpansion": true,
+			"axeViolations": 0,
+			"scriptErrors": 0,
+			"width": 224,
+			"overflow": false,
+			"categoryHeight": 36,
+			"nestedButtons": 0
+		},
+		{
+			"mode": "mobile",
+			"categoryNavigation": true,
+			"independentCollapse": true,
+			"keyboardExpansion": true,
+			"axeViolations": 0,
+			"scriptErrors": 0,
+			"width": 224,
+			"overflow": false,
+			"categoryHeight": 36,
+			"nestedButtons": 0
+		}
+	]
+}

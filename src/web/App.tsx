@@ -4,6 +4,9 @@ import {
 	AvatarImage,
 	Badge,
 	Button,
+	Collapsible,
+	CollapsibleContent,
+	CollapsibleTrigger,
 	ContentIsland,
 	Dialog,
 	DialogClose,
@@ -14,7 +17,6 @@ import {
 	Input,
 	Sidebar,
 	SidebarFooter,
-	SidebarGroup,
 	SidebarHeader,
 	SidebarIconItem,
 	SidebarItem,
@@ -32,11 +34,12 @@ import {
 import { AppHeader } from "@nocoo/basalt/components/app-header";
 import { AppMain, AppShell, AppSkipLink } from "@nocoo/basalt/components/app-shell";
 import { useTheme } from "@nocoo/basalt/providers/theme";
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import {
 	ArrowDown,
 	Bookmark,
 	BookOpen,
+	Bug,
 	CheckCheck,
 	ChevronRight,
 	Clock3,
@@ -49,32 +52,28 @@ import {
 	RefreshCw,
 	Rss,
 	Search,
-	Settings2,
-	SlidersHorizontal,
+	Settings,
 	Sparkles,
 	Star,
 	Terminal,
 	X,
 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import type {
-	AiAction,
-	AiSettings,
-	Article,
-	ArticleDetail,
-	ArticlePage,
-	Category,
-	Feed,
-	FetchLog,
-	Preferences,
-	ReaderFilter,
-	Session,
-	Stats,
-} from "../shared/contracts";
-import { defaultPreferences } from "../shared/contracts";
+import {
+	useCallback,
+	useEffect,
+	useEffectEvent,
+	useLayoutEffect,
+	useRef,
+	useState,
+	useSyncExternalStore,
+} from "react";
+import type { Category, Feed, ReaderFilter, Session } from "../shared/contracts";
 import { APP_VERSION } from "../shared/version";
 import { ApiError, api } from "./lib/api";
-import { articleQuery, dateLabel, titleOf, translateTitles, viewLabels } from "./lib/reader";
+import type { Panel } from "./lib/panels-view-model";
+import { dateLabel, readerShortcut, titleOf } from "./lib/reader";
+import { useReadingPosition } from "./lib/reader-position";
+import { useReaderViewModel } from "./lib/reader-view-model";
 import { Panels } from "./Panels";
 import { Reader } from "./Reader";
 
@@ -85,7 +84,6 @@ const subscribeMobile = (callback: () => void) => {
 	return () => media.removeEventListener("change", callback);
 };
 const isMobile = () => window.matchMedia(mobileQuery).matches;
-export type Panel = "add" | "manage" | "discover" | "settings" | "logs" | null;
 
 export function App() {
 	const session = useQuery({
@@ -109,7 +107,7 @@ export function App() {
 				<h1>好内容，值得慢慢读。</h1>
 				<p>{session.error.message}</p>
 				<Button asChild>
-					<a href="/">
+					<a href={location.pathname + location.search}>
 						{session.error instanceof ApiError && session.error.status === 401
 							? "通过 Cloudflare Access 登录"
 							: "重新连接"}
@@ -123,169 +121,141 @@ export function App() {
 }
 
 function ReaderApp({ session }: { session: Session }) {
-	const client = useQueryClient();
 	const mobile = useSyncExternalStore(subscribeMobile, isMobile);
 	const [collapsed, setCollapsed] = useState(isMobile);
-	const [filter, setFilter] = useState<ReaderFilter>({ view: "all", search: "" });
 	const [search, setSearch] = useState("");
 	const [searchOpen, setSearchOpen] = useState(false);
-	const [selected, setSelected] = useState<string | null>(() =>
-		new URLSearchParams(location.search).get("article"),
-	);
 	const [panel, setPanel] = useState<Panel>(null);
+	const [diagnosticId, setDiagnosticId] = useState<string | null>(null);
 	const setNotice = useCallback((message: string) => {
 		toast(message, { duration: 8000 });
 	}, []);
-	const [translation, setTranslation] = useState(false);
-	const attempted = useRef(new Set<string>());
+	const vm = useReaderViewModel(setNotice);
+	const {
+		feeds,
+		categories,
+		stats,
+		preferences: pref,
+		logs,
+		pages,
+		detail,
+		articles,
+		filter,
+		visit,
+		selected,
+		translation,
+		setTranslation,
+		currentFeed,
+		heading,
+		busy,
+		open,
+		back,
+		articleWrite,
+		action,
+	} = vm;
 	const { setTheme } = useTheme();
-	const feeds = useQuery({
-		queryKey: ["feeds"],
-		queryFn: ({ signal }) => api<Feed[]>("/feeds", { signal }),
-		refetchInterval: (query) =>
-			query.state.data?.some((f) => f.status === "queued" || f.status === "fetching")
-				? 1500
-				: 60_000,
-	});
-	const categories = useQuery({
-		queryKey: ["categories"],
-		queryFn: () => api<Category[]>("/categories"),
-	});
-	const stats = useQuery({ queryKey: ["stats"], queryFn: () => api<Stats>("/stats") });
-	const preferences = useQuery({
-		queryKey: ["preferences"],
-		queryFn: () => api<Preferences>("/settings"),
-	});
-	const ai = useQuery({ queryKey: ["ai"], queryFn: () => api<AiSettings>("/ai/settings") });
-	const logs = useQuery({
-		queryKey: ["logs"],
-		queryFn: () => api<FetchLog[]>("/logs"),
-		refetchInterval: feeds.data?.some((f) => f.status === "queued" || f.status === "fetching")
-			? 1500
-			: false,
-	});
-	const pages = useInfiniteQuery({
-		queryKey: ["articles", filter],
-		queryFn: ({ pageParam, signal }) =>
-			api<ArticlePage>(articleQuery(filter, pageParam), { signal }),
-		initialPageParam: undefined as string | undefined,
-		getNextPageParam: (last) => last.nextCursor ?? undefined,
-	});
-	const detail = useQuery({
-		queryKey: ["article", selected],
-		queryFn: ({ signal }) => api<ArticleDetail>(`/articles/${selected}`, { signal }),
-		enabled: Boolean(selected),
-	});
-	const articles = pages.data?.pages.flatMap((page) => page.articles) ?? [];
-	const pref = preferences.data ?? defaultPreferences;
-	const currentFeed = feeds.data?.find((feed) => feed.id === filter.feedId);
-	const currentCategory = categories.data?.find((category) => category.id === filter.categoryId);
-	const heading = currentFeed?.title ?? currentCategory?.name ?? viewLabels[filter.view];
-	const busy = feeds.data?.some((f) => f.status === "queued" || f.status === "fetching") ?? false;
 	const latestActivity = logs.data?.[0];
 	const activityMessage = latestActivity
 		? `${latestActivity.feed_title} · ${latestActivity.message}`
 		: "等待第一次同步";
-
-	const refresh = async () => {
-		await Promise.all(
-			["feeds", "categories", "articles", "stats", "logs", "preferences", "ai"].map((key) =>
-				client.invalidateQueries({ queryKey: [key] }),
-			),
-		);
-	};
-	const write = useMutation({
-		mutationFn: ({ path, method, body }: { path: string; method: string; body?: unknown }) =>
-			api(path, { method, body }),
-		onSuccess: refresh,
-		onError: (error) => setNotice(error.message),
-	});
-	const articleWrite = useMutation({
-		mutationFn: ({ id, body }: { id: string; body: Record<string, boolean> }) =>
-			api<ArticleDetail>(`/articles/${id}`, { method: "PATCH", body }),
-		onSuccess: async (article) => {
-			client.setQueryData(["article", article.id], article);
-			await refresh();
-		},
-		onError: (error) => setNotice(error.message),
-	});
-	const action = useMutation({
-		mutationFn: ({ id, kind }: { id: string; kind: AiAction | "full" }) =>
-			api<ArticleDetail>(`/articles/${id}/${kind === "full" ? "full" : "ai"}`, {
-				method: "POST",
-				...(kind === "full" ? {} : { body: { action: kind } }),
-			}),
-		onSuccess: async (article, variables) => {
-			client.setQueryData(["article", article.id], article);
-			if (variables.kind === "translate") setTranslation(true);
-			await client.invalidateQueries({ queryKey: ["articles"] });
-		},
-		onError: (error) => setNotice(error.message),
-	});
-
+	const list = useRef<HTMLDivElement>(null);
+	useReadingPosition(
+		list,
+		`list:${visit}`,
+		Boolean(pages.data) && !vm.restoringPages && (!mobile || !selected),
+	);
+	const [anchor, setAnchor] = useState<{ id: string; offset: number }[] | null>(null);
+	const keyboardNavigation = useRef(false);
 	function choose(next: ReaderFilter) {
-		setFilter(next);
+		keyboardNavigation.current = false;
+		setAnchor(null);
+		vm.choose(next);
 		setSearch(next.search);
-		setSelected(null);
-		history.replaceState(null, "", "/");
 		if (mobile) setCollapsed(true);
 	}
-	function open(article: Article) {
-		setSelected(article.id);
-		setTranslation(false);
-		history.replaceState(null, "", `/?article=${encodeURIComponent(article.id)}`);
-		if (!article.is_read) articleWrite.mutate({ id: article.id, body: { is_read: true } });
+	function diagnose(feed: Feed) {
+		setDiagnosticId(feed.id);
+		setPanel("diagnose");
 	}
-	const back = useCallback(() => {
-		setSelected(null);
-		history.replaceState(null, "", "/");
-	}, []);
-
+	async function acceptUpdates() {
+		const bounds = list.current?.getBoundingClientRect();
+		const positions = Array.from(
+			list.current?.querySelectorAll<HTMLElement>("[data-article-id]") ?? [],
+		).flatMap((row) => {
+			const rect = row.getBoundingClientRect();
+			return bounds && rect.bottom > bounds.top && rect.top < bounds.bottom
+				? [{ id: row.dataset.articleId ?? "", offset: rect.top - bounds.top }]
+				: [];
+		});
+		if (await vm.acceptUpdates()) setAnchor(positions);
+	}
+	useLayoutEffect(() => {
+		if (!anchor || !list.current) return;
+		const rows = new Map(
+			Array.from(list.current.querySelectorAll<HTMLElement>("[data-article-id]"), (row) => [
+				row.dataset.articleId,
+				row,
+			]),
+		);
+		for (const position of anchor) {
+			const row = rows.get(position.id);
+			if (!row) continue;
+			list.current.scrollTop +=
+				row.getBoundingClientRect().top -
+				list.current.getBoundingClientRect().top -
+				position.offset;
+			break;
+		}
+		setAnchor(null);
+	}, [anchor]);
+	useLayoutEffect(() => {
+		if (
+			selected &&
+			(keyboardNavigation.current || document.activeElement?.matches(".article-item"))
+		) {
+			const row = list.current?.querySelector<HTMLElement>("[aria-current='true']");
+			row?.focus({ preventScroll: true });
+			row?.scrollIntoView({ block: "nearest" });
+		}
+		keyboardNavigation.current = false;
+	}, [selected]);
 	useEffect(() => {
 		setCollapsed(mobile);
 	}, [mobile]);
 	useEffect(() => {
-		if (preferences.data) setTheme(preferences.data.theme);
-	}, [preferences.data, setTheme]);
-	const fetchedStamp = feeds.data?.map((feed) => feed.last_fetched_at).join(",");
+		if (vm.preferencesLoaded) setTheme(pref.theme);
+	}, [pref.theme, vm.preferencesLoaded, setTheme]);
 	useEffect(() => {
-		if (!fetchedStamp) return;
-		void Promise.all(
-			["articles", "stats", "logs"].map((key) => client.invalidateQueries({ queryKey: [key] })),
-		);
-	}, [fetchedStamp, client]);
-	useEffect(() => {
-		const listener = (event: KeyboardEvent) => {
-			if (
-				event.target instanceof HTMLElement &&
-				(event.target.matches("input,textarea,select") || event.target.isContentEditable)
-			)
-				return;
-			if (event.key === "/" && !panel && !searchOpen) {
-				event.preventDefault();
-				setSearchOpen(true);
+		document.title = `${detail.data ? `${titleOf(detail.data)} · ` : ""}${heading} · GeekHub`;
+	}, [detail.data, heading]);
+	const onKey = useEffectEvent((event: KeyboardEvent) => {
+		const command = readerShortcut(event, Boolean(panel) || searchOpen || (mobile && !collapsed));
+		if (!command) return;
+		event.preventDefault();
+		if (command === "search") {
+			setSearch(filter.search);
+			setSearchOpen(true);
+		} else if (command === "back") back();
+		else if (command === "next" || command === "previous") {
+			keyboardNavigation.current = true;
+			void vm.move(command === "next" ? 1 : -1);
+		} else if (command === "refresh") {
+			if (!busy && !vm.refresh.isPending) vm.refresh.mutate();
+		} else if (detail.data && selected) {
+			if (command === "original") window.open(detail.data.url, "_blank", "noopener,noreferrer");
+			else if (!vm.statusBusy) {
+				const field = { read: "is_read", star: "is_starred", later: "is_later" }[command] as
+					| "is_read"
+					| "is_starred"
+					| "is_later";
+				articleWrite.mutate({ id: selected, body: { [field]: !detail.data[field] } });
 			}
-			if (event.key === "Escape" && !panel && !searchOpen) back();
-		};
-		window.addEventListener("keydown", listener);
-		return () => window.removeEventListener("keydown", listener);
-	}, [panel, searchOpen, back]);
+		}
+	});
 	useEffect(() => {
-		if (!pages.data || !ai.data || (!ai.data.hasApiKey && !ai.data.mock)) return;
-		let active = true;
-		void translateTitles(
-			pages.data.pages.flatMap((page) => page.articles),
-			attempted.current,
-			() => active,
-			async (article) => {
-				client.setQueryData(["article", article.id], article);
-				await client.invalidateQueries({ queryKey: ["articles"] });
-			},
-		);
-		return () => {
-			active = false;
-		};
-	}, [pages.data, ai.data, client]);
+		window.addEventListener("keydown", onKey);
+		return () => window.removeEventListener("keydown", onKey);
+	}, []);
 
 	const SidebarViewItem = collapsed ? SidebarIconItem : SidebarItem;
 	const avatar = (
@@ -397,52 +367,26 @@ function ReaderApp({ session }: { session: Session }) {
 									</Button>
 								</div>
 								{categories.data?.map((category) => (
-									<SidebarGroup
+									<CategoryGroup
 										key={category.id}
-										label={
-											<span className="category-name">
-												<span
-													className={`category-dot ${category.color}`}
-													style={{
-														backgroundColor: category.color.startsWith("#")
-															? category.color
-															: undefined,
-													}}
-												/>
-												{category.icon && <span aria-hidden="true">{category.icon}</span>}
-												{category.name}
-											</span>
-										}
-									>
-										<SidebarItem
-											className="category-filter"
-											active={filter.categoryId === category.id}
-											onClick={() => choose({ view: "all", categoryId: category.id, search: "" })}
-										>
-											查看分类全部
-										</SidebarItem>
-										{feeds.data
-											?.filter((f) => f.category_id === category.id)
-											.map((feed) => (
-												<FeedItem
-													key={feed.id}
-													feed={feed}
-													active={filter.feedId === feed.id}
-													onClick={() => choose({ view: "all", feedId: feed.id, search: "" })}
-												/>
-											))}
-									</SidebarGroup>
+										category={category}
+										feeds={feeds.data?.filter((feed) => feed.category_id === category.id) ?? []}
+										filter={filter}
+										onChoose={choose}
+									/>
 								))}
-								{feeds.data
-									?.filter((feed) => !feed.category_id)
-									.map((feed) => (
-										<FeedItem
-											key={feed.id}
-											feed={feed}
-											active={filter.feedId === feed.id}
-											onClick={() => choose({ view: "all", feedId: feed.id, search: "" })}
-										/>
-									))}
+								<div className="flex flex-col gap-0.5 px-3">
+									{feeds.data
+										?.filter((feed) => !feed.category_id)
+										.map((feed) => (
+											<FeedItem
+												key={feed.id}
+												feed={feed}
+												active={filter.feedId === feed.id}
+												onClick={() => choose({ view: "all", feedId: feed.id, search: "" })}
+											/>
+										))}
+								</div>
 								{feeds.isError && <p className="inline-error">{feeds.error.message}</p>}
 							</>
 						)}
@@ -466,27 +410,6 @@ function ReaderApp({ session }: { session: Session }) {
 						</Tooltip>
 					</SidebarNav>
 					<SidebarFooter className={collapsed ? "flex flex-col items-center px-0" : undefined}>
-						<div className={collapsed ? "flex flex-col items-center gap-1 pb-2" : "rail-tools"}>
-							<Button
-								variant="ghost"
-								size={collapsed ? "icon" : "sm"}
-								aria-label="管理订阅"
-								title="管理订阅"
-								onClick={() => setPanel("manage")}
-							>
-								<SlidersHorizontal size={15} />
-								{!collapsed && "管理订阅"}
-							</Button>
-							<Button
-								variant="ghost"
-								size="icon"
-								aria-label="设置"
-								title="设置"
-								onClick={() => setPanel("settings")}
-							>
-								<Settings2 size={17} />
-							</Button>
-						</div>
 						{collapsed ? (
 							<Tooltip>
 								<TooltipTrigger asChild>
@@ -528,6 +451,7 @@ function ReaderApp({ session }: { session: Session }) {
 								aria-label="搜索文章"
 								placeholder="输入关键词，按回车搜索"
 								value={search}
+								maxLength={200}
 								onChange={(event) => setSearch(event.target.value)}
 							/>
 							<Button type="submit" size="icon" aria-label="执行搜索" title="搜索">
@@ -587,15 +511,42 @@ function ReaderApp({ session }: { session: Session }) {
 									variant="ghost"
 									size="icon"
 									aria-label="刷新订阅"
-									disabled={write.isPending || busy}
-									onClick={() =>
-										write.mutate({
-											path: currentFeed ? `/feeds/${currentFeed.id}/refresh` : "/refresh",
-											method: "POST",
-										})
-									}
+									disabled={vm.refresh.isPending || busy}
+									onClick={() => vm.refresh.mutate()}
+									title="刷新订阅 (R)"
+									aria-keyshortcuts="r"
 								>
 									<RefreshCw size={16} className={busy ? "spinning" : ""} />
+								</Button>
+								<Button variant="ghost" size="icon" asChild>
+									<a
+										href="https://github.com/nocoo/geekhub"
+										target="_blank"
+										rel="noopener noreferrer"
+										aria-label="GeekHub GitHub 项目"
+										title="GitHub 项目"
+									>
+										<svg
+											width="17"
+											height="17"
+											viewBox="0 0 24 24"
+											fill="currentColor"
+											aria-hidden="true"
+										>
+											<path d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.5-1.4-1.3-1.7-1.3-1.7-1.1-.8.1-.8.1-.8 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-6a4.7 4.7 0 0 1 1.2-3.2 4.3 4.3 0 0 1 .1-3.2s1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2a4.3 4.3 0 0 1 .1 3.2 4.7 4.7 0 0 1 1.2 3.2c0 4.7-2.8 5.7-5.5 6 .4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .3Z" />
+										</svg>
+										<span className="sr-only">GeekHub GitHub 项目</span>
+									</a>
+								</Button>
+								<Button
+									variant="ghost"
+									size="icon"
+									aria-label="设置"
+									title="设置"
+									aria-haspopup="dialog"
+									onClick={() => setPanel("settings")}
+								>
+									<Settings size={17} />
 								</Button>
 							</>
 						}
@@ -606,6 +557,18 @@ function ReaderApp({ session }: { session: Session }) {
 								<div className="list-heading">
 									<div className="list-title">
 										<h2 title={currentFeed?.description || heading}>{heading}</h2>
+										{currentFeed && (
+											<Button
+												variant="ghost"
+												size="icon"
+												className="feed-debug h-8 w-8"
+												aria-label={`诊断 ${currentFeed.title}`}
+												title="检查连接、内容时效与替代 RSS"
+												onClick={() => diagnose(currentFeed)}
+											>
+												<Bug size={15} />
+											</Button>
+										)}
 										<Tooltip>
 											<TooltipTrigger asChild>
 												<Button
@@ -613,14 +576,8 @@ function ReaderApp({ session }: { session: Session }) {
 													size="icon"
 													className="h-8 w-8"
 													aria-label="全部标为已读"
-													disabled={!articles.length || write.isPending}
-													onClick={() =>
-														write.mutate({
-															path: "/read-all",
-															method: "POST",
-															body: { feedId: filter.feedId, categoryId: filter.categoryId },
-														})
-													}
+													disabled={!articles.length || vm.markRead.isPending}
+													onClick={() => vm.markRead.mutate(filter)}
 												>
 													<CheckCheck size={16} aria-hidden="true" />
 												</Button>
@@ -647,7 +604,7 @@ function ReaderApp({ session }: { session: Session }) {
 													title="清除搜索"
 													onClick={() => {
 														setSearch("");
-														setFilter({ ...filter, search: "" });
+														choose({ ...filter, search: "" });
 													}}
 												>
 													<X size={12} aria-hidden="true" />
@@ -659,13 +616,38 @@ function ReaderApp({ session }: { session: Session }) {
 										</span>
 									</div>
 								</div>
-								<div className="article-scroll">
+								<div className="list-update-slot">
+									{pages.isError && pages.data ? (
+										<Button
+											variant="ghost"
+											size="sm"
+											disabled={pages.isFetching}
+											onClick={() => void acceptUpdates()}
+											title={pages.error.message}
+										>
+											更新失败，点击重试
+										</Button>
+									) : vm.updatesAvailable ? (
+										<Button
+											variant="ghost"
+											size="sm"
+											disabled={pages.isFetching}
+											onClick={() => void acceptUpdates()}
+										>
+											<RefreshCw size={12} className={pages.isFetching ? "spinning" : ""} />
+											{pages.isFetching ? "载入中…" : "有内容更新，点击载入"}
+										</Button>
+									) : (
+										<span>J / K 切换文章 · / 搜索</span>
+									)}
+								</div>
+								<div className="article-scroll" ref={list} key={visit}>
 									{pages.isPending ? (
 										<div className="empty-state" role="status">
 											<LoaderCircle className="spinning" size={22} />
 											正在读取文章…
 										</div>
-									) : pages.isError ? (
+									) : pages.isError && !pages.data ? (
 										<div className="empty-state" role="alert">
 											<p>{pages.error.message}</p>
 											<Button onClick={() => void pages.refetch()}>重试</Button>
@@ -694,9 +676,13 @@ function ReaderApp({ session }: { session: Session }) {
 												type="button"
 												className={`article-item ${selected === article.id ? "selected" : ""} ${article.is_read ? "is-read" : ""}`}
 												key={article.id}
-												onClick={() => open(article)}
+												onClick={() => {
+													keyboardNavigation.current = false;
+													open(article);
+												}}
 												aria-current={selected === article.id ? "true" : undefined}
 												data-testid="article-item"
+												data-article-id={article.id}
 											>
 												<div className="article-item-meta">
 													<span>
@@ -708,7 +694,7 @@ function ReaderApp({ session }: { session: Session }) {
 													</time>
 												</div>
 												<h3>
-													{!article.is_read && <span className="unread-dot" />}
+													<span className="unread-dot" aria-hidden="true" />
 													{titleOf(article)}
 												</h3>
 												<p>{article.translated_description || article.description}</p>
@@ -749,6 +735,7 @@ function ReaderApp({ session }: { session: Session }) {
 								loading={Boolean(selected) && detail.isPending}
 								error={detail.error?.message}
 								selected={Boolean(selected)}
+								navigationKey={vm.navigationKey}
 								preferences={pref}
 								translation={translation}
 								onTranslation={setTranslation}
@@ -760,8 +747,8 @@ function ReaderApp({ session }: { session: Session }) {
 								onAction={(kind) => {
 									if (selected) action.mutate({ id: selected, kind });
 								}}
-								statusBusy={articleWrite.isPending}
-								actionBusy={action.isPending ? action.variables.kind : null}
+								statusBusy={vm.statusBusy}
+								actionBusy={vm.actionBusy}
 							/>
 						</ContentIsland>
 					</div>
@@ -781,11 +768,74 @@ function ReaderApp({ session }: { session: Session }) {
 					stats={stats.data}
 					logs={logs.data ?? []}
 					local={session.local}
-					onRefresh={refresh}
+					onChanged={vm.changed}
+					diagnosticFeed={feeds.data?.find((feed) => feed.id === diagnosticId)}
+					onDiagnose={diagnose}
 					onNotice={setNotice}
 				/>
 			</AppShell>
 		</SidebarProvider>
+	);
+}
+
+function CategoryGroup({
+	category,
+	feeds,
+	filter,
+	onChoose,
+}: {
+	category: Category;
+	feeds: Feed[];
+	filter: ReaderFilter;
+	onChoose: (filter: ReaderFilter) => void;
+}) {
+	const unread = feeds.reduce((count, feed) => count + feed.unread_count, 0);
+	return (
+		<Collapsible defaultOpen className="sidebar-category">
+			<div className="sidebar-category-heading">
+				<CollapsibleTrigger asChild>
+					<Button
+						variant="ghost"
+						size="icon"
+						className="sidebar-category-toggle"
+						aria-label={`展开或收起 ${category.name}`}
+					>
+						<ChevronRight size={14} aria-hidden="true" />
+					</Button>
+				</CollapsibleTrigger>
+				<SidebarItem
+					className="sidebar-category-link"
+					aria-label={`分类 ${category.name}`}
+					title={category.name}
+					active={filter.categoryId === category.id}
+					onClick={() => onChoose({ view: "all", categoryId: category.id, search: "" })}
+				>
+					<span className="category-name">
+						<span
+							className={`category-dot ${category.color}`}
+							style={{
+								backgroundColor: category.color.startsWith("#") ? category.color : undefined,
+							}}
+						/>
+						{category.icon && <span aria-hidden="true">{category.icon}</span>}
+						<span className="truncate">{category.name}</span>
+					</span>
+					<span className="nav-count">{unread || ""}</span>
+				</SidebarItem>
+			</div>
+			<CollapsibleContent unstyled>
+				<div className="sidebar-category-feeds">
+					{feeds.map((feed) => (
+						<FeedItem
+							key={feed.id}
+							feed={feed}
+							active={filter.feedId === feed.id}
+							onClick={() => onChoose({ view: "all", feedId: feed.id, search: "" })}
+						/>
+					))}
+				</div>
+			</CollapsibleContent>
+		</Collapsible>
 	);
 }
 

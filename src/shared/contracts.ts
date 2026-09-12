@@ -22,8 +22,10 @@ export interface Feed {
 	auto_translate: number;
 	is_active: number;
 	refresh_minutes: number;
+	sort_order: number;
 	status: "idle" | "queued" | "fetching" | "success" | "error";
 	last_fetched_at: string | null;
+	next_fetch_at: string | null;
 	last_error: string | null;
 	unread_count: number;
 	total_count: number;
@@ -123,4 +125,55 @@ export interface AiSettings extends AiSettingsReadonly {
 export type AiAction = "summary" | "translate" | "translate-title";
 export interface FeedJob {
 	feedId: string;
+	token?: string;
+}
+export interface DiagnosticJob {
+	kind: "diagnose";
+	feedId: string;
+	runId: string;
+}
+export type QueueJob = FeedJob | DiagnosticJob;
+
+export interface ConnectionCheck {
+	url: string;
+	finalUrl: string;
+	status: number | null;
+	durationMs: number;
+	hops: { url: string; status: number }[];
+	error: string | null;
+}
+export interface FeedInspection extends ConnectionCheck {
+	title: string | null;
+	siteUrl: string | null;
+	entries: number | null;
+	readableEntries: number;
+	oldestAt: string | null;
+	latestAt: string | null;
+	undatedEntries: number;
+	futureEntries: number;
+	ageDays: number | null;
+}
+export interface FeedCandidate {
+	url: string;
+	source: "page" | "redirect" | "probe";
+	inspection: FeedInspection;
+}
+export interface DiagnosticReport {
+	checkedAt: string;
+	durationMs: number;
+	staleAfterDays: number;
+	feed: FeedInspection;
+	siteUrl: string | null;
+	sites: ConnectionCheck[];
+	candidates: FeedCandidate[];
+}
+export interface FeedDiagnostic {
+	feed_id: string;
+	run_id: string;
+	feed_url: string;
+	status: "queued" | "running" | "success" | "error";
+	requested_at: string;
+	finished_at: string | null;
+	error: string | null;
+	report: DiagnosticReport | null;
 }

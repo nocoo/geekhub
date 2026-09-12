@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, openSync, readFileSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, openSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { resolve } from "node:path";
 import { assertMarker, executeLocalSql, seedSql } from "./seed";
 import { verifyLocalBindings } from "./verify-test-bindings";
@@ -33,7 +33,10 @@ delete env.FORCE_COLOR;
 let server: ReturnType<typeof Bun.spawn> | undefined;
 let marked = false;
 try {
-	await executeLocalSql(state, readFileSync("migrations/0001_reader.sql", "utf8"));
+	for (const file of readdirSync("migrations")
+		.filter((file) => file.endsWith(".sql"))
+		.sort())
+		await executeLocalSql(state, readFileSync(`migrations/${file}`, "utf8"));
 	await executeLocalSql(
 		state,
 		"CREATE TABLE _test_marker(key TEXT PRIMARY KEY, value TEXT); INSERT INTO _test_marker VALUES ('env','test');",

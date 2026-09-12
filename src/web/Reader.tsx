@@ -12,14 +12,19 @@ import {
 	Sparkles,
 	Star,
 } from "lucide-react";
+import { lazy, Suspense, useRef } from "react";
 import type { AiAction, ArticleDetail, Preferences } from "../shared/contracts";
-import { dateLabel, readerNodes } from "./lib/reader";
+import { dateLabel } from "./lib/reader";
+import { useReadingPosition } from "./lib/reader-position";
+
+const ReaderContent = lazy(() => import("./ReaderContent"));
 
 interface Props {
 	article?: ArticleDetail;
 	loading: boolean;
 	error?: string;
 	selected: boolean;
+	navigationKey: string;
 	preferences: Preferences;
 	translation: boolean;
 	onTranslation: (value: boolean) => void;
@@ -36,6 +41,7 @@ export function Reader({
 	loading,
 	error,
 	selected,
+	navigationKey,
 	preferences,
 	translation,
 	onTranslation,
@@ -46,6 +52,15 @@ export function Reader({
 	statusBusy,
 	actionBusy,
 }: Props) {
+	const scroll = useRef<HTMLDivElement>(null);
+	const content =
+		translation && article?.translated_content ? article.translated_content : article?.content;
+	useReadingPosition(
+		scroll,
+		`article:${navigationKey}`,
+		Boolean(selected && article && !loading),
+		content ? ".prose" : undefined,
+	);
 	if (!selected)
 		return (
 			<section className="reader empty-reader" aria-label="阅读器">
@@ -68,6 +83,9 @@ export function Reader({
 					<ChevronRight size={14} />
 				</Button>
 				<div className="reader-keystrokes">
+					<span>
+						<kbd>J</kbd> / <kbd>K</kbd> 切换文章
+					</span>
 					<span>
 						<kbd>/</kbd> 搜索文章
 					</span>
@@ -97,8 +115,6 @@ export function Reader({
 				</div>
 			</section>
 		);
-	const content =
-		translation && article.translated_content ? article.translated_content : article.content;
 	return (
 		<section className="reader" aria-label="阅读器">
 			<div className="reader-toolbar">
@@ -146,7 +162,14 @@ export function Reader({
 					</Button>
 				</div>
 			</div>
-			<div className="reader-scroll" key={article.id}>
+			<div
+				className="reader-scroll"
+				ref={scroll}
+				key={article.id}
+				tabIndex={-1}
+				role="document"
+				aria-label="文章正文"
+			>
 				<article
 					className={`reader-document font-${preferences.fontFamily}`}
 					style={{ "--reader-font-size": `${preferences.fontSize}px` } as React.CSSProperties}
@@ -243,12 +266,14 @@ export function Reader({
 						</div>
 					)}
 					{content ? (
-						<div
-							className="prose"
-							ref={(element) => {
-								if (element) element.replaceChildren(readerNodes(content, preferences.showImages));
-							}}
-						/>
+						<Suspense fallback={<p role="status">正在整理正文…</p>}>
+							<ReaderContent
+								content={content}
+								url={article.url}
+								title={article.title}
+								showImages={preferences.showImages}
+							/>
+						</Suspense>
 					) : (
 						<div className="empty-state">
 							<p>订阅源只提供了文章标题，可以提取全文或打开原文。</p>

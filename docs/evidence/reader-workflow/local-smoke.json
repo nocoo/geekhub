@@ -1,0 +1,41 @@
+{
+	"checkedAt": "2026-09-12T03:53:26.281821+00:00",
+	"environment": "local",
+	"baseURL": "http://127.0.0.1:7005",
+	"migration": "0002_reader_workflow.sql",
+	"checks": [
+		{
+			"path": "/api/live",
+			"status": 200,
+			"body": {
+				"status": "ok",
+				"version": "1.2.1",
+				"storage": "d1"
+			}
+		},
+		{
+			"path": "/api/session",
+			"status": 200,
+			"local": true
+		},
+		{
+			"path": "/api/stats",
+			"status": 200,
+			"body": {
+				"articles": 1526,
+				"unread": 1524,
+				"starred": 0,
+				"later": 0,
+				"bytes": 5345196,
+				"feeds": 45,
+				"logs": 90
+			}
+		},
+		{
+			"path": "/api/feeds",
+			"status": 200,
+			"count": 45,
+			"allHaveSavedOrder": true
+		}
+	]
+}

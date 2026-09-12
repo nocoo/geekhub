@@ -6,7 +6,9 @@ import { publicUrl } from "../../shared/validation";
 export function safeLink(value: string, base: string): string {
 	if (!value.trim()) return "";
 	try {
-		return publicUrl(new URL(value, base).href).href;
+		const url = new URL(value, base);
+		publicUrl(url.href);
+		return url.href;
 	} catch {
 		return "";
 	}
@@ -45,7 +47,15 @@ export function cleanHtml(html: string, base: string): string {
 			}),
 			img: (_name, attrs) => ({
 				tagName: "img",
-				attribs: { src: safeLink(attrs.src ?? "", base), alt: attrs.alt ?? "", loading: "lazy" },
+				attribs: {
+					src:
+						safeLink(attrs["data-src"] ?? "", base) ||
+						safeLink(attrs["data-original"] ?? "", base) ||
+						safeLink(attrs.src ?? "", base),
+					alt: attrs.alt ?? "",
+					title: attrs.title ?? "",
+					loading: "lazy",
+				},
 			}),
 		},
 		exclusiveFilter: (frame) => frame.tag === "img" && !frame.attribs.src,
@@ -114,8 +124,18 @@ export interface ParsedArticle {
 export interface ParsedFeed {
 	title: string;
 	siteUrl: string;
+	declaredSiteUrl: string | null;
 	description: string;
 	articles: ParsedArticle[];
+	entries: number;
+	oldestAt: string | null;
+	latestAt: string | null;
+	undatedEntries: number;
+	futureEntries: number;
+}
+
+function itemDate(item: Record<string, unknown>): Date {
+	return new Date(text(item.pubDate ?? item.published ?? item.updated ?? item["dc:date"]));
 }
 
 export function parseFeed(xml: string, url: string, now = new Date().toISOString()): ParsedFeed {
@@ -128,39 +148,53 @@ export function parseFeed(xml: string, url: string, now = new Date().toISOString
 	const atom = record(parsed.feed);
 	const feed = Object.keys(channel).length ? channel : atom;
 	if (!Object.keys(feed).length) throw new Error("没有找到 RSS 或 Atom 订阅内容");
-	const siteUrl = safeLink(atomLink(feed.link), url) || new URL(url).origin;
-	const articles = list(feed.item ?? feed.entry)
-		.slice(0, 200)
-		.flatMap((value) => {
-			const item = record(value);
-			const link = safeLink(atomLink(item.link), siteUrl);
-			const title = plainText(text(item.title));
-			if (!link || !title) return [];
-			const content = cleanHtml(
-				text(item["content:encoded"] ?? item.content ?? item.description ?? item.summary),
-				link,
-			);
-			const date = new Date(
-				text(item.pubDate ?? item.published ?? item.updated ?? item["dc:date"]),
-			);
-			const $ = load(content);
-			return [
-				{
-					sourceId: text(item.guid ?? item.id) || link,
-					title,
-					url: link,
-					author: text(item["dc:creator"]) || text(record(item.author).name) || text(item.author),
-					publishedAt: Number.isNaN(date.getTime()) ? now : date.toISOString(),
-					content,
-					description: plainText(text(item.description ?? item.summary) || content).slice(0, 600),
-					imageUrl: $("img").first().attr("src") || null,
-				},
-			];
-		});
+	const declaredSiteUrl = safeLink(atomLink(feed.link), url) || null;
+	const siteUrl = declaredSiteUrl || new URL(url).origin;
+	const items = list(feed.item ?? feed.entry);
+	const dates: string[] = [];
+	let undatedEntries = 0;
+	let futureEntries = 0;
+	for (const value of items) {
+		const date = itemDate(record(value));
+		if (Number.isNaN(date.getTime())) undatedEntries++;
+		else if (date.getTime() > Date.parse(now)) futureEntries++;
+		else dates.push(date.toISOString());
+	}
+	dates.sort();
+	const articles = items.slice(0, 200).flatMap((value) => {
+		const item = record(value);
+		const link = safeLink(atomLink(item.link), siteUrl);
+		const title = plainText(text(item.title));
+		if (!link || !title) return [];
+		const content = cleanHtml(
+			text(item["content:encoded"] ?? item.content ?? item.description ?? item.summary),
+			link,
+		);
+		const date = itemDate(item);
+		const $ = load(content);
+		return [
+			{
+				sourceId: text(item.guid ?? item.id) || link,
+				title,
+				url: link,
+				author: text(item["dc:creator"]) || text(record(item.author).name) || text(item.author),
+				publishedAt: Number.isNaN(date.getTime()) ? now : date.toISOString(),
+				content,
+				description: plainText(text(item.description ?? item.summary) || content).slice(0, 600),
+				imageUrl: $("img").first().attr("src") || null,
+			},
+		];
+	});
 	return {
 		title: plainText(text(feed.title)) || new URL(url).hostname,
 		siteUrl,
+		declaredSiteUrl,
 		description: plainText(text(feed.description ?? feed.subtitle)).slice(0, 1000),
 		articles,
+		entries: items.length,
+		oldestAt: dates[0] ?? null,
+		latestAt: dates.at(-1) ?? null,
+		undatedEntries,
+		futureEntries,
 	};
 }

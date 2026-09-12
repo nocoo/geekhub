@@ -1,4 +1,11 @@
-import type { Article, ArticleDetail, ReaderFilter } from "../../shared/contracts";
+import type { InfiniteData } from "@tanstack/react-query";
+import type {
+	Article,
+	ArticleDetail,
+	ArticlePage,
+	Feed,
+	ReaderFilter,
+} from "../../shared/contracts";
 import { api } from "./api";
 
 export const viewLabels = {
@@ -34,19 +41,90 @@ export function sizeLabel(bytes: number): string {
 	return bytes < 1048576 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / 1048576).toFixed(1)} MB`;
 }
 
-export function readerNodes(html: string, showImages: boolean): DocumentFragment {
-	const document = new DOMParser().parseFromString(html, "text/html");
-	// The Worker sanitized this HTML. Rewrite image requests through the authenticated proxy.
-	for (const image of document.querySelectorAll("img")) {
-		if (!showImages) image.remove();
-		else {
-			image.src = `/api/images?${new URLSearchParams({ url: image.getAttribute("src") ?? "" })}`;
-			image.referrerPolicy = "no-referrer";
+export function patchArticles(
+	data: InfiniteData<ArticlePage> | undefined,
+	matches: (article: Article) => boolean,
+	patch: Partial<Article>,
+): InfiniteData<ArticlePage> | undefined {
+	return (
+		data && {
+			...data,
+			pages: data.pages.map((page) => ({
+				...page,
+				articles: page.articles.map((article) =>
+					matches(article) ? { ...article, ...patch } : article,
+				),
+			})),
 		}
-	}
-	const fragment = document.createDocumentFragment();
-	fragment.append(...document.body.childNodes);
-	return fragment;
+	);
+}
+
+export function feedRevision(feeds: Feed[], filter: ReaderFilter): string {
+	return feeds
+		.filter(
+			(feed) =>
+				(!filter.feedId || feed.id === filter.feedId) &&
+				(!filter.categoryId || feed.category_id === filter.categoryId),
+		)
+		.map((feed) => `${feed.id}:${feed.url}:${feed.total_count}`)
+		.sort()
+		.join("|");
+}
+
+export type ReaderShortcut =
+	| "next"
+	| "previous"
+	| "search"
+	| "back"
+	| "read"
+	| "star"
+	| "later"
+	| "original"
+	| "refresh";
+export function readerShortcut(event: KeyboardEvent, blocked: boolean): ReaderShortcut | null {
+	if (
+		blocked ||
+		event.defaultPrevented ||
+		event.isComposing ||
+		event.ctrlKey ||
+		event.metaKey ||
+		event.altKey
+	)
+		return null;
+	const target = event.target instanceof Element ? event.target : null;
+	if (
+		target?.closest(
+			"input, textarea, select, [contenteditable]:not([contenteditable='false']), [role='textbox'], [role='combobox'], [role='dialog'], [role='alertdialog'], [role='menu']",
+		)
+	)
+		return null;
+	if (event.key.startsWith("Arrow") && target?.closest(".reader-scroll, .reader-sidebar"))
+		return null;
+	const shortcuts: Record<string, ReaderShortcut> = {
+		j: "next",
+		ArrowDown: "next",
+		k: "previous",
+		ArrowUp: "previous",
+		"/": "search",
+		Escape: "back",
+		m: "read",
+		s: "star",
+		l: "later",
+		o: "original",
+		r: "refresh",
+	};
+	const shortcut = shortcuts[event.key.length === 1 ? event.key.toLowerCase() : event.key] ?? null;
+	if (event.repeat && shortcut !== "next" && shortcut !== "previous") return null;
+	return shortcut;
+}
+
+export function adjacentArticle(
+	articles: Article[],
+	selected: string | null,
+	direction: 1 | -1,
+): Article | undefined {
+	const index = articles.findIndex((article) => article.id === selected);
+	return articles[index < 0 ? (direction === 1 ? 0 : articles.length - 1) : index + direction];
 }
 
 export async function translateTitles(

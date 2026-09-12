@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
-import type { Article, DirectoryFeed, FeedJob } from "../shared/contracts";
+import type { Article, DirectoryFeed, QueueJob } from "../shared/contracts";
 import {
 	aiActionInput,
 	aiInput,
@@ -10,10 +10,13 @@ import {
 	categoryInput,
 	cleanupInput,
 	decodeCursor,
+	diagnosticInput,
 	encodeCursor,
 	feedInput,
+	feedOrderInput,
 	feedUpdate,
 	markReadInput,
+	orderInput,
 	preferencesInput,
 	publicUrl,
 	resolveFeedUrl,
@@ -21,7 +24,16 @@ import {
 import { APP_VERSION } from "../shared/version";
 import { aiCached, aiSettings, saveAiSettings, testAi, transformArticle } from "./ai";
 import { type AppEnv, authenticate } from "./auth";
-import { articleDetail, dataStats, getFeed, listFeeds, preferences, requireCategory } from "./data";
+import {
+	articleDetail,
+	dataStats,
+	getFeed,
+	listFeeds,
+	preferences,
+	reorder,
+	requireCategory,
+} from "./data";
+import { enqueueDiagnostic, getDiagnostic, runDiagnostic } from "./diagnostics";
 import { enqueueFeed, refreshFeed, scheduleFeeds } from "./feeds";
 import { withAuthorProfile } from "./lib/author-profile";
 import { extractArticle } from "./lib/content";
@@ -88,11 +100,18 @@ app.post("/api/categories", async (c) => {
 	const input = categoryInput.parse(await c.req.json());
 	const id = crypto.randomUUID();
 	await c.env.DB.prepare(
-		"INSERT INTO categories (id, name, color, icon, sort_order) VALUES (?, ?, ?, ?, ?)",
+		"INSERT INTO categories (id, name, color, icon, sort_order) VALUES (?, ?, ?, ?, COALESCE(?, (SELECT COALESCE(MAX(sort_order), -1) + 1 FROM categories)))",
 	)
-		.bind(id, input.name, input.color, input.icon ?? "", input.sort_order ?? 0)
+		.bind(id, input.name, input.color, input.icon ?? "", input.sort_order ?? null)
 		.run();
-	return c.json({ id, icon: "", sort_order: 0, ...input }, 201);
+	return c.json(
+		await c.env.DB.prepare("SELECT * FROM categories WHERE id = ?").bind(id).first(),
+		201,
+	);
+});
+app.post("/api/categories/reorder", async (c) => {
+	await reorder(c.env.DB, "categories", orderInput.parse(await c.req.json()).ids);
+	return c.json({ ok: true });
 });
 app.patch("/api/categories/:id", async (c) => {
 	const input = categoryInput.parse(await c.req.json());
@@ -130,7 +149,9 @@ app.post("/api/feeds", async (c) => {
 	const id = crypto.randomUUID();
 	const title =
 		input.title || new URL(resolveFeedUrl(url, (await preferences(c.env.DB)).rsshubUrl)).hostname;
-	await c.env.DB.prepare("INSERT INTO feeds (id, category_id, title, url) VALUES (?, ?, ?, ?)")
+	await c.env.DB.prepare(
+		"INSERT INTO feeds (id, category_id, title, url, sort_order) VALUES (?, ?, ?, ?, (SELECT COALESCE(MAX(sort_order), -1) + 1 FROM feeds))",
+	)
 		.bind(id, input.category_id ?? null, title, url)
 		.run();
 	// Persist first: a transient queue failure leaves a visible, retryable subscription.
@@ -141,17 +162,76 @@ app.post("/api/feeds", async (c) => {
 	}
 	return c.json(await getFeed(c.env.DB, id), 201);
 });
+app.post("/api/feeds/reorder", async (c) => {
+	const input = feedOrderInput.parse(await c.req.json());
+	await requireCategory(c.env.DB, input.categoryId);
+	await reorder(
+		c.env.DB,
+		"feeds",
+		input.ids,
+		input.feedId
+			? {
+					feedId: input.feedId,
+					categoryId: input.categoryId ?? null,
+				}
+			: undefined,
+	);
+	return c.json({ ok: true });
+});
 app.patch("/api/feeds/:id", async (c) => {
 	const input = feedUpdate.parse(await c.req.json());
 	const id = c.req.param("id");
-	await getFeed(c.env.DB, id);
+	const feed = await getFeed(c.env.DB, id);
 	await requireCategory(c.env.DB, input.category_id);
+	try {
+		if (input.url) {
+			const resolved = resolveFeedUrl(input.url, (await preferences(c.env.DB)).rsshubUrl);
+			if (!input.url.startsWith("rsshub://")) input.url = resolved;
+		}
+		if (input.site_url) input.site_url = publicUrl(input.site_url).href;
+	} catch {
+		fail(400, "请输入有效的公开网站地址或 RSSHub 路由");
+	}
+	const changedUrl = input.url !== undefined && input.url !== feed.url;
+	if (changedUrl && input.site_url === undefined) input.site_url = "";
 	const entries = Object.entries(input);
-	await c.env.DB.prepare(
-		`UPDATE feeds SET ${entries.map(([key]) => `${key} = ?`).join(", ")} WHERE id = ?`,
-	)
-		.bind(...entries.map(([, value]) => (typeof value === "boolean" ? Number(value) : value)), id)
-		.run();
+	const changedInterval =
+		!changedUrl &&
+		input.refresh_minutes !== undefined &&
+		input.refresh_minutes !== feed.refresh_minutes;
+	const resets = changedUrl
+		? ", etag = NULL, last_modified = NULL, last_fetched_at = NULL, last_error = NULL, next_fetch_at = NULL, failure_count = 0"
+		: changedInterval
+			? ", next_fetch_at = ?"
+			: "";
+	const cancel =
+		changedUrl || input.is_active === false
+			? ", status = 'idle', lease_until = NULL, refresh_token = NULL, fetch_revision = fetch_revision + 1"
+			: "";
+	const statements = [
+		c.env.DB.prepare(
+			`UPDATE feeds SET ${entries.map(([key]) => `${key} = ?`).join(", ")}${resets}${cancel} WHERE id = ?`,
+		).bind(
+			...entries.map(([, value]) => (typeof value === "boolean" ? Number(value) : value)),
+			...(changedInterval
+				? [new Date(Date.now() + (input.refresh_minutes as number) * 60_000).toISOString()]
+				: []),
+			id,
+		),
+	];
+	if (changedUrl || input.site_url !== undefined)
+		statements.push(c.env.DB.prepare("DELETE FROM feed_diagnostics WHERE feed_id = ?").bind(id));
+	await c.env.DB.batch(statements);
+	if (
+		(changedUrl || (input.is_active === true && !feed.is_active)) &&
+		(input.is_active ?? Boolean(feed.is_active))
+	) {
+		try {
+			await enqueueFeed(c.env, { feedId: id });
+		} catch {
+			/* The saved source remains visible with a retryable queue error. */
+		}
+	}
 	return c.json(await getFeed(c.env.DB, id));
 });
 app.delete("/api/feeds/:id", async (c) => {
@@ -164,6 +244,22 @@ app.post("/api/feeds/:id/refresh", async (c) => {
 	const id = c.req.param("id");
 	await getFeed(c.env.DB, id);
 	return c.json({ queued: await enqueueFeed(c.env, { feedId: id }) }, 202);
+});
+app.get("/api/feeds/:id/diagnostics", async (c) => {
+	await getFeed(c.env.DB, c.req.param("id"));
+	return c.json(await getDiagnostic(c.env.DB, c.req.param("id")));
+});
+app.post("/api/feeds/:id/diagnostics", async (c) => {
+	const feed = await getFeed(c.env.DB, c.req.param("id"));
+	const input = diagnosticInput.parse(await c.req.json());
+	if (input.siteUrl) {
+		try {
+			input.siteUrl = publicUrl(input.siteUrl).href;
+		} catch {
+			fail(400, "主站地址必须是公开的 HTTP 或 HTTPS 网站");
+		}
+	}
+	return c.json(await enqueueDiagnostic(c.env, feed, input.siteUrl), 202);
 });
 app.post("/api/refresh", async (c) => {
 	const feeds = await listFeeds(c.env.DB);
@@ -402,10 +498,11 @@ app.notFound((c) => c.json({ error: "接口不存在" }, 404));
 
 export default {
 	fetch: app.fetch,
-	async queue(batch: MessageBatch<FeedJob>, env: Env) {
+	async queue(batch: MessageBatch<QueueJob>, env: Env) {
 		for (const message of batch.messages) {
 			try {
-				await refreshFeed(env, message.body);
+				if ("kind" in message.body) await runDiagnostic(env, message.body);
+				else await refreshFeed(env, message.body);
 				message.ack();
 			} catch {
 				message.retry({ delaySeconds: 60 });
@@ -415,4 +512,4 @@ export default {
 	async scheduled(_controller: ScheduledController, env: Env) {
 		await scheduleFeeds(env);
 	},
-} satisfies ExportedHandler<Env, FeedJob>;
+} satisfies ExportedHandler<Env, QueueJob>;

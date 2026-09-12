@@ -1,6 +1,47 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { DatabaseSync, type SQLInputValue } from "node:sqlite";
-import { vi } from "vitest";
+import { expect, vi } from "vitest";
+import type { FeedJob } from "../../src/shared/contracts";
+import { enqueueFeed } from "../../src/worker/feeds";
+import { app } from "../../src/worker/index";
+
+export function deferred<T>() {
+	let resolve!: (value: T) => void;
+	let reject!: (error: Error) => void;
+	const promise = new Promise<T>((done, fail) => {
+		resolve = done;
+		reject = fail;
+	});
+	return { promise, resolve, reject };
+}
+
+export function client(env: Env) {
+	return async <T = Record<string, unknown>>(
+		method: string,
+		path: string,
+		body?: unknown,
+		status = 200,
+	): Promise<T> => {
+		const response = await app.request(
+			`http://127.0.0.1/api${path}`,
+			{
+				method,
+				...(body === undefined
+					? {}
+					: { headers: { "content-type": "application/json" }, body: JSON.stringify(body) }),
+			},
+			env,
+		);
+		const result = await response.json();
+		expect(response.status, `${method} ${path}: ${JSON.stringify(result)}`).toBe(status);
+		return result as T;
+	};
+}
+
+export async function queuedJob(env: Env, feedId = "f1"): Promise<FeedJob> {
+	expect(await enqueueFeed(env, { feedId })).toBe(true);
+	return vi.mocked(env.FEED_QUEUE.send).mock.calls.at(-1)?.[0] as FeedJob;
+}
 
 class Statement implements D1PreparedStatement {
 	constructor(
@@ -61,9 +102,11 @@ class Statement implements D1PreparedStatement {
 export class TestDatabase implements D1Database {
 	sqlite = new DatabaseSync(":memory:");
 	constructor() {
-		this.sqlite.exec(
-			readFileSync(new URL("../../migrations/0001_reader.sql", import.meta.url), "utf8"),
-		);
+		const migrations = new URL("../../migrations/", import.meta.url);
+		for (const file of readdirSync(migrations)
+			.filter((file) => file.endsWith(".sql"))
+			.sort())
+			this.sqlite.exec(readFileSync(new URL(file, migrations), "utf8"));
 	}
 	prepare(sql: string) {
 		return new Statement(this.sqlite, sql);

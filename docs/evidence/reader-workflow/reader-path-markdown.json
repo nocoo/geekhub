@@ -1,0 +1,59 @@
+{
+	"checkedAt": "2026-09-12T07:49:12.837Z",
+	"baseURL": "https://geekhub.dev.hexly.ai",
+	"tlsVerification": true,
+	"checks": [
+		{
+			"mode": "desktop",
+			"path": "/feeds/f39d5c5f-bfd5-472b-b93e-f645a3109214/articles/e40f405657d3b960c34a0d6e74802eefb4f3b7c435457d5180fdf32ebfc2aee6",
+			"listTop": 0,
+			"readingTop": 320,
+			"refreshedScopeAndArticle": true,
+			"backAndForward": true,
+			"images": {
+				"proxied": 0,
+				"loaded": 0,
+				"unavailable": 1
+			},
+			"retainedStats": {
+				"articles": 1526,
+				"unread": 1503,
+				"starred": 0,
+				"later": 0,
+				"bytes": 5345196,
+				"feeds": 45,
+				"logs": 90
+			},
+			"additionalWrites": 0,
+			"horizontalOverflow": false,
+			"axeViolations": 0,
+			"scriptErrors": 0
+		},
+		{
+			"mode": "mobile",
+			"path": "/feeds/f39d5c5f-bfd5-472b-b93e-f645a3109214/articles/e40f405657d3b960c34a0d6e74802eefb4f3b7c435457d5180fdf32ebfc2aee6",
+			"listTop": 0,
+			"readingTop": 320,
+			"refreshedScopeAndArticle": true,
+			"backAndForward": true,
+			"images": {
+				"proxied": 1,
+				"loaded": 1,
+				"unavailable": 0
+			},
+			"retainedStats": {
+				"articles": 1526,
+				"unread": 1503,
+				"starred": 0,
+				"later": 0,
+				"bytes": 5345196,
+				"feeds": 45,
+				"logs": 90
+			},
+			"additionalWrites": 0,
+			"horizontalOverflow": false,
+			"axeViolations": 0,
+			"scriptErrors": 0
+		}
+	]
+}

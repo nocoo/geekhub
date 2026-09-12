@@ -22,6 +22,8 @@ export const feedInput = z
 	.strict();
 export const feedUpdate = z
 	.object({
+		url: z.string().trim().min(1).max(2048).optional(),
+		site_url: z.string().trim().max(2048).optional(),
 		title: z.string().trim().min(1).max(200).optional(),
 		category_id: z.string().min(1).max(100).nullable().optional(),
 		auto_translate: z.boolean().optional(),
@@ -30,6 +32,29 @@ export const feedUpdate = z
 	})
 	.strict()
 	.refine((v) => Object.keys(v).length > 0, "至少修改一项设置");
+export const orderInput = z
+	.object({
+		ids: z
+			.array(z.string().min(1).max(100))
+			.min(1)
+			.max(500)
+			.refine((ids) => new Set(ids).size === ids.length, "排序不能包含重复项目"),
+	})
+	.strict();
+export const feedOrderInput = orderInput
+	.extend({
+		feedId: z.string().min(1).max(100).optional(),
+		categoryId: z.string().min(1).max(100).nullable().optional(),
+	})
+	.refine(
+		(value) => (value.feedId === undefined) === (value.categoryId === undefined),
+		"移动订阅需要指定分类",
+	);
+export const diagnosticInput = z
+	.object({
+		siteUrl: z.string().trim().min(1).max(2048).optional(),
+	})
+	.strict();
 export const articleUpdate = z
 	.object({
 		is_read: z.boolean().optional(),

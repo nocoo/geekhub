@@ -102,6 +102,17 @@ describe("untrusted article HTML", () => {
 		expect(safeLink("http://localhost", "https://example.com")).toBe("");
 		expect(plainText("<p> A\n B </p><p> C </p>")).toBe("A B C");
 	});
+	test("retains lazy images, image captions and safe fragment links before Markdown conversion", () => {
+		const html = cleanHtml(
+			'<img src="data:image/gif,placeholder" data-src="/photo.jpg" title="Figure 1" alt="Photo"><img data-original="/original.png"><img data-src="javascript:bad()" src="/fallback.jpg"><a href="#chapter">Chapter</a>',
+			"https://example.com/article",
+		);
+		for (const image of ["photo.jpg", "original.png", "fallback.jpg"])
+			expect(html).toContain(`src="https://example.com/${image}"`);
+		expect(html).toContain('title="Figure 1"');
+		expect(html).toContain('href="https://example.com/article#chapter"');
+		expect(html).not.toMatch(/data-src|data-original|javascript|data:image/);
+	});
 	test("extracts main text using metadata or title fallbacks", () => {
 		const body = "A long article about careful reading and clear interfaces. ".repeat(4);
 		const result = extractArticle(

@@ -3,41 +3,34 @@ import {
 	Button,
 	ConfirmDialog,
 	Dialog,
+	DialogClose,
 	DialogContent,
 	DialogDescription,
 	DialogHeader,
 	DialogTitle,
 	Input,
 	LayerCard,
+	Tabs,
+	TabsContent,
+	TabsList,
+	TabsTrigger,
 	useConfirm,
 } from "@nocoo/basalt";
 import { AiConfigProvider, AiSettingsPanel } from "@nocoo/next-ai/react";
-import { useQuery } from "@tanstack/react-query";
-import {
-	ArrowUpRight,
-	Check,
-	Compass,
-	FolderPlus,
-	Plus,
-	RefreshCw,
-	Rss,
-	Settings2,
-	Sparkles,
-	Terminal,
-	Trash2,
-} from "lucide-react";
+import { ArrowUpRight, Check, Compass, Plus, Sparkles, Terminal, Trash2, X } from "lucide-react";
 import { useState } from "react";
-import type {
-	Category,
-	DirectoryFeed,
-	Feed,
-	FetchLog,
-	Preferences,
-	Stats,
-} from "../shared/contracts";
-import type { Panel } from "./App";
-import { aiAdapter, api } from "./lib/api";
-import { dateLabel, sizeLabel } from "./lib/reader";
+import type { Category, Feed, FetchLog, Preferences, Stats } from "../shared/contracts";
+import { FeedDiagnostics } from "./FeedDiagnostics";
+import { aiAdapter } from "./lib/api";
+import {
+	type Panel,
+	type Save,
+	useDirectoryViewModel,
+	usePanelViewModel,
+} from "./lib/panels-view-model";
+import { sizeLabel } from "./lib/reader";
+import type { SavedChange } from "./lib/reader-view-model";
+import { Categories, Subscriptions } from "./Subscriptions";
 
 interface Props {
 	panel: Panel;
@@ -48,34 +41,23 @@ interface Props {
 	stats?: Stats;
 	logs: FetchLog[];
 	local: boolean;
-	onRefresh: () => Promise<void>;
+	onChanged: (change: SavedChange) => Promise<void>;
+	diagnosticFeed?: Feed;
+	onDiagnose: (feed: Feed) => void;
 	onNotice: (message: string) => void;
 }
-type Save = (path: string, method: string, body?: unknown, done?: () => void) => Promise<void>;
 
 const titles = {
 	add: ["添加订阅", "让值得关注的声音，出现在你的阅读空间。"],
-	manage: ["管理订阅", "整理订阅源和分类，找到自己的阅读节奏。"],
 	discover: ["发现好内容", "独立的声音、深入的思考，以及下一次灵感。"],
-	settings: ["阅读偏好", "让阅读器，适合你。"],
+	settings: ["设置", "整理订阅与分类，调整阅读和 AI 偏好。"],
+	diagnose: ["订阅源诊断", "检查内容是否仍在更新，找到更合适的订阅地址。"],
 	logs: ["抓取日志", "订阅源的最近活动。"],
 };
 
 export function Panels(props: Props) {
-	const [pending, setPending] = useState(false);
+	const { pending, save } = usePanelViewModel(props.onChanged, props.onNotice);
 	const { confirm, dialogProps } = useConfirm();
-	const save: Save = async (path, method, body, done) => {
-		setPending(true);
-		try {
-			await api(path, { method, body });
-			await props.onRefresh();
-			done?.();
-		} catch (error) {
-			props.onNotice(error instanceof Error ? error.message : "操作失败，请重试");
-		} finally {
-			setPending(false);
-		}
-	};
 	const remove = async (path: string, name: string, description: string) => {
 		if (
 			await confirm({
@@ -86,7 +68,9 @@ export function Panels(props: Props) {
 				variant: "destructive",
 			})
 		)
-			await save(path, "DELETE");
+			if (await save(path, "DELETE")) {
+				if (props.panel === "diagnose") props.onClose();
+			}
 	};
 	const title = props.panel ? titles[props.panel] : ["", ""];
 	return (
@@ -97,7 +81,11 @@ export function Panels(props: Props) {
 					if (!open) props.onClose();
 				}}
 			>
-				<DialogContent size={props.panel === "add" ? "lg" : "xl"} className="app-dialog">
+				<DialogContent
+					key={props.panel}
+					size={props.panel === "add" ? "lg" : "xl"}
+					className="app-dialog"
+				>
 					<DialogHeader>
 						<DialogTitle>{title[0]}</DialogTitle>
 						<DialogDescription>{title[1]}</DialogDescription>
@@ -110,26 +98,23 @@ export function Panels(props: Props) {
 							onClose={props.onClose}
 						/>
 					)}
-					{props.panel === "manage" && (
-						<Manage
-							feeds={props.feeds}
-							categories={props.categories}
-							pending={pending}
-							save={save}
-							remove={remove}
-						/>
-					)}
 					{props.panel === "discover" && (
 						<Discover feeds={props.feeds} pending={pending} save={save} />
 					)}
 					{props.panel === "settings" && (
 						<Settings
+							feeds={props.feeds}
+							categories={props.categories}
+							remove={remove}
+							onDiagnose={props.onDiagnose}
 							preferences={props.preferences}
 							stats={props.stats}
 							local={props.local}
 							pending={pending}
 							save={save}
-							onRefresh={props.onRefresh}
+							onRefresh={() =>
+								props.onChanged({ path: "/ai/settings", method: "PATCH", result: null })
+							}
 							onNotice={props.onNotice}
 							confirm={confirm}
 						/>
@@ -139,10 +124,25 @@ export function Panels(props: Props) {
 							logs={props.logs}
 							feeds={props.feeds}
 							onClear={() =>
-								void remove("/logs", "抓取日志", "仅清除当前账户的日志，订阅源和文章不受影响。")
+								void remove("/logs", "抓取日志", "仅清除抓取日志，订阅源和文章不受影响。")
 							}
 						/>
 					)}
+					{props.panel === "diagnose" && props.diagnosticFeed && (
+						<FeedDiagnostics
+							key={props.diagnosticFeed.id}
+							feed={props.diagnosticFeed}
+							pending={pending}
+							save={save}
+							remove={remove}
+							onDone={props.onClose}
+						/>
+					)}
+					<DialogClose asChild>
+						<Button variant="ghost" size="icon" className="panel-close" aria-label="关闭窗口">
+							<X size={16} />
+						</Button>
+					</DialogClose>
 				</DialogContent>
 			</Dialog>
 			<ConfirmDialog {...dialogProps} />
@@ -220,296 +220,10 @@ function AddFeed({
 	);
 }
 
-function Manage({
-	feeds,
-	categories,
-	pending,
-	save,
-	remove,
-}: {
-	feeds: Feed[];
-	categories: Category[];
-	pending: boolean;
-	save: Save;
-	remove: (path: string, name: string, description: string) => Promise<void>;
-}) {
-	const [tab, setTab] = useState("feeds");
-	const [editing, setEditing] = useState<string | null>(null);
-	return (
-		<>
-			<div className="panel-tabs" role="tablist" aria-label="管理范围">
-				<button
-					type="button"
-					role="tab"
-					aria-selected={tab === "feeds"}
-					onClick={() => setTab("feeds")}
-				>
-					订阅源 <Badge>{feeds.length}</Badge>
-				</button>
-				<button
-					type="button"
-					role="tab"
-					aria-selected={tab === "categories"}
-					onClick={() => setTab("categories")}
-				>
-					分类 <Badge>{categories.length}</Badge>
-				</button>
-			</div>
-			{tab === "feeds" ? (
-				<div className="manage-list">
-					{!feeds.length && (
-						<div className="empty-state">
-							<Rss size={24} />
-							<p>还没有订阅源，先添加一个喜欢的网站。</p>
-						</div>
-					)}
-					{feeds.map((feed) => (
-						<LayerCard key={feed.id} className="manage-feed">
-							<div className="manage-feed-heading">
-								<span className="source-icon">
-									<Rss size={18} />
-								</span>
-								<div>
-									<strong>{feed.title}</strong>
-									<small>{feed.url}</small>
-								</div>
-								<Button
-									variant="ghost"
-									size="icon"
-									aria-label={`刷新 ${feed.title}`}
-									disabled={pending}
-									onClick={() => void save(`/feeds/${feed.id}/refresh`, "POST")}
-								>
-									<RefreshCw size={15} />
-								</Button>
-								<Button
-									variant="ghost"
-									size="icon"
-									aria-label={`编辑 ${feed.title}`}
-									onClick={() => setEditing(editing === feed.id ? null : feed.id)}
-								>
-									<Settings2 size={16} />
-								</Button>
-								<Button
-									variant="ghost"
-									size="icon"
-									aria-label={`删除 ${feed.title}`}
-									disabled={pending}
-									onClick={() =>
-										void remove(
-											`/feeds/${feed.id}`,
-											`「${feed.title}」`,
-											"该订阅及其中的文章、收藏和稍后阅读记录将一并删除。此操作不可撤销。",
-										)
-									}
-								>
-									<Trash2 size={15} />
-								</Button>
-							</div>
-							<div className="manage-feed-meta">
-								<span>
-									{feed.total_count} 篇文章 · {feed.unread_count} 篇未读
-								</span>
-								<span>
-									{feed.last_fetched_at ? `${dateLabel(feed.last_fetched_at)}更新` : "等待首次抓取"}
-								</span>
-								{Boolean(feed.auto_translate) && (
-									<Badge>
-										<Sparkles size={11} />
-										自动翻译
-									</Badge>
-								)}
-							</div>
-							{feed.last_error && <p className="inline-error">{feed.last_error}</p>}
-							{editing === feed.id && (
-								<form
-									className="form-stack feed-edit"
-									onSubmit={(event) => {
-										event.preventDefault();
-										const data = new FormData(event.currentTarget);
-										void save(
-											`/feeds/${feed.id}`,
-											"PATCH",
-											{
-												title: data.get("title"),
-												category_id: data.get("category") || null,
-												refresh_minutes: Number(data.get("refresh")),
-												auto_translate: data.get("translate") === "on",
-												is_active: data.get("active") === "on",
-											},
-											() => setEditing(null),
-										);
-									}}
-								>
-									<label className="field-label" htmlFor={`feed-title-${feed.id}`}>
-										订阅名称
-										<Input
-											id={`feed-title-${feed.id}`}
-											name="title"
-											defaultValue={feed.title}
-											required
-											maxLength={200}
-										/>
-									</label>
-									<div className="form-grid">
-										<label className="field-label">
-											分类
-											<select
-												aria-label="分类"
-												name="category"
-												className="select-control"
-												defaultValue={feed.category_id ?? ""}
-											>
-												<option value="">未分类</option>
-												{categories.map((category) => (
-													<option key={category.id} value={category.id}>
-														{category.name}
-													</option>
-												))}
-											</select>
-										</label>
-										<label className="field-label">
-											刷新间隔
-											<select
-												name="refresh"
-												className="select-control"
-												defaultValue={feed.refresh_minutes}
-											>
-												{[15, 30, 60, 180, 360, 720, 1440].map((minutes) => (
-													<option key={minutes} value={minutes}>
-														{minutes < 60 ? `${minutes} 分钟` : `${minutes / 60} 小时`}
-													</option>
-												))}
-											</select>
-										</label>
-									</div>
-									<label className="checkbox-label">
-										<input
-											type="checkbox"
-											name="translate"
-											defaultChecked={Boolean(feed.auto_translate)}
-										/>
-										自动翻译列表中的标题和简介
-									</label>
-									<label className="checkbox-label">
-										<input type="checkbox" name="active" defaultChecked={Boolean(feed.is_active)} />
-										定时更新订阅
-									</label>
-									<div className="form-actions">
-										<Button type="submit" size="sm" disabled={pending}>
-											保存订阅
-										</Button>
-									</div>
-								</form>
-							)}
-						</LayerCard>
-					))}
-				</div>
-			) : (
-				<div className="form-stack">
-					<form
-						className="category-create"
-						onSubmit={(event) => {
-							event.preventDefault();
-							const form = event.currentTarget;
-							const data = new FormData(form);
-							void save(
-								"/categories",
-								"POST",
-								{ name: data.get("name"), color: data.get("color") },
-								() => form.reset(),
-							);
-						}}
-					>
-						<Input
-							name="name"
-							aria-label="新分类名称"
-							placeholder="新分类名称"
-							required
-							maxLength={60}
-						/>
-						<select name="color" className="select-control" aria-label="分类颜色">
-							{["green", "blue", "amber", "violet", "rose"].map((color) => (
-								<option key={color} value={color}>
-									{
-										{ green: "绿色", blue: "蓝色", amber: "琥珀", violet: "紫色", rose: "玫红" }[
-											color
-										]
-									}
-								</option>
-							))}
-						</select>
-						<Button type="submit" disabled={pending}>
-							<FolderPlus size={15} />
-							添加分类
-						</Button>
-					</form>
-					{categories.map((category) => (
-						<form
-							key={category.id}
-							className="category-row"
-							onSubmit={(event) => {
-								event.preventDefault();
-								const data = new FormData(event.currentTarget);
-								void save(`/categories/${category.id}`, "PATCH", {
-									name: data.get("name"),
-									color: category.color,
-								});
-							}}
-						>
-							<span
-								className={`category-dot ${category.color}`}
-								style={{
-									backgroundColor: category.color.startsWith("#") ? category.color : undefined,
-								}}
-							/>
-							<Input
-								name="name"
-								aria-label={`分类 ${category.name}`}
-								defaultValue={category.name}
-								required
-								maxLength={60}
-							/>
-							<Button type="submit" variant="ghost" size="sm" disabled={pending}>
-								保存
-							</Button>
-							<Button
-								type="button"
-								variant="ghost"
-								size="icon"
-								aria-label={`删除分类 ${category.name}`}
-								disabled={pending}
-								onClick={() =>
-									void remove(
-										`/categories/${category.id}`,
-										`分类「${category.name}」`,
-										"其中的订阅源会保留并移至未分类。",
-									)
-								}
-							>
-								<Trash2 size={15} />
-							</Button>
-						</form>
-					))}
-				</div>
-			)}
-		</>
-	);
-}
-
 function Discover({ feeds, pending, save }: { feeds: Feed[]; pending: boolean; save: Save }) {
-	const directory = useQuery({
-		queryKey: ["directory"],
-		queryFn: () => api<DirectoryFeed[]>("/directory"),
-	});
 	const [search, setSearch] = useState("");
 	const [visible, setVisible] = useState(36);
-	const matches =
-		directory.data?.filter((item) =>
-			`${item.title} ${item.category} ${item.description} ${item.site_url}`
-				.toLowerCase()
-				.includes(search.toLowerCase()),
-		) ?? [];
+	const { directory, matches } = useDirectoryViewModel(search);
 	return (
 		<div className="form-stack">
 			<div className="discovery-intro">
@@ -574,6 +288,10 @@ function Discover({ feeds, pending, save }: { feeds: Feed[]; pending: boolean; s
 }
 
 function Settings({
+	feeds,
+	categories,
+	remove,
+	onDiagnose,
 	preferences,
 	stats,
 	local,
@@ -583,6 +301,10 @@ function Settings({
 	onNotice,
 	confirm,
 }: {
+	feeds: Feed[];
+	categories: Category[];
+	remove: (path: string, name: string, description: string) => Promise<void>;
+	onDiagnose: (feed: Feed) => void;
 	preferences: Preferences;
 	stats?: Stats;
 	local: boolean;
@@ -592,27 +314,50 @@ function Settings({
 	onNotice: (message: string) => void;
 	confirm: ReturnType<typeof useConfirm>["confirm"];
 }) {
-	const [tab, setTab] = useState("reading");
+	const [adding, setAdding] = useState(false);
 	return (
-		<>
-			<div className="panel-tabs" role="tablist" aria-label="设置范围">
-				{[
-					{ id: "reading", label: "阅读" },
-					{ id: "ai", label: "AI 助手" },
-					{ id: "data", label: "数据管理" },
-				].map((item) => (
-					<button
-						key={item.id}
-						type="button"
-						role="tab"
-						aria-selected={tab === item.id}
-						onClick={() => setTab(item.id)}
-					>
-						{item.label}
-					</button>
-				))}
-			</div>
-			{tab === "reading" && (
+		<Tabs defaultValue="feeds" className="settings-tabs">
+			<TabsList className="panel-tabs" aria-label="设置范围">
+				<TabsTrigger value="feeds">
+					订阅源 <Badge>{feeds.length}</Badge>
+				</TabsTrigger>
+				<TabsTrigger value="categories">
+					分类 <Badge>{categories.length}</Badge>
+				</TabsTrigger>
+				<TabsTrigger value="reading">阅读</TabsTrigger>
+				<TabsTrigger value="ai">AI 助手</TabsTrigger>
+				<TabsTrigger value="data">数据管理</TabsTrigger>
+			</TabsList>
+			<TabsContent value="feeds">
+				{adding ? (
+					<AddFeed
+						categories={categories}
+						pending={pending}
+						save={save}
+						onClose={() => setAdding(false)}
+					/>
+				) : (
+					<Subscriptions
+						feeds={feeds}
+						categories={categories}
+						pending={pending}
+						save={save}
+						remove={remove}
+						onAdd={() => setAdding(true)}
+						onDiagnose={onDiagnose}
+					/>
+				)}
+			</TabsContent>
+			<TabsContent value="categories">
+				<Categories
+					feeds={feeds}
+					categories={categories}
+					pending={pending}
+					save={save}
+					remove={remove}
+				/>
+			</TabsContent>
+			<TabsContent value="reading">
 				<form
 					className="form-stack"
 					onSubmit={(event) => {
@@ -689,8 +434,34 @@ function Settings({
 						</Button>
 					</div>
 				</form>
-			)}
-			{tab === "ai" && (
+				<div className="shortcut-guide">
+					<h3>键盘快捷键</h3>
+					<dl>
+						{[
+							["J / K", "下一篇 / 上一篇"],
+							["↑ / ↓", "在列表中切换文章"],
+							["/", "搜索文章"],
+							["Esc", "返回列表或关闭窗口"],
+							["M", "切换已读"],
+							["S", "收藏 / 取消收藏"],
+							["L", "稍后阅读"],
+							["O", "打开原文"],
+							["R", "刷新订阅"],
+						].map(([key, label]) => (
+							<div key={key}>
+								<dt>
+									<kbd>{key}</kbd>
+								</dt>
+								<dd>{label}</dd>
+							</div>
+						))}
+					</dl>
+					<p className="field-hint">
+						输入文字和打开弹窗时，阅读快捷键暂停；正文中的方向键保留滚动。
+					</p>
+				</div>
+			</TabsContent>
+			<TabsContent value="ai">
 				<div className="form-stack">
 					{local && (
 						<p className="local-ai-note">
@@ -723,8 +494,8 @@ function Settings({
 						移除已保存的密钥
 					</Button>
 				</div>
-			)}
-			{tab === "data" && (
+			</TabsContent>
+			<TabsContent value="data">
 				<div className="form-stack">
 					<div className="stats-grid">
 						{[
@@ -778,8 +549,8 @@ function Settings({
 						</div>
 					</form>
 				</div>
-			)}
-		</>
+			</TabsContent>
+		</Tabs>
 	);
 }
 

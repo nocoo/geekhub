@@ -1,0 +1,27 @@
+{
+	"checkedAt": "2026-09-12T07:12:26.465Z",
+	"baseURL": "https://geekhub.dev.hexly.ai",
+	"tlsVerification": true,
+	"checks": [
+		{
+			"mode": "desktop",
+			"score": "92/ 100",
+			"dimensions": 5,
+			"savedReportReused": true,
+			"additionalWrites": 0,
+			"horizontalOverflow": false,
+			"axeViolations": 0,
+			"scriptErrors": 0
+		},
+		{
+			"mode": "mobile",
+			"score": "92/ 100",
+			"dimensions": 5,
+			"savedReportReused": true,
+			"additionalWrites": 0,
+			"horizontalOverflow": false,
+			"axeViolations": 0,
+			"scriptErrors": 0
+		}
+	]
+}

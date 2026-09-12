@@ -38,15 +38,17 @@ export async function readBounded(
 export async function fetchPublic(
 	input: string,
 	headers: Record<string, string> = {},
+	options: { signal?: AbortSignal; trace?: (url: string, status: number) => void } = {},
 ): Promise<Response> {
 	let url = publicUrl(input);
-	const signal = AbortSignal.timeout(15_000);
+	const signal = options.signal ?? AbortSignal.timeout(15_000);
 	for (let redirects = 0; redirects <= 4; redirects++) {
 		const response = await fetch(url, {
 			headers: { "User-Agent": userAgent, ...headers },
 			redirect: "manual",
 			signal,
 		});
+		options.trace?.(url.href, response.status);
 		if ([301, 302, 303, 307, 308].includes(response.status)) {
 			const location = response.headers.get("location");
 			await response.body?.cancel();

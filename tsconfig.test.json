@@ -5,5 +5,5 @@
 		"jsx": "react-jsx",
 		"types": ["node", "@cloudflare/workers-types"]
 	},
-	"include": ["tests/unit", "worker-configuration.d.ts"]
+	"include": ["tests/unit", "src/web/**/*.d.ts", "worker-configuration.d.ts"]
 }

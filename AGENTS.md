@@ -11,6 +11,6 @@ Vite / React RSS reader, one Cloudflare Worker serving the SPA and Hono API. D1 
 - `archieve/` and `docs/archieve/` are historical snapshots, outside active build/test/lint. Do not edit legacy source as part of new features.
 - 6DQ: G1 typecheck + Biome with zero warnings; L1 meaningful unit coverage ≥95% all four; L2 real HTTP against isolated Wrangler SQLite; L3 Playwright user flows; G2 gitleaks + OSV; production smoke evidence in docs.
 - Test isolation uses local Wrangler / Miniflare Workers and a fresh SQLite persistence directory per run, separate from development. Do not create or deploy remote `-test` resources. Verify local bindings, the runtime context and `_test_marker` before test seed/reset/cleanup.
-- Ports: development 7005 (`https://geekhub.dev.hexly.ai` via Caddy), L2 17005, L3 27005. The Vite Cloudflare plugin runs the local Worker without a separate sidecar.
+- Local development, manual browser checks and preview links must use `https://geekhub.dev.hexly.ai` via Caddy with normal TLS verification; its upstream is `127.0.0.1:7005`. Isolated tests use loopback HTTP on L2 17005 and L3 27005, with their own SQLite directories. The Vite Cloudflare plugin runs the local Worker without a separate sidecar.
 - `bun run setup`, `bun dev`, `bun run quality`. `bun run deploy` builds and deploys production; never deploy the local environment. Apply remote migrations before deploying dependent code.
 - Do not lower coverage, skip tests, suppress security failures or bypass hooks to pass a gate.

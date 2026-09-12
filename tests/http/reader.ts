@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import { readFileSync, writeFileSync } from "node:fs";
-import type { ArticleDetail, ArticlePage, Category, Feed, Stats } from "../../src/shared/contracts";
+import type {
+	ArticleDetail,
+	ArticlePage,
+	Category,
+	Feed,
+	FeedDiagnostic,
+	Stats,
+} from "../../src/shared/contracts";
 
 const base = process.env.GEEKHUB_TEST_URL;
 if (
@@ -57,6 +64,13 @@ const category = await request<Category>(
 );
 await request("POST", "/categories", { name: "HTTP 测试分类" }, 409);
 await request("PATCH", `/categories/${category.id}`, { name: "HTTP 分类已编辑", color: "blue" });
+const categoryIds = [category.id, ...categories.map((item) => item.id)];
+await request("POST", "/categories/reorder", { ids: categoryIds });
+assert.deepEqual(
+	(await request<Category[]>("GET", "/categories")).map((item) => item.id),
+	categoryIds,
+);
+await request("POST", "/categories/reorder", { ids: [category.id] }, 409);
 await request("PATCH", "/categories/missing-category", { name: "intruder" }, 404);
 await request("POST", "/feeds", { url: "http://127.0.0.1/private" }, 400);
 await request(
@@ -91,6 +105,57 @@ for (let attempt = 0; attempt < 100; attempt++) {
 }
 assert.equal(refreshed?.status, "success", "Queue consumer must actually complete");
 assert.equal(refreshed.total_count, 6);
+const feedIds = (await request<Feed[]>("GET", "/feeds")).map((feed) => feed.id).reverse();
+await request("POST", "/feeds/reorder", { ids: feedIds, feedId: added.id, categoryId: null });
+let ordered = await request<Feed[]>("GET", "/feeds");
+assert.deepEqual(
+	ordered.map((feed) => feed.id),
+	feedIds,
+);
+assert.equal(ordered.find((feed) => feed.id === added.id)?.category_id, null);
+await request("POST", "/feeds/reorder", {
+	ids: feedIds,
+	feedId: added.id,
+	categoryId: category.id,
+});
+await request("POST", "/feeds/reorder", { ids: [added.id, added.id] }, 400);
+await request("POST", "/feeds/reorder", { ids: feedIds.slice(1) }, 409);
+ordered = await request<Feed[]>("GET", "/feeds");
+assert.deepEqual(
+	ordered.map((feed) => feed.id),
+	feedIds,
+	"Rejected orders are atomic",
+);
+await request("PATCH", `/feeds/${added.id}`, {
+	site_url: "https://demo.geekhub.example/site/cloudflare",
+});
+assert.equal(await request("GET", `/feeds/${added.id}/diagnostics`), null);
+await request("POST", `/feeds/${added.id}/diagnostics`, { siteUrl: "http://localhost" }, 400);
+await request("POST", `/feeds/${added.id}/diagnostics`, {}, 202);
+let diagnostic: FeedDiagnostic | undefined;
+for (let attempt = 0; attempt < 100; attempt++) {
+	diagnostic = await request<FeedDiagnostic>("GET", `/feeds/${added.id}/diagnostics`);
+	if (diagnostic.status !== "queued" && diagnostic.status !== "running") break;
+	await Bun.sleep(100);
+}
+assert.equal(diagnostic?.status, "success", "Diagnostic must run through the real local queue");
+assert.equal(diagnostic.report?.feed.entries, 6);
+assert.equal(diagnostic.report?.sites.length, 2);
+assert.ok(diagnostic.report?.sites.every((site) => site.status === 200));
+const replacement = diagnostic.report?.candidates.find((candidate) => !candidate.inspection.error);
+assert.ok(replacement, "Main-site discovery must verify a replacement RSS");
+const retained = (await request<ArticlePage>("GET", `/articles?feedId=${added.id}`)).articles[0];
+assert.ok(retained);
+await request("PATCH", `/articles/${retained.id}`, { is_starred: true, is_later: true });
+const replaced = await request<Feed>("PATCH", `/feeds/${added.id}`, {
+	url: replacement.inspection.finalUrl,
+});
+assert.equal(replaced.id, added.id);
+assert.equal(replaced.total_count, 6);
+assert.equal(await request("GET", `/feeds/${added.id}/diagnostics`), null);
+assert.equal((await request<ArticleDetail>("GET", `/articles/${retained.id}`)).is_starred, 1);
+assert.equal((await request<ArticleDetail>("GET", `/articles/${retained.id}`)).is_later, 1);
+await request("PATCH", `/feeds/${added.id}`, { url: "http://127.0.0.1/private" }, 400);
 await request("POST", `/feeds/${added.id}/refresh`, undefined, 202);
 const first = await request<ArticlePage>("GET", "/articles?limit=5");
 assert.equal(first.articles.length, 5);
@@ -202,6 +267,11 @@ await request("POST", "/cleanup", { days: 1, onlyRead: true });
 await request("GET", "/images", undefined, 400);
 await request("GET", "/images?url=http://127.0.0.1/private", undefined, 502);
 await request("POST", "/refresh", undefined, 202);
+await request("PATCH", `/feeds/${added.id}`, { is_active: false });
+assert.equal(
+	(await request<Feed[]>("GET", "/feeds")).find((feed) => feed.id === added.id)?.is_active,
+	0,
+);
 await request("DELETE", `/categories/${category.id}`);
 assert.equal(
 	(await request<Feed[]>("GET", "/feeds")).find((feed) => feed.id === added.id)?.category_id,

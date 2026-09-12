@@ -1,0 +1,27 @@
+{
+	"checkedAt": "2026-09-12T03:50:12.266878+00:00",
+	"transport": "curl with TLS verification, no credentials, no redirect following",
+	"candidateDeployed": false,
+	"scope": "Read-only production baseline; this workspace candidate has not been deployed or migrated remotely.",
+	"checks": [
+		{
+			"path": "/api/live",
+			"status": 200,
+			"body": {
+				"status": "ok",
+				"version": "1.2.1",
+				"storage": "d1"
+			}
+		},
+		{
+			"path": "/",
+			"status": 302,
+			"redirectHost": "nocoo.cloudflareaccess.com"
+		},
+		{
+			"path": "/api/session",
+			"status": 302,
+			"redirectHost": "nocoo.cloudflareaccess.com"
+		}
+	]
+}

@@ -1,0 +1,45 @@
+{
+	"checkedAt": "2026-09-12T06:40:39.338745+00:00",
+	"environment": "local",
+	"baseURL": "https://geekhub.dev.hexly.ai",
+	"transport": "curl with normal TLS verification; no credentials or redirect following",
+	"resolvedAddresses": ["127.0.0.1"],
+	"upstream": "127.0.0.1:7005",
+	"isolatedTestPorts": {
+		"l2": 17005,
+		"l3": 27005
+	},
+	"productionURL": "https://geekhub.hexly.ai",
+	"checks": [
+		{
+			"path": "/",
+			"status": 200,
+			"spaRoot": true
+		},
+		{
+			"path": "/api/live",
+			"status": 200,
+			"body": {
+				"status": "ok",
+				"version": "1.2.1",
+				"storage": "d1"
+			}
+		},
+		{
+			"path": "/api/session",
+			"status": 200,
+			"local": true
+		},
+		{
+			"path": "/api/feeds",
+			"status": 200,
+			"count": 45,
+			"allHaveSavedOrder": true
+		},
+		{
+			"url": "http://geekhub.dev.hexly.ai/",
+			"status": 301,
+			"redirect": "https://geekhub.dev.hexly.ai/"
+		}
+	]
+}

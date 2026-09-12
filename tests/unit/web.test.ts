@@ -3,13 +3,17 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import type { Article, ArticleDetail } from "../../src/shared/contracts";
 import { ApiError, aiAdapter, api } from "../../src/web/lib/api";
 import {
+	adjacentArticle,
 	articleQuery,
 	dateLabel,
-	readerNodes,
+	feedRevision,
+	patchArticles,
+	readerShortcut,
 	sizeLabel,
 	titleOf,
 	translateTitles,
 } from "../../src/web/lib/reader";
+import { article, feed } from "./view-model-support";
 
 afterEach(() => {
 	document.body.replaceChildren();
@@ -36,16 +40,90 @@ test("reader filters, dates and display helpers handle pagination and empty stat
 	expect(titleOf({ title: "Original", translated_title: null })).toBe("Original");
 });
 
-test("reader honors image preferences and routes images through the authenticated proxy", () => {
-	const html = '<p>Text</p><img src="https://example.com/image.png"><img>';
-	document.body.replaceChildren(readerNodes(html, true));
-	expect(document.querySelector("img")?.getAttribute("src")).toBe(
-		"/api/images?url=https%3A%2F%2Fexample.com%2Fimage.png",
+test("snapshot revisions ignore status/read counts/order and respect the current feed/category", () => {
+	const feeds = [feed(), feed("f2")];
+	const all = { view: "all", search: "" } as const;
+	expect(feedRevision(feeds, all)).toBe(
+		feedRevision(
+			[
+				{ ...feeds[1], status: "queued", unread_count: 0 },
+				{ ...feeds[0], last_fetched_at: "changed" },
+			] as typeof feeds,
+			all,
+		),
 	);
-	expect(document.querySelector("img")?.referrerPolicy).toBe("no-referrer");
-	document.body.replaceChildren(readerNodes(html, false));
-	expect(document.querySelectorAll("img")).toHaveLength(0);
-	expect(document.body.textContent).toBe("Text");
+	expect(feedRevision(feeds, { ...all, feedId: "f1" })).toBe(feedRevision([feed()], all));
+	expect(feedRevision(feeds, { ...all, categoryId: "c1" })).toBe(feedRevision([feed()], all));
+	expect(feedRevision([{ ...feed(), total_count: 3 }], all)).not.toBe(feedRevision([feed()], all));
+	const data = {
+		pages: [{ articles: [article("a1"), article("a2")], nextCursor: null }],
+		pageParams: [undefined],
+	};
+	expect(patchArticles(undefined, () => true, { is_read: 1 })).toBeUndefined();
+	const patched = patchArticles(data, (item) => item.id === "a1", { is_read: 1 });
+	expect(patched?.pages[0]?.articles.map((item) => item.is_read)).toEqual([1, 0]);
+	expect(patched?.pages[0]?.articles[1]).toBe(data.pages[0]?.articles[1]);
+	expect(adjacentArticle([], null, 1)).toBeUndefined();
+	expect(adjacentArticle(data.pages[0]?.articles ?? [], null, -1)?.id).toBe("a2");
+});
+
+test("keyboard shortcuts support navigation and actions without hijacking typing, menus or browser shortcuts", () => {
+	const commands = {
+		j: "next",
+		J: "next",
+		k: "previous",
+		ArrowDown: "next",
+		ArrowUp: "previous",
+		"/": "search",
+		Escape: "back",
+		m: "read",
+		s: "star",
+		l: "later",
+		o: "original",
+		r: "refresh",
+	};
+	for (const [key, command] of Object.entries(commands))
+		expect(readerShortcut(new KeyboardEvent("keydown", { key }), false)).toBe(command);
+	expect(readerShortcut(new KeyboardEvent("keydown", { key: "x" }), false)).toBeNull();
+	expect(readerShortcut(new KeyboardEvent("keydown", { key: "j" }), true)).toBeNull();
+	for (const flags of [
+		{ ctrlKey: true },
+		{ metaKey: true },
+		{ altKey: true },
+		{ isComposing: true },
+	])
+		expect(readerShortcut(new KeyboardEvent("keydown", { key: "j", ...flags }), false)).toBeNull();
+	const prevented = new KeyboardEvent("keydown", { key: "j", cancelable: true });
+	prevented.preventDefault();
+	expect(readerShortcut(prevented, false)).toBeNull();
+	expect(
+		readerShortcut(new KeyboardEvent("keydown", { key: "r", repeat: true }), false),
+	).toBeNull();
+	expect(readerShortcut(new KeyboardEvent("keydown", { key: "j", repeat: true }), false)).toBe(
+		"next",
+	);
+	expect(readerShortcut(new KeyboardEvent("keydown", { key: "k", repeat: true }), false)).toBe(
+		"previous",
+	);
+	for (const markup of [
+		"<input>",
+		"<textarea></textarea>",
+		"<select></select>",
+		'<div contenteditable="true"><span></span></div>',
+		'<div role="dialog"><button>Go</button></div>',
+		'<div role="menu"><button>Go</button></div>',
+	]) {
+		document.body.innerHTML = markup;
+		const event = new KeyboardEvent("keydown", { key: "j", bubbles: true });
+		document.body.querySelector("span, button, input, textarea, select")?.dispatchEvent(event);
+		expect(readerShortcut(event, false)).toBeNull();
+	}
+	for (const name of ["reader-scroll", "reader-sidebar"]) {
+		document.body.innerHTML = `<div class="${name}"><button>Go</button></div>`;
+		const event = new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true });
+		document.querySelector("button")?.dispatchEvent(event);
+		expect(readerShortcut(event, false)).toBeNull();
+	}
 });
 
 test("automatic title translation is sequential, cancels on navigation and never repeats failed paid work", async () => {

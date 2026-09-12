@@ -1,5 +1,7 @@
 # 6DQ 质量证据
 
+v1.3.0 的阅读隔离、订阅管理和源诊断见 [阅读更新与订阅诊断](07-reader-workflow.md)。
+
 v1.2.1 的侧栏搜索、导航留白与两行文章头部已完成完整 6DQ，最新记录见 [侧栏与文章头部](06-sidebar-layout.md)。以下保留 v1.2.0 重写与首次上线的证据。
 
 2026-09-12 完成 v1.2.0 的单用户实现、CSV 导入、Basalt 头像和顶栏 Activity 后运行 `bun run quality`，退出码 **0**。完整记录：[quality.log](evidence/quality.log)。

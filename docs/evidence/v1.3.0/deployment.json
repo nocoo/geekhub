@@ -1,0 +1,17 @@
+{
+	"capturedAt": "2026-09-12T08:12:58.355Z",
+	"worker": "geekhub",
+	"version": "1.3.0",
+	"workerVersionId": "3f38c0b1-9035-41f0-96a6-a0fa0a7d3028",
+	"workerTag": "v1.3.0",
+	"domain": "geekhub.hexly.ai",
+	"migrationResult": "0002_reader_workflow.sql applied",
+	"database": "geekhub-db",
+	"databaseId": "c502f821-0242-46c5-8bdf-f73dc7ad1ee7",
+	"cron": ["*/15 * * * *"],
+	"workersDev": false,
+	"previewUrls": false,
+	"productionSmoke": "passed",
+	"smokeEvidence": "production-smoke.json",
+	"limitation": "No authenticated production browser session; reader flows verified with local L3."
+}
