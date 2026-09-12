@@ -5,15 +5,28 @@ import {
 	Badge,
 	Button,
 	ContentIsland,
+	Dialog,
+	DialogClose,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
+	Input,
 	Sidebar,
 	SidebarFooter,
 	SidebarGroup,
 	SidebarHeader,
+	SidebarIconItem,
 	SidebarItem,
 	SidebarNav,
+	SidebarPartition,
 	SidebarProvider,
+	SidebarSearch,
 	SidebarUser,
 	ThemeToggle,
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
 	toast,
 } from "@nocoo/basalt";
 import { AppHeader } from "@nocoo/basalt/components/app-header";
@@ -26,6 +39,7 @@ import {
 	BookOpen,
 	CheckCheck,
 	ChevronRight,
+	Clock3,
 	Compass,
 	Inbox,
 	LoaderCircle,
@@ -114,6 +128,7 @@ function ReaderApp({ session }: { session: Session }) {
 	const [collapsed, setCollapsed] = useState(isMobile);
 	const [filter, setFilter] = useState<ReaderFilter>({ view: "all", search: "" });
 	const [search, setSearch] = useState("");
+	const [searchOpen, setSearchOpen] = useState(false);
 	const [selected, setSelected] = useState<string | null>(() =>
 		new URLSearchParams(location.search).get("article"),
 	);
@@ -122,7 +137,6 @@ function ReaderApp({ session }: { session: Session }) {
 		toast(message, { duration: 8000 });
 	}, []);
 	const [translation, setTranslation] = useState(false);
-	const searchRef = useRef<HTMLInputElement>(null);
 	const attempted = useRef(new Set<string>());
 	const { setTheme } = useTheme();
 	const feeds = useQuery({
@@ -247,15 +261,15 @@ function ReaderApp({ session }: { session: Session }) {
 				(event.target.matches("input,textarea,select") || event.target.isContentEditable)
 			)
 				return;
-			if (event.key === "/" && !panel) {
+			if (event.key === "/" && !panel && !searchOpen) {
 				event.preventDefault();
-				searchRef.current?.focus();
+				setSearchOpen(true);
 			}
-			if (event.key === "Escape" && !panel) back();
+			if (event.key === "Escape" && !panel && !searchOpen) back();
 		};
 		window.addEventListener("keydown", listener);
 		return () => window.removeEventListener("keydown", listener);
-	}, [panel, back]);
+	}, [panel, searchOpen, back]);
 	useEffect(() => {
 		if (!pages.data || !ai.data || (!ai.data.hasApiKey && !ai.data.mock)) return;
 		let active = true;
@@ -273,6 +287,21 @@ function ReaderApp({ session }: { session: Session }) {
 		};
 	}, [pages.data, ai.data, client]);
 
+	const SidebarViewItem = collapsed ? SidebarIconItem : SidebarItem;
+	const avatar = (
+		<Avatar>
+			<AvatarImage
+				src={
+					session.user.avatarUrl
+						? `/api/images?${new URLSearchParams({ url: session.user.avatarUrl })}`
+						: undefined
+				}
+				alt={`${session.user.name} 的头像`}
+			/>
+			<AvatarFallback>{session.user.name.slice(0, 1).toUpperCase()}</AvatarFallback>
+		</Avatar>
+	);
+
 	return (
 		<SidebarProvider
 			collapsed={collapsed}
@@ -283,71 +312,129 @@ function ReaderApp({ session }: { session: Session }) {
 			<AppShell className="geekhub-shell">
 				<AppSkipLink>跳到阅读内容</AppSkipLink>
 				<Sidebar aria-label="订阅导航" className="reader-sidebar">
-					<SidebarHeader>
+					<SidebarHeader className={collapsed ? "justify-center px-0" : undefined}>
 						<div className="brand">
 							<img src="/logo-64.png" width="36" height="36" alt="" />
-							<span>GeekHub</span>
-							<Badge className="version">v{APP_VERSION}</Badge>
+							{!collapsed && (
+								<>
+									<span>GeekHub</span>
+									<Badge className="version">v{APP_VERSION}</Badge>
+								</>
+							)}
 						</div>
 					</SidebarHeader>
-					<SidebarNav>
-						<p className="rail-caption">你的阅读空间</p>
-						{(
-							[
-								{ view: "all", label: "全部文章", icon: Inbox, count: stats.data?.articles },
-								{ view: "unread", label: "未读文章", icon: BookOpen, count: stats.data?.unread },
-								{ view: "starred", label: "我的收藏", icon: Star, count: stats.data?.starred },
-								{ view: "later", label: "稍后阅读", icon: Bookmark, count: stats.data?.later },
-							] as const
-						).map((item) => (
-							<SidebarItem
-								key={item.view}
-								active={filter.view === item.view && !filter.feedId && !filter.categoryId}
-								onClick={() => choose({ view: item.view, search: "" })}
+					<div className="px-3 pb-1">
+						{collapsed ? (
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<SidebarIconItem
+										className="mx-auto"
+										aria-label="搜索文章"
+										aria-keyshortcuts="/"
+										aria-haspopup="dialog"
+										onClick={() => setSearchOpen(true)}
+									>
+										<Search size={16} aria-hidden="true" />
+									</SidebarIconItem>
+								</TooltipTrigger>
+								<TooltipContent side="right">搜索文章 /</TooltipContent>
+							</Tooltip>
+						) : (
+							<SidebarSearch
+								shortcut="/"
+								aria-label="搜索文章"
+								aria-keyshortcuts="/"
+								aria-haspopup="dialog"
+								onClick={() => setSearchOpen(true)}
 							>
-								<item.icon size={17} />
-								<span>{item.label}</span>
-								<span className="nav-count">{item.count ?? "—"}</span>
-							</SidebarItem>
-						))}
-						<div className="rail-section">
-							<span>订阅源</span>
-							<Button
-								variant="ghost"
-								size="icon"
-								aria-label="添加订阅"
-								onClick={() => setPanel("add")}
-							>
-								<Plus size={15} />
-							</Button>
+								搜索文章
+							</SidebarSearch>
+						)}
+					</div>
+					<SidebarNav className="pt-1">
+						{!collapsed && <SidebarPartition>你的阅读空间</SidebarPartition>}
+						<div className="flex flex-col gap-0.5 px-3">
+							{(
+								[
+									{ view: "all", label: "全部文章", icon: Inbox, count: stats.data?.articles },
+									{ view: "unread", label: "未读文章", icon: BookOpen, count: stats.data?.unread },
+									{ view: "starred", label: "我的收藏", icon: Star, count: stats.data?.starred },
+									{ view: "later", label: "稍后阅读", icon: Bookmark, count: stats.data?.later },
+								] as const
+							).map((item) => (
+								<Tooltip key={item.view}>
+									<TooltipTrigger asChild>
+										<SidebarViewItem
+											className={collapsed ? "self-center" : undefined}
+											aria-label={item.label}
+											active={filter.view === item.view && !filter.feedId && !filter.categoryId}
+											onClick={() => choose({ view: item.view, search: "" })}
+										>
+											<item.icon size={17} aria-hidden="true" />
+											{!collapsed && (
+												<>
+													<span>{item.label}</span>
+													<span className="nav-count">{item.count ?? "—"}</span>
+												</>
+											)}
+										</SidebarViewItem>
+									</TooltipTrigger>
+									{collapsed && <TooltipContent side="right">{item.label}</TooltipContent>}
+								</Tooltip>
+							))}
 						</div>
-						{categories.data?.map((category) => (
-							<SidebarGroup
-								key={category.id}
-								label={
-									<span className="category-name">
-										<span
-											className={`category-dot ${category.color}`}
-											style={{
-												backgroundColor: category.color.startsWith("#")
-													? category.color
-													: undefined,
-											}}
-										/>
-										{category.icon && <span aria-hidden="true">{category.icon}</span>}
-										{category.name}
-									</span>
-								}
-							>
-								<SidebarItem
-									className="category-filter"
-									active={filter.categoryId === category.id}
-									onClick={() => choose({ view: "all", categoryId: category.id, search: "" })}
-								>
-									查看分类全部
-								</SidebarItem>
+						{!collapsed && (
+							<>
+								<div className="rail-section">
+									<span>订阅源</span>
+									<Button
+										variant="ghost"
+										size="icon"
+										aria-label="添加订阅"
+										onClick={() => setPanel("add")}
+									>
+										<Plus size={15} />
+									</Button>
+								</div>
+								{categories.data?.map((category) => (
+									<SidebarGroup
+										key={category.id}
+										label={
+											<span className="category-name">
+												<span
+													className={`category-dot ${category.color}`}
+													style={{
+														backgroundColor: category.color.startsWith("#")
+															? category.color
+															: undefined,
+													}}
+												/>
+												{category.icon && <span aria-hidden="true">{category.icon}</span>}
+												{category.name}
+											</span>
+										}
+									>
+										<SidebarItem
+											className="category-filter"
+											active={filter.categoryId === category.id}
+											onClick={() => choose({ view: "all", categoryId: category.id, search: "" })}
+										>
+											查看分类全部
+										</SidebarItem>
+										{feeds.data
+											?.filter((f) => f.category_id === category.id)
+											.map((feed) => (
+												<FeedItem
+													key={feed.id}
+													feed={feed}
+													active={filter.feedId === feed.id}
+													onClick={() => choose({ view: "all", feedId: feed.id, search: "" })}
+												/>
+											))}
+									</SidebarGroup>
+								))}
 								{feeds.data
-									?.filter((f) => f.category_id === category.id)
+									?.filter((feed) => !feed.category_id)
 									.map((feed) => (
 										<FeedItem
 											key={feed.id}
@@ -356,66 +443,109 @@ function ReaderApp({ session }: { session: Session }) {
 											onClick={() => choose({ view: "all", feedId: feed.id, search: "" })}
 										/>
 									))}
-							</SidebarGroup>
-						))}
-						{feeds.data
-							?.filter((feed) => !feed.category_id)
-							.map((feed) => (
-								<FeedItem
-									key={feed.id}
-									feed={feed}
-									active={filter.feedId === feed.id}
-									onClick={() => choose({ view: "all", feedId: feed.id, search: "" })}
-								/>
-							))}
-						{feeds.isError && <p className="inline-error">{feeds.error.message}</p>}
-						<SidebarItem className="discover-nav" onClick={() => setPanel("discover")}>
-							<Compass size={17} />
-							<span>发现好内容</span>
-							<ChevronRight size={14} className="ml-auto" />
-						</SidebarItem>
+								{feeds.isError && <p className="inline-error">{feeds.error.message}</p>}
+							</>
+						)}
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<SidebarViewItem
+									className={`discover-nav ${collapsed ? "self-center" : "mx-3 w-auto"}`}
+									aria-label="发现好内容"
+									onClick={() => setPanel("discover")}
+								>
+									<Compass size={17} aria-hidden="true" />
+									{!collapsed && (
+										<>
+											<span>发现好内容</span>
+											<ChevronRight size={14} className="ml-auto" />
+										</>
+									)}
+								</SidebarViewItem>
+							</TooltipTrigger>
+							{collapsed && <TooltipContent side="right">发现好内容</TooltipContent>}
+						</Tooltip>
 					</SidebarNav>
-					<SidebarFooter>
-						<div className="rail-tools">
-							<Button variant="ghost" size="sm" onClick={() => setPanel("manage")}>
+					<SidebarFooter className={collapsed ? "flex flex-col items-center px-0" : undefined}>
+						<div className={collapsed ? "flex flex-col items-center gap-1 pb-2" : "rail-tools"}>
+							<Button
+								variant="ghost"
+								size={collapsed ? "icon" : "sm"}
+								aria-label="管理订阅"
+								title="管理订阅"
+								onClick={() => setPanel("manage")}
+							>
 								<SlidersHorizontal size={15} />
-								管理订阅
+								{!collapsed && "管理订阅"}
 							</Button>
 							<Button
 								variant="ghost"
 								size="icon"
 								aria-label="设置"
+								title="设置"
 								onClick={() => setPanel("settings")}
 							>
 								<Settings2 size={17} />
 							</Button>
 						</div>
-						<SidebarUser
-							name={session.user.name}
-							email={session.local ? "本地阅读空间" : session.user.email}
-							avatar={
-								<Avatar>
-									<AvatarImage
-										src={
-											session.user.avatarUrl
-												? `/api/images?${new URLSearchParams({ url: session.user.avatarUrl })}`
-												: undefined
-										}
-										alt={`${session.user.name} 的头像`}
-									/>
-									<AvatarFallback>{session.user.name.slice(0, 1).toUpperCase()}</AvatarFallback>
-								</Avatar>
-							}
-							action={
-								!session.local ? (
-									<a href="/cdn-cgi/access/logout" aria-label="退出登录">
-										<LogOut size={15} />
-									</a>
-								) : undefined
-							}
-						/>
+						{collapsed ? (
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<span>{avatar}</span>
+								</TooltipTrigger>
+								<TooltipContent side="right">{session.user.name}</TooltipContent>
+							</Tooltip>
+						) : (
+							<SidebarUser
+								name={session.user.name}
+								email={session.local ? "本地阅读空间" : session.user.email}
+								avatar={avatar}
+								action={
+									!session.local ? (
+										<a href="/cdn-cgi/access/logout" aria-label="退出登录">
+											<LogOut size={15} />
+										</a>
+									) : undefined
+								}
+							/>
+						)}
 					</SidebarFooter>
 				</Sidebar>
+				<Dialog open={searchOpen} onOpenChange={setSearchOpen}>
+					<DialogContent size="base" className="search-dialog grid gap-4">
+						<DialogHeader>
+							<DialogTitle>搜索文章</DialogTitle>
+							<DialogDescription>搜索「{heading}」中的文章。</DialogDescription>
+						</DialogHeader>
+						<form
+							className="flex items-center gap-2"
+							onSubmit={(event) => {
+								event.preventDefault();
+								setSearchOpen(false);
+								choose({ ...filter, search: search.trim() });
+							}}
+						>
+							<Input
+								aria-label="搜索文章"
+								placeholder="输入关键词，按回车搜索"
+								value={search}
+								onChange={(event) => setSearch(event.target.value)}
+							/>
+							<Button type="submit" size="icon" aria-label="执行搜索" title="搜索">
+								<Search size={16} aria-hidden="true" />
+							</Button>
+						</form>
+						<DialogClose asChild>
+							<Button
+								variant="ghost"
+								size="icon"
+								className="absolute right-2 top-2 h-8 w-8"
+								aria-label="关闭搜索"
+							>
+								<X size={14} aria-hidden="true" />
+							</Button>
+						</DialogClose>
+					</DialogContent>
+				</Dialog>
 				<AppMain>
 					<AppHeader
 						className="reader-header"
@@ -474,61 +604,60 @@ function ReaderApp({ session }: { session: Session }) {
 						<ContentIsland className={`reading-island ${selected ? "has-selection" : ""}`}>
 							<section className="article-list" aria-label="文章列表">
 								<div className="list-heading">
-									<div>
-										<span className="eyebrow">YOUR DAILY DOSE OF CURIOSITY</span>
-										<h2>{heading}</h2>
-										<p>{currentFeed?.description || "从你关心的世界，读到新的想法。"}</p>
+									<div className="list-title">
+										<h2 title={currentFeed?.description || heading}>{heading}</h2>
+										<Tooltip>
+											<TooltipTrigger asChild>
+												<Button
+													variant="ghost"
+													size="icon"
+													className="h-8 w-8"
+													aria-label="全部标为已读"
+													disabled={!articles.length || write.isPending}
+													onClick={() =>
+														write.mutate({
+															path: "/read-all",
+															method: "POST",
+															body: { feedId: filter.feedId, categoryId: filter.categoryId },
+														})
+													}
+												>
+													<CheckCheck size={16} aria-hidden="true" />
+												</Button>
+											</TooltipTrigger>
+											<TooltipContent>全部标为已读</TooltipContent>
+										</Tooltip>
 									</div>
-									<Button
-										variant="ghost"
-										size="icon"
-										aria-label="全部标为已读"
-										disabled={!articles.length || write.isPending}
-										onClick={() =>
-											write.mutate({
-												path: "/read-all",
-												method: "POST",
-												body: { feedId: filter.feedId, categoryId: filter.categoryId },
-											})
-										}
-									>
-										<CheckCheck size={18} />
-									</Button>
-								</div>
-								<form
-									className="article-search"
-									onSubmit={(event) => {
-										event.preventDefault();
-										setFilter({ ...filter, search });
-									}}
-								>
-									<Search size={16} />
-									<input
-										ref={searchRef}
-										aria-label="搜索文章"
-										placeholder="搜索文章，按回车确认"
-										value={search}
-										onChange={(event) => setSearch(event.target.value)}
-									/>
-									<kbd>/</kbd>
-									{filter.search && (
-										<button
-											type="button"
-											aria-label="清除搜索"
-											onClick={() => {
-												setSearch("");
-												setFilter({ ...filter, search: "" });
-											}}
-										>
-											<X size={14} />
-										</button>
-									)}
-								</form>
-								<div className="list-meta">
-									<span>{filter.search ? `搜索「${filter.search}」` : "最近更新"}</span>
-									<span>
-										{articles.length} 篇{pages.hasNextPage ? "+" : ""}
-									</span>
+									<div className="list-meta">
+										<span className="list-context">
+											{filter.search ? (
+												<Search size={12} aria-hidden="true" />
+											) : (
+												<Clock3 size={12} aria-hidden="true" />
+											)}
+											<span title={filter.search ? `搜索「${filter.search}」` : undefined}>
+												{filter.search ? `搜索「${filter.search}」` : "最近更新"}
+											</span>
+											{filter.search && (
+												<Button
+													variant="ghost"
+													size="icon"
+													className="h-6 w-6"
+													aria-label="清除搜索"
+													title="清除搜索"
+													onClick={() => {
+														setSearch("");
+														setFilter({ ...filter, search: "" });
+													}}
+												>
+													<X size={12} aria-hidden="true" />
+												</Button>
+											)}
+										</span>
+										<span className="list-count">
+											{articles.length} 篇{pages.hasNextPage ? "+" : ""}
+										</span>
+									</div>
 								</div>
 								<div className="article-scroll">
 									{pages.isPending ? (

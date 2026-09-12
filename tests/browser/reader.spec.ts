@@ -23,7 +23,9 @@ test("reading, persistent states, AI summary, translation and original article",
 		"aria-pressed",
 		wasStarred === "true" ? "false" : "true",
 	);
-	const later = page.getByRole("button", { name: /^(稍后阅读|移出稍后阅读)$/ });
+	const later = page
+		.getByRole("region", { name: "阅读器", exact: true })
+		.getByRole("button", { name: /^(稍后阅读|移出稍后阅读)$/ });
 	await later.click();
 	await expect(later).toBeEnabled();
 	await page.getByRole("button", { name: /^(AI 摘要|查看摘要)$/ }).click();
@@ -45,10 +47,33 @@ test("reading, persistent states, AI summary, translation and original article",
 test("search, navigation and feed/category CRUD", async ({ page, isMobile }) => {
 	await page.goto("/");
 	await expect(page.getByTestId("article-item").first()).toBeVisible();
+	await page.getByTestId("article-item").first().click();
+	await expect(page.locator(".prose")).toBeVisible();
+	if (isMobile) await page.getByRole("button", { name: "切换订阅导航" }).click();
+	await page
+		.locator(".reader-sidebar")
+		.getByRole("button", { name: "搜索文章", exact: true })
+		.click();
+	await expect(page.getByRole("textbox", { name: "搜索文章", exact: true })).toBeFocused();
 	await page.getByRole("textbox", { name: "搜索文章", exact: true }).fill("quiet craft");
 	await page.getByRole("textbox", { name: "搜索文章", exact: true }).press("Enter");
+	await expect(page.getByRole("dialog", { name: "搜索文章", exact: true })).toHaveCount(0);
 	await expect(page.getByTestId("article-item")).toHaveCount(1);
+	await expect(page.getByTestId("article-item")).toBeVisible();
 	await page.getByRole("button", { name: "清除搜索" }).click();
+	await expect(page.locator(".list-meta")).toContainText("最近更新");
+	if (!isMobile) {
+		await page.getByRole("button", { name: "切换订阅导航" }).click();
+		await page.getByRole("button", { name: "搜索文章", exact: true }).click();
+		await expect(page.getByRole("textbox", { name: "搜索文章", exact: true })).toBeFocused();
+		await page.keyboard.press("Escape");
+		await expect(page.locator(".search-dialog")).toHaveCount(0);
+		await page.getByRole("button", { name: "切换订阅导航" }).click();
+	}
+	await page.keyboard.press("/");
+	await expect(page.getByRole("textbox", { name: "搜索文章", exact: true })).toBeFocused();
+	await page.keyboard.press("Escape");
+	await expect(page.locator(".search-dialog")).toHaveCount(0);
 	if (isMobile) await page.getByRole("button", { name: "切换订阅导航" }).click();
 	await page.getByRole("button", { name: "管理订阅", exact: true }).click();
 	await page.getByRole("tab", { name: /^分类/ }).click();

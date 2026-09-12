@@ -1,0 +1,17 @@
+{
+	"capturedAt": "2026-09-12T00:27:33.421144+00:00",
+	"worker": "geekhub",
+	"version": "1.2.1",
+	"workerVersionId": "2999100a-4a99-4189-b06d-d598503a2ac7",
+	"workerTag": "v1.2.1",
+	"domain": "geekhub.hexly.ai",
+	"migrationResult": "No migrations to apply",
+	"database": "geekhub-db",
+	"databaseId": "c502f821-0242-46c5-8bdf-f73dc7ad1ee7",
+	"cron": ["*/15 * * * *"],
+	"workersDev": false,
+	"previewUrls": false,
+	"productionSmoke": "passed",
+	"smokeEvidence": "production-smoke.json",
+	"limitation": "No authenticated production browser session; reader flows verified with local L3."
+}

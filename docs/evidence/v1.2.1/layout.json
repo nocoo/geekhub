@@ -1,0 +1,27 @@
+{
+	"version": "1.2.1",
+	"checked_at": "2026-09-12T00:24:08.051Z",
+	"origin": "https://geekhub.dev.hexly.ai",
+	"measurements": [
+		{
+			"mode": "desktop",
+			"header_height_px": 79,
+			"nav_left_gutter_px": 12,
+			"nav_right_gutter_px": 12,
+			"search_result_count": 2,
+			"search_autofocus": true,
+			"horizontal_overflow": false,
+			"page_errors": []
+		},
+		{
+			"mode": "mobile",
+			"header_height_px": 79,
+			"nav_left_gutter_px": 12,
+			"nav_right_gutter_px": 12,
+			"search_result_count": 2,
+			"search_autofocus": true,
+			"horizontal_overflow": false,
+			"page_errors": []
+		}
+	]
+}

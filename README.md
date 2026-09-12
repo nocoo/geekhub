@@ -2,7 +2,7 @@
 
 一个单用户 RSS 阅读器。把订阅、稍后阅读和 AI 助手放在安静的三栏界面中，为真正感兴趣的内容留出时间。
 
-**v1.2.0** · **生产：** https://geekhub.hexly.ai · **本地：** https://geekhub.dev.hexly.ai
+**v1.2.1** · **生产：** https://geekhub.hexly.ai · **本地：** https://geekhub.dev.hexly.ai
 
 Vite 8 + React 19 + TypeScript **7.0.2** strict，Bun、Biome，`@nocoo/basalt` **2.1.7**。一个 Cloudflare Worker 同时提供 SPA 和 Hono API；D1 保存全部数据，Queues 处理 RSS 抓取，Cron 调度更新。Cloudflare Access 负责登录，所有获准访问的身份使用同一份阅读数据。
 
@@ -28,6 +28,7 @@ bun dev
 - `@nocoo/next-ai` 公共设置面板、加密存储 AI 密钥、连接测试。
 - 明暗主题、字体和字号、图片开关、数据清理、终端风格抓取日志。
 - 左下角 Basalt 头像使用 lizheng.blog 公开资料；右上角单行 Activity 可打开加载详情。
+- 侧栏搜索支持 `/` 快捷键，折叠时保留图标入口；文章列表头部压缩为标题、更新信息两行。
 - 桌面和移动端适配，保留原 GeekHub 标识、绿色强调色和装饰细节。
 
 ## 导入旧数据
