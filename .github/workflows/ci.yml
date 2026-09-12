@@ -14,65 +14,52 @@ concurrency:
   group: geekhub-ci-${{ github.ref }}
   cancel-in-progress: true
 
-# Every job uses local Workers and disposable SQLite. No Cloudflare deployment secrets are passed to tests.
 jobs:
   quality:
-    name: G1 + L1 + G2 + build
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '26.8.1'
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: '1.4.0'
-      - run: bun install --frozen-lockfile
-      - run: bun run setup
-      - run: bun run typecheck && bun run lint && bun run test:coverage && bun run build
-      - name: Install security scanners
-        run: |
-          curl --fail --silent --show-error --location https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz --output /tmp/gitleaks.tar.gz
-          tar -xzf /tmp/gitleaks.tar.gz -C /usr/local/bin gitleaks
-          curl --fail --silent --show-error --location https://github.com/google/osv-scanner/releases/download/v2.5.1/osv-scanner_linux_amd64 --output /usr/local/bin/osv-scanner
-          chmod +x /usr/local/bin/osv-scanner
-      - run: bun run gate:security
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: coverage-and-security
-          path: |
-            coverage/
-            test-results/security/
-          retention-days: 14
+    uses: nocoo/base-ci/.github/workflows/quality.yml@2ff6b0609183d5d5a24e98f941138fda48837b2f
+    with:
+      runtime-version: '1.4.0'
+      node-version: '26.8.1'
+      install-policy: trusted
+      prepare-command: bun run setup
+      build: true
+      security: false
+      disabled-check-reasons: '{"security":"The dedicated security job preserves the versioned-tree and archive scan with inline allow comments disabled."}'
+      coverage-path: coverage/
+      coverage-artifact-name: coverage
+
+  security:
+    uses: nocoo/base-ci/.github/workflows/security.yml@2ff6b0609183d5d5a24e98f941138fda48837b2f
+    with:
+      package-manager: bun
+      runtime-version: '1.4.0'
+      node-version: '26.8.1'
+      install-policy: trusted
+      scan-secrets: false
+      scan-dependencies: false
+      security-command: bun run gate:security
+      report-path: test-results/security/
 
   integration:
     name: ${{ matrix.tier }} local Worker + SQLite
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
         tier: [l2, l3]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '26.8.1'
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: '1.4.0'
-      - run: bun install --frozen-lockfile
-      - run: bun run setup
-      - if: matrix.tier == 'l3'
-        run: bun x playwright install --with-deps chromium
-      - run: bun run test:${{ matrix.tier }}
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: ${{ matrix.tier }}-evidence
-          path: |
-            test-results/
-            playwright-report/
-          retention-days: 14
+    uses: nocoo/base-ci/.github/workflows/test-job.yml@2ff6b0609183d5d5a24e98f941138fda48837b2f
+    with:
+      runtime-version: '1.4.0'
+      node-version: '26.8.1'
+      install-policy: trusted
+      timeout-minutes: 15
+      pre-command: bun run setup
+      browser: ${{ matrix.tier == 'l3' && 'chromium' || '' }}
+      command: bun run test:${{ matrix.tier }}
+      artifact-name: ${{ matrix.tier }}-evidence
+      artifact-path: |
+        test-results/
+        playwright-report/
+      artifact-retention-days: 14
+
+  workflows:
+    uses: nocoo/base-ci/.github/workflows/workflow-lint.yml@2ff6b0609183d5d5a24e98f941138fda48837b2f
