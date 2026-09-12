@@ -21,7 +21,7 @@ export async function withAuthorProfile(user: User): Promise<Session["user"]> {
 		// Only the normalized email hash leaves the Worker, matching Lyre's public profile contract.
 		const response = await fetch(`https://lizheng.blog/api/authors/profile?hash=${hash}`, {
 			headers: { Accept: "application/json", "User-Agent": userAgent },
-			redirect: "error",
+			redirect: "manual",
 			signal: AbortSignal.timeout(2500),
 			cf: { cacheTtl: 300, cacheEverything: true },
 		});

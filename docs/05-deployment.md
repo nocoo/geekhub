@@ -19,7 +19,7 @@
 
 会话接口将已验证的 Access 邮箱规范化并做 SHA-256，再查询 `https://lizheng.blog/api/authors/profile?hash=...` 获取公开姓名和头像。查询有 2.5 秒超时与 16 KiB 响应上限，不传邮箱明文或 JWT，不跟随重定向；异常时回退到 Access 姓名和 Basalt 首字母头像。头像经过公开 URL 校验，通过同源图片代理加载。本地可在 `.dev.vars.local` 设置 `LOCAL_USER_EMAIL` 预览对应公开头像；仅回环本地请求生效，L2／L3 不调用外部头像服务。
 
-版本以根 `package.json` 为唯一来源，侧栏显示 `vX.Y.Z`，`/api/live.version` 和抓取 User-Agent 同步。当前发布为 **v1.3.0**；发布标签与 GitHub Release 使用相同版本。
+版本以根 `package.json` 为唯一来源，侧栏显示 `vX.Y.Z`，`/api/live.version` 和抓取 User-Agent 同步。当前发布为 **v1.3.1**；发布标签与 GitHub Release 使用相同版本。
 
 ## 发布
 

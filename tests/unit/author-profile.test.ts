@@ -15,7 +15,7 @@ test("looks up the normalized email hash without sending identity or credentials
 		expect(input).not.toContain("@");
 		expect(input).not.toContain(user.id);
 		expect(new Headers(init?.headers).has("authorization")).toBe(false);
-		expect(init?.redirect).toBe("error");
+		expect(init?.redirect).toBe("manual");
 		expect(init?.signal).toBeInstanceOf(AbortSignal);
 		return Response.json({ name: "  Public Reader  ", avatar });
 	});
@@ -60,6 +60,20 @@ test("rejects unsafe avatar URLs, malformed profiles and oversized responses", a
 	vi.stubGlobal(
 		"fetch",
 		vi.fn(async () => new Response("not json")),
+	);
+	expect(await withAuthorProfile(user)).toEqual({ ...user, avatarUrl: null });
+});
+
+test("rejects profile redirects because Workers only allow follow or manual", async () => {
+	vi.stubGlobal(
+		"fetch",
+		vi.fn(
+			async () =>
+				new Response(null, {
+					status: 302,
+					headers: { location: "https://evil.example/profile" },
+				}),
+		),
 	);
 	expect(await withAuthorProfile(user)).toEqual({ ...user, avatarUrl: null });
 });
