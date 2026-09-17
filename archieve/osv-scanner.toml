@@ -1,6 +1,0 @@
-# OSV scanner suppressions.
-#
-# Add an entry only when the advisory cannot be remediated by upgrading
-# (no fixed version published, or the fix breaks a hard transitive
-# requirement we cannot resolve). Each entry must carry a concrete reason.
-# Unused ignores fail CI on purpose — keep this list empty when possible.

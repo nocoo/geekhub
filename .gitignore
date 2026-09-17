@@ -5,7 +5,6 @@ dist/
 !.dev.vars.example
 **/.env*
 !**/.env.example
-!archieve/.env.test
 **/.next/
 **/node_modules/
 **/*.tsbuildinfo

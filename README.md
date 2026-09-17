@@ -68,7 +68,6 @@ bun run deploy
 | `migrations` | D1 schema |
 | `tests` | L1、真实 HTTP、浏览器测试 |
 | `scripts` | 开发数据、测试隔离、导入、部署和安全门 |
-| `archieve` | v0.2.2 旧代码历史快照 |
 | `docs/archieve` | 旧文档历史快照 |
 
 旧 Next.js / Supabase 系统归档自 `d8d225b`，不参与新系统构建、测试或部署。当前设计见 [架构](docs/01-architecture.md)、[开发与 API](docs/02-development.md)。

@@ -24,7 +24,7 @@ This handbook is the contract, together with [AGENTS.md](AGENTS.md); hooks, CI a
 - Keep SQL parameterized, sanitize fetched HTML and validate outbound URLs/redirects. Queues own feed work; Cron owns scheduling; no floating promises or Worker filesystem storage.
 - Use published Basalt 2.1.8 and public `@nocoo/next-ai` contracts/configuration components and `/server` entry. Keep MVVM and the existing green identity.
 - Keep reading selection, scroll and pagination stable during background updates; updates apply explicitly. Preserve keyboard/input boundaries and responsive layouts.
-- `archieve/` and `docs/archieve/` are historical snapshots, outside active build/test/lint; do not modify legacy code for current features.
+- `docs/archieve/` is a historical documentation snapshot, outside active build/test/lint; do not treat it as current product documentation.
 
 ## Stack / Layout
 
