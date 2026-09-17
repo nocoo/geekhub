@@ -105,7 +105,7 @@ export function Subscriptions({
 		});
 	};
 	const drop = (event: DragEvent, before: string | null, categoryId: string | null) => {
-		const id = event.dataTransfer.getData("application/x-geekhub-feed");
+		const id = event.dataTransfer.getData("application/x-geekhub-feed") || dragging;
 		if (!id || orderDisabled || !feeds.some((feed) => feed.id === id)) return;
 		event.preventDefault();
 		event.stopPropagation();
@@ -146,7 +146,10 @@ export function Subscriptions({
 						aria-label={`订阅分类 ${group.name}`}
 						data-category-id={group.id ?? ""}
 						onDragOver={(event) => {
-							if (!orderDisabled && event.dataTransfer.types.includes("application/x-geekhub-feed"))
+							if (
+								!orderDisabled &&
+								(dragging || event.dataTransfer.types.includes("application/x-geekhub-feed"))
+							)
 								event.preventDefault();
 						}}
 						onDrop={(event) => drop(event, null, group.id)}
