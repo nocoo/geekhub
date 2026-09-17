@@ -655,10 +655,13 @@ test("subscription and category ordering persists, including moving between grou
 			await group.getByRole("button", { name: `编辑 ${second.title}`, exact: true }).click();
 			await group.getByLabel("分类", { exact: true }).selectOption("");
 			await group.getByRole("button", { name: "保存订阅", exact: true }).click();
-		} else
+		} else {
+			const uncategorized = page.locator('[data-category-id=""]');
+			await uncategorized.scrollIntoViewIfNeeded();
 			await group
 				.getByRole("button", { name: `拖动排序 ${second.title}`, exact: true })
-				.dragTo(page.locator('[data-category-id=""] .subscription-group-title'));
+				.dragTo(uncategorized);
+		}
 		await expect(page.locator(`[data-category-id=""] [data-feed-id="${second.id}"]`)).toBeVisible();
 		await page.getByRole("tab", { name: /^分类/ }).click();
 		const orderBefore = await page

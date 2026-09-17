@@ -111,6 +111,13 @@ export function Subscriptions({
 		event.stopPropagation();
 		void order(id, before, categoryId);
 	};
+	const allowFeedDrop = (event: DragEvent) => {
+		if (
+			!orderDisabled &&
+			(dragging || event.dataTransfer.types.includes("application/x-geekhub-feed"))
+		)
+			event.preventDefault();
+	};
 	return (
 		<div className="form-stack subscription-manager">
 			<div className="subscription-tools">
@@ -145,13 +152,8 @@ export function Subscriptions({
 						className={`subscription-group ${dragging ? "accepts-drop" : ""}`}
 						aria-label={`订阅分类 ${group.name}`}
 						data-category-id={group.id ?? ""}
-						onDragOver={(event) => {
-							if (
-								!orderDisabled &&
-								(dragging || event.dataTransfer.types.includes("application/x-geekhub-feed"))
-							)
-								event.preventDefault();
-						}}
+						onDragEnter={allowFeedDrop}
+						onDragOver={allowFeedDrop}
 						onDrop={(event) => drop(event, null, group.id)}
 					>
 						<div className="subscription-group-title">
