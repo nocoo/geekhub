@@ -4,7 +4,7 @@
 
 **v1.3.1** · **生产：** https://geekhub.hexly.ai · **本地：** https://geekhub.dev.hexly.ai
 
-Vite 8 + React 19 + TypeScript **7.0.2** strict，Bun、Biome，`@nocoo/basalt` **2.1.7**。一个 Cloudflare Worker 同时提供 SPA 和 Hono API；D1 保存全部数据，Queues 处理 RSS 抓取，Cron 调度更新。Cloudflare Access 负责登录，所有获准访问的身份使用同一份阅读数据。
+Vite 8 + React 19 + TypeScript **7.0.2** strict，Bun、Biome，`@nocoo/basalt` **2.1.8**。一个 Cloudflare Worker 同时提供 SPA 和 Hono API；D1 保存全部数据，Queues 处理 RSS 抓取，Cron 调度更新。Cloudflare Access 负责登录，所有获准访问的身份使用同一份阅读数据。
 
 ## 开始开发
 

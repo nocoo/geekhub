@@ -2,7 +2,7 @@
 
 Vite / React RSS reader, one Cloudflare Worker serving the SPA and Hono API. D1 is the source of truth. Brand: GeekHub, domain `geekhub.hexly.ai`.
 
-- Use TypeScript 7.0.2 strict, Biome, Bun and `@nocoo/basalt` 2.1.7. Read the installed Basalt integration guide before changing application chrome.
+- Use TypeScript 7.0.2 strict, Biome, Bun and `@nocoo/basalt` 2.1.8. Read the installed Basalt integration guide before changing application chrome.
 - `src/web` is browser-only; `src/worker` is server-only; `src/shared` contains browser-safe contracts. Never import the AI server entry or secrets into the browser.
 - Use `@nocoo/next-ai` public contracts, React configuration components and universal `/server` entry.
 - Verify Cloudflare Access JWT signatures, issuer and audience. Local identity and mock AI are restricted to the local environment and loopback requests. Production fails closed.
