@@ -510,7 +510,6 @@ function ReaderApp({ session }: { session: Session }) {
 										<ChevronRight size={12} aria-hidden="true" />
 									</Button>
 								</HeaderTooltip>
-								<ThemeToggle aria-label="切换主题" />
 								<HeaderTooltip
 									label={vm.refresh.isPending || busy ? "正在同步订阅" : "刷新订阅 (R)"}
 								>
@@ -549,6 +548,7 @@ function ReaderApp({ session }: { session: Session }) {
 									</Button>
 								</HeaderTooltip>
 								<HexlyLink />
+								<ThemeToggle aria-label="切换主题" />
 								<HeaderTooltip label="设置">
 									<Button
 										variant="ghost"
