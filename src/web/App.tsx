@@ -1,5 +1,3 @@
-import { ThemeToggle } from "./theme-toggle";
-import { HeaderTooltip, HexlyLink } from "./header-links";
 import {
 	Avatar,
 	AvatarFallback,
@@ -70,6 +68,7 @@ import {
 } from "react";
 import type { Category, Feed, ReaderFilter, Session } from "../shared/contracts";
 import { APP_VERSION } from "../shared/version";
+import { HeaderTooltip, HexlyLink } from "./header-links";
 import { ApiError, api } from "./lib/api";
 import type { Panel } from "./lib/panels-view-model";
 import { dateLabel, readerShortcut, titleOf } from "./lib/reader";
@@ -77,6 +76,7 @@ import { useReadingPosition } from "./lib/reader-position";
 import { useReaderViewModel } from "./lib/reader-view-model";
 import { Panels } from "./Panels";
 import { Reader } from "./Reader";
+import { ThemeToggle } from "./theme-toggle";
 
 const mobileQuery = "(max-width: 900px)";
 const subscribeMobile = (callback: () => void) => {
@@ -511,7 +511,9 @@ function ReaderApp({ session }: { session: Session }) {
 									</Button>
 								</HeaderTooltip>
 								<ThemeToggle aria-label="切换主题" />
-								<HeaderTooltip label={vm.refresh.isPending || busy ? "正在同步订阅" : "刷新订阅 (R)"}>
+								<HeaderTooltip
+									label={vm.refresh.isPending || busy ? "正在同步订阅" : "刷新订阅 (R)"}
+								>
 									<span className="inline-flex">
 										<Button
 											variant="ghost"
