@@ -1,0 +1,6 @@
+2026-09-19T23:39:00.686Z
+in_progress		feat: release v1.4.0 reader automation and activity center	CI	main	push	35476450275	5m28s	2026-09-19T23:33:33Z
+completed	success	Release	Release	main	workflow_run	35442167197	1m0s	2026-09-19T12:11:43Z
+completed	success	docs: align bilingual project readmes	CI	main	push	35442023754	3m4s	2026-09-19T12:08:37Z
+completed	success	Release	Release	main	workflow_run	35282633580	38s	2026-09-17T22:33:40Z
+completed	success	chore: remove archived Next.js snapshot	CI	main	push	35282354093	3m15s	2026-09-17T22:30:23Z

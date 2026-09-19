@@ -242,8 +242,12 @@ function ReaderApp({ session }: { session: Session }) {
 				const row = rows.find((row) => row.dataset.articleId === position.id);
 				if (!row) continue;
 				const shift =
-					row.getBoundingClientRect().top - element.getBoundingClientRect().top - position.offset;
-				// Writing even the same scrollTop cancels an ongoing native smooth scroll.
+					row.getBoundingClientRect().top -
+					element.getBoundingClientRect().top +
+					element.scrollTop -
+					position.offset;
+				// Compare content coordinates: a render can precede the next scroll event.
+				// Treating that animation step as a layout shift would cancel smooth scrolling.
 				if (Math.abs(shift) > 1) element.scrollTop += shift;
 				break;
 			}
@@ -256,7 +260,12 @@ function ReaderApp({ session }: { session: Session }) {
 				positions: rows.flatMap((row) => {
 					const rect = row.getBoundingClientRect();
 					return rect.bottom > bounds.top && rect.top < bounds.bottom
-						? [{ id: row.dataset.articleId ?? "", offset: rect.top - bounds.top }]
+						? [
+								{
+									id: row.dataset.articleId ?? "",
+									offset: rect.top - bounds.top + element.scrollTop,
+								},
+							]
 						: [];
 				}),
 			};

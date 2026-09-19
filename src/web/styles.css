@@ -2214,7 +2214,8 @@ body:has(.next-ai-panel) {
 }
 @container (max-width: 230px) {
 	.category-row {
-		grid-template-columns: 44px minmax(0, 1fr) auto 32px;
+		grid-template-columns: 40px minmax(0, 1fr) auto 32px;
+		gap: 6px;
 		grid-template-areas: "name name name name" "icon color color color" "order order count count" ". . save delete";
 	}
 	.category-editor-heading > span {
