@@ -1,0 +1,151 @@
+{
+	"base": "https://geekhub.dev.hexly.ai",
+	"source": "https://huggingface.co/blog/feed.xml",
+	"report": {
+		"checkedAt": "2026-09-19T09:12:07.074Z",
+		"durationMs": 7919,
+		"staleAfterDays": 90,
+		"feed": {
+			"url": "https://huggingface.co/blog/feed.xml",
+			"finalUrl": "https://huggingface.co/blog/feed.xml",
+			"status": 200,
+			"durationMs": 2505,
+			"hops": [
+				{
+					"url": "https://huggingface.co/blog/feed.xml",
+					"status": 200
+				}
+			],
+			"error": null,
+			"title": "Hugging Face - Blog",
+			"siteUrl": "https://huggingface.co/blog",
+			"entries": 862,
+			"readableEntries": 200,
+			"oldestAt": "2020-02-14T00:00:00.000Z",
+			"latestAt": "2026-09-15T16:00:44.000Z",
+			"undatedEntries": 0,
+			"futureEntries": 0,
+			"ageDays": 3,
+			"contentEntries": 0
+		},
+		"siteUrl": "https://huggingface.co/blog",
+		"sites": [
+			{
+				"url": "https://huggingface.co/blog",
+				"finalUrl": "https://huggingface.co/blog",
+				"status": 200,
+				"durationMs": 1697,
+				"hops": [
+					{
+						"url": "https://huggingface.co/blog",
+						"status": 200
+					}
+				],
+				"error": null
+			},
+			{
+				"url": "http://huggingface.co/blog",
+				"finalUrl": "https://huggingface.co/blog",
+				"status": 200,
+				"durationMs": 3976,
+				"hops": [
+					{
+						"url": "http://huggingface.co/blog",
+						"status": 301
+					},
+					{
+						"url": "https://huggingface.co/blog",
+						"status": 200
+					}
+				],
+				"error": null
+			}
+		],
+		"candidates": [
+			{
+				"url": "https://huggingface.co/blog/feed/",
+				"source": "probe",
+				"inspection": {
+					"url": "https://huggingface.co/blog/feed/",
+					"finalUrl": "https://huggingface.co/blog/feed",
+					"status": 404,
+					"durationMs": 757,
+					"hops": [
+						{
+							"url": "https://huggingface.co/blog/feed/",
+							"status": 302
+						},
+						{
+							"url": "https://huggingface.co/blog/feed",
+							"status": 404
+						}
+					],
+					"error": "抓取失败：HTTP 404",
+					"title": null,
+					"siteUrl": null,
+					"entries": null,
+					"readableEntries": 0,
+					"oldestAt": null,
+					"latestAt": null,
+					"undatedEntries": 0,
+					"futureEntries": 0,
+					"ageDays": null
+				}
+			},
+			{
+				"url": "https://huggingface.co/blog/rss.xml",
+				"source": "probe",
+				"inspection": {
+					"url": "https://huggingface.co/blog/rss.xml",
+					"finalUrl": "https://huggingface.co/blog/rss.xml",
+					"status": 404,
+					"durationMs": 301,
+					"hops": [
+						{
+							"url": "https://huggingface.co/blog/rss.xml",
+							"status": 404
+						}
+					],
+					"error": "抓取失败：HTTP 404",
+					"title": null,
+					"siteUrl": null,
+					"entries": null,
+					"readableEntries": 0,
+					"oldestAt": null,
+					"latestAt": null,
+					"undatedEntries": 0,
+					"futureEntries": 0,
+					"ageDays": null
+				}
+			},
+			{
+				"url": "https://huggingface.co/blog/atom.xml",
+				"source": "probe",
+				"inspection": {
+					"url": "https://huggingface.co/blog/atom.xml",
+					"finalUrl": "https://huggingface.co/blog/atom.xml",
+					"status": 404,
+					"durationMs": 634,
+					"hops": [
+						{
+							"url": "https://huggingface.co/blog/atom.xml",
+							"status": 404
+						}
+					],
+					"error": "抓取失败：HTTP 404",
+					"title": null,
+					"siteUrl": null,
+					"entries": null,
+					"readableEntries": 0,
+					"oldestAt": null,
+					"latestAt": null,
+					"undatedEntries": 0,
+					"futureEntries": 0,
+					"ageDays": null
+				}
+			}
+		]
+	},
+	"total": 49,
+	"browserErrors": []
+}

@@ -9,6 +9,7 @@ import type {
 } from "../../src/shared/contracts";
 import { APP_VERSION } from "../../src/shared/version";
 import { dataStats, preferences } from "../../src/worker/data";
+import { fetchLog } from "../../src/worker/feeds";
 import { app } from "../../src/worker/index";
 import { client, makeEnv } from "./support";
 
@@ -59,20 +60,44 @@ describe("reader API with SQLite SQL", () => {
 		const env = makeEnv();
 		const request = client(env);
 		expect(await request<Feed[]>("GET", "/feeds")).toMatchObject([
-			{ id: "f1", unread_count: 2, total_count: 2 },
+			{
+				id: "f1",
+				unread_count: 2,
+				total_count: 2,
+				auto_translate_content: 0,
+				auto_fetch_content: 0,
+			},
 		]);
 		const feed = await request<Feed>(
 			"POST",
 			"/feeds",
-			{ url: "rsshub://github/issue/nocoo/geekhub", category_id: "c1" },
+			{
+				url: "rsshub://github/issue/nocoo/geekhub",
+				category_id: "c1",
+				auto_translate_content: true,
+				auto_fetch_content: true,
+				auto_translate: true,
+				is_active: false,
+			},
 			201,
 		);
 		expect(feed.url).toBe("rsshub://github/issue/nocoo/geekhub");
 		expect(feed.title).toBe("rsshub.app");
+		expect(feed.auto_translate_content).toBe(1);
+		expect(feed).toMatchObject({ auto_fetch_content: 1, auto_translate: 1, is_active: 0 });
 		await request("POST", "/feeds", { url: "https://example.com/feed" }, 409);
 		await request("POST", "/feeds", { url: "http://localhost:9000" }, 400);
 		await request("POST", "/feeds", { url: "https://example.com/new", category_id: "c2" }, 404);
-		await request("PATCH", `/feeds/${feed.id}`, { auto_translate: true });
+		await request("PATCH", `/feeds/${feed.id}`, {
+			auto_translate: true,
+			auto_translate_content: false,
+			auto_fetch_content: false,
+		});
+		expect(
+			(await request<Feed[]>("GET", "/feeds")).find((item) => item.id === feed.id),
+		).toMatchObject({ auto_translate: 1, auto_translate_content: 0, auto_fetch_content: 0 });
+		await request("PATCH", `/feeds/${feed.id}`, { auto_translate_content: "true" }, 400);
+		await request("PATCH", `/feeds/${feed.id}`, { auto_fetch_content: "true" }, 400);
 		await request("PATCH", `/feeds/${feed.id}`, {
 			title: "Updated",
 			category_id: null,
@@ -176,8 +201,12 @@ describe("reader API with SQLite SQL", () => {
 			return response;
 		});
 		vi.stubGlobal("fetch", fetch);
-		const full = await request<ArticleDetail>("POST", "/articles/a1/full");
+		await request("POST", "/articles/a1/full", { automatic: "true" }, 400);
+		const full = await request<ArticleDetail>("POST", "/articles/a1/full", { automatic: true });
 		expect(full.full_content_fetched).toBe(1);
+		expect(await request("GET", "/logs?category=extraction&level=success")).toMatchObject([
+			{ automatic: true, article_id: "a1", message: "自动提取全文 · 已完成" },
+		]);
 		expect(full.content).toContain("Longer full text");
 		expect(full.content).not.toMatch(/onerror|script/);
 		expect(full.content).toContain("https://canonical.example.com/image.png");
@@ -196,6 +225,10 @@ describe("reader API with SQLite SQL", () => {
 	});
 	test("AI endpoints preserve cached content and support explicit regeneration", async () => {
 		const env = makeEnv();
+		env.RESOURCE_ENV = "test";
+		await env.DB.exec(
+			"CREATE TABLE _test_marker(key TEXT PRIMARY KEY, value TEXT); INSERT INTO _test_marker VALUES ('env','test');",
+		);
 		const request = client(env);
 		await request("GET", "/ai/settings");
 		await request("PATCH", "/ai/settings", { provider: "minimax", model: "MiniMax-M2.5" });
@@ -217,6 +250,22 @@ describe("reader API with SQLite SQL", () => {
 				.summary,
 		).not.toBe("cached");
 		await request("POST", "/articles/private/ai", { action: "summary" }, 404);
+	});
+	test("everyday local development rejects missing AI credentials instead of simulating success", async () => {
+		const env = makeEnv();
+		const request = client(env);
+		expect(await request("GET", "/ai/settings")).toMatchObject({ hasApiKey: false, mock: false });
+		expect(await request("POST", "/ai/test", {}, 422)).toEqual({
+			error: "请先在设置中配置 AI 密钥",
+		});
+		for (const action of ["summary", "translate", "translate-title"])
+			await request("POST", "/articles/a1/ai", { action }, 422);
+		expect(await request<ArticleDetail>("GET", "/articles/a1")).toMatchObject({
+			summary: null,
+			translated_title: null,
+			translated_content: null,
+			ai_model: null,
+		});
 	});
 	test("preferences validate RSSHub and merge concurrent partial updates", async () => {
 		const env = makeEnv();
@@ -249,8 +298,10 @@ describe("reader API with SQLite SQL", () => {
 	test("cleanup protects favorites and later, stats measure stored bodies, logs filter", async () => {
 		const env = makeEnv();
 		const request = client(env);
-		await env.DB.exec(`UPDATE articles SET published_at='2000-01-01', is_read=1 WHERE feed_id='f1'; UPDATE articles SET is_starred=1 WHERE id='a1';
-      INSERT INTO fetch_logs(feed_id,feed_title,level,message) VALUES ('f1','Example','success','Success');`);
+		await env.DB.exec(
+			`UPDATE articles SET published_at='2000-01-01', is_read=1 WHERE feed_id='f1'; UPDATE articles SET is_starred=1 WHERE id='a1';`,
+		);
+		await fetchLog(env, { id: "f1", title: "Example" }, "success", "Success");
 		const stats = await request<Stats>("GET", "/stats");
 		expect(stats).toMatchObject({
 			feeds: 1,
@@ -271,9 +322,9 @@ describe("reader API with SQLite SQL", () => {
 		expect(await request("GET", "/logs?feedId=f2")).toHaveLength(0);
 		await request("GET", "/logs");
 		await request("DELETE", "/logs");
-		expect(await env.DB.prepare("SELECT COUNT(*) AS count FROM fetch_logs").first("count")).toBe(0);
+		expect(await request("GET", "/logs")).toEqual([]);
 		expect(await request("GET", "/directory")).toHaveLength(5);
-		expect(await dataStats(env.DB)).toMatchObject({
+		expect(await dataStats(env)).toMatchObject({
 			articles: 0,
 			bytes: 0,
 			feeds: 1,

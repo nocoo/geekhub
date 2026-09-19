@@ -1,0 +1,417 @@
+[
+	{
+		"width": 1440,
+		"theme": "dark",
+		"tabs": [
+			{
+				"name": "AI 助手",
+				"nav": {
+					"x": 360,
+					"y": 167,
+					"width": 144
+				},
+				"content": {
+					"x": 524,
+					"y": 167,
+					"width": 556
+				},
+				"overflow": false,
+				"violations": []
+			},
+			{
+				"name": "阅读",
+				"nav": {
+					"x": 360,
+					"y": 167,
+					"width": 144
+				},
+				"content": {
+					"x": 524,
+					"y": 167,
+					"width": 556
+				},
+				"overflow": false,
+				"violations": []
+			},
+			{
+				"name": "订阅源",
+				"nav": {
+					"x": 360,
+					"y": 167,
+					"width": 144
+				},
+				"content": {
+					"x": 524,
+					"y": 167,
+					"width": 556
+				},
+				"overflow": false,
+				"violations": []
+			},
+			{
+				"name": "分类",
+				"nav": {
+					"x": 360,
+					"y": 167,
+					"width": 144
+				},
+				"content": {
+					"x": 524,
+					"y": 167,
+					"width": 556
+				},
+				"overflow": false,
+				"violations": []
+			},
+			{
+				"name": "数据管理",
+				"nav": {
+					"x": 360,
+					"y": 167,
+					"width": 144
+				},
+				"content": {
+					"x": 524,
+					"y": 167,
+					"width": 556
+				},
+				"overflow": false,
+				"violations": []
+			}
+		],
+		"errors": [],
+		"writes": []
+	},
+	{
+		"width": 1440,
+		"theme": "light",
+		"tabs": [
+			{
+				"name": "AI 助手",
+				"nav": {
+					"x": 360,
+					"y": 167,
+					"width": 144
+				},
+				"content": {
+					"x": 524,
+					"y": 167,
+					"width": 556
+				},
+				"overflow": false,
+				"violations": []
+			},
+			{
+				"name": "阅读",
+				"nav": {
+					"x": 360,
+					"y": 167,
+					"width": 144
+				},
+				"content": {
+					"x": 524,
+					"y": 167,
+					"width": 556
+				},
+				"overflow": false,
+				"violations": []
+			},
+			{
+				"name": "订阅源",
+				"nav": {
+					"x": 360,
+					"y": 167,
+					"width": 144
+				},
+				"content": {
+					"x": 524,
+					"y": 167,
+					"width": 556
+				},
+				"overflow": false,
+				"violations": []
+			},
+			{
+				"name": "分类",
+				"nav": {
+					"x": 360,
+					"y": 167,
+					"width": 144
+				},
+				"content": {
+					"x": 524,
+					"y": 167,
+					"width": 556
+				},
+				"overflow": false,
+				"violations": []
+			},
+			{
+				"name": "数据管理",
+				"nav": {
+					"x": 360,
+					"y": 167,
+					"width": 144
+				},
+				"content": {
+					"x": 524,
+					"y": 167,
+					"width": 556
+				},
+				"overflow": false,
+				"violations": []
+			}
+		],
+		"errors": [],
+		"writes": []
+	},
+	{
+		"width": 390,
+		"theme": "dark",
+		"tabs": [
+			{
+				"name": "AI 助手",
+				"nav": {
+					"x": 32,
+					"y": 158,
+					"width": 72
+				},
+				"content": {
+					"x": 116,
+					"y": 158,
+					"width": 242
+				},
+				"overflow": false,
+				"violations": []
+			},
+			{
+				"name": "阅读",
+				"nav": {
+					"x": 32,
+					"y": 158,
+					"width": 72
+				},
+				"content": {
+					"x": 116,
+					"y": 158,
+					"width": 242
+				},
+				"overflow": false,
+				"violations": []
+			},
+			{
+				"name": "订阅源",
+				"nav": {
+					"x": 32,
+					"y": 158,
+					"width": 72
+				},
+				"content": {
+					"x": 116,
+					"y": 158,
+					"width": 242
+				},
+				"overflow": false,
+				"violations": []
+			},
+			{
+				"name": "分类",
+				"nav": {
+					"x": 32,
+					"y": 158,
+					"width": 72
+				},
+				"content": {
+					"x": 116,
+					"y": 158,
+					"width": 242
+				},
+				"overflow": false,
+				"violations": []
+			},
+			{
+				"name": "数据管理",
+				"nav": {
+					"x": 32,
+					"y": 158,
+					"width": 72
+				},
+				"content": {
+					"x": 116,
+					"y": 158,
+					"width": 242
+				},
+				"overflow": false,
+				"violations": []
+			}
+		],
+		"errors": [],
+		"writes": []
+	},
+	{
+		"width": 390,
+		"theme": "light",
+		"tabs": [
+			{
+				"name": "AI 助手",
+				"nav": {
+					"x": 32,
+					"y": 158,
+					"width": 72
+				},
+				"content": {
+					"x": 116,
+					"y": 158,
+					"width": 242
+				},
+				"overflow": false,
+				"violations": []
+			},
+			{
+				"name": "阅读",
+				"nav": {
+					"x": 32,
+					"y": 158,
+					"width": 72
+				},
+				"content": {
+					"x": 116,
+					"y": 158,
+					"width": 242
+				},
+				"overflow": false,
+				"violations": []
+			},
+			{
+				"name": "订阅源",
+				"nav": {
+					"x": 32,
+					"y": 158,
+					"width": 72
+				},
+				"content": {
+					"x": 116,
+					"y": 158,
+					"width": 242
+				},
+				"overflow": false,
+				"violations": []
+			},
+			{
+				"name": "分类",
+				"nav": {
+					"x": 32,
+					"y": 158,
+					"width": 72
+				},
+				"content": {
+					"x": 116,
+					"y": 158,
+					"width": 242
+				},
+				"overflow": false,
+				"violations": []
+			},
+			{
+				"name": "数据管理",
+				"nav": {
+					"x": 32,
+					"y": 158,
+					"width": 72
+				},
+				"content": {
+					"x": 116,
+					"y": 158,
+					"width": 242
+				},
+				"overflow": false,
+				"violations": []
+			}
+		],
+		"errors": [],
+		"writes": []
+	},
+	{
+		"width": 320,
+		"theme": "dark",
+		"tabs": [
+			{
+				"name": "AI 助手",
+				"nav": {
+					"x": 32,
+					"y": 168,
+					"width": 72
+				},
+				"content": {
+					"x": 116,
+					"y": 168,
+					"width": 172
+				},
+				"overflow": false,
+				"violations": []
+			},
+			{
+				"name": "阅读",
+				"nav": {
+					"x": 32,
+					"y": 168,
+					"width": 72
+				},
+				"content": {
+					"x": 116,
+					"y": 168,
+					"width": 172
+				},
+				"overflow": false,
+				"violations": []
+			},
+			{
+				"name": "订阅源",
+				"nav": {
+					"x": 32,
+					"y": 168,
+					"width": 72
+				},
+				"content": {
+					"x": 116,
+					"y": 168,
+					"width": 172
+				},
+				"overflow": false,
+				"violations": []
+			},
+			{
+				"name": "分类",
+				"nav": {
+					"x": 32,
+					"y": 168,
+					"width": 72
+				},
+				"content": {
+					"x": 116,
+					"y": 168,
+					"width": 172
+				},
+				"overflow": false,
+				"violations": []
+			},
+			{
+				"name": "数据管理",
+				"nav": {
+					"x": 32,
+					"y": 168,
+					"width": 72
+				},
+				"content": {
+					"x": 116,
+					"y": 168,
+					"width": 172
+				},
+				"overflow": false,
+				"violations": []
+			}
+		],
+		"errors": [],
+		"writes": []
+	}
+]

@@ -7,7 +7,7 @@ Vite / React RSS reader, one Cloudflare Worker serving the SPA and Hono API. D1 
 - Use `@nocoo/next-ai` public contracts, React configuration components and universal `/server` entry.
 - Verify Cloudflare Access JWT signatures, issuer and audience. Local identity and mock AI are restricted to the local environment and loopback requests. Production fails closed.
 - GeekHub is a single-user reader: Access authenticates entry, while subscriptions, reading states and settings belong to one shared dataset. Do not partition data by Access subject or legacy `user_id`. Parameterize D1 SQL. Sanitize fetched HTML and validate outbound URLs and redirects.
-- Feed work uses Queues; scheduling uses Cron. Do not launch floating background promises or use local filesystem data in the Worker.
+- Feed work uses Queues, triggered by reader actions; no Cron scheduling. Fetch logs live only in a shared Durable Object memory cache capped at 500 entries. Do not launch floating background promises or use local filesystem data in the Worker.
 - `docs/archieve/` is a historical documentation snapshot, outside active build/test/lint. Do not treat it as current product documentation.
 - 6DQ: G1 typecheck + Biome with zero warnings; L1 meaningful unit coverage ≥95% all four; L2 real HTTP against isolated Wrangler SQLite; L3 Playwright user flows; G2 gitleaks + OSV; production smoke evidence in docs.
 - Test isolation uses local Wrangler / Miniflare Workers and a fresh SQLite persistence directory per run, separate from development. Do not create or deploy remote `-test` resources. Verify local bindings, the runtime context and `_test_marker` before test seed/reset/cleanup.

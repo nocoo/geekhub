@@ -12,6 +12,7 @@ import {
 	decodeCursor,
 	diagnosticInput,
 	encodeCursor,
+	extractionInput,
 	feedInput,
 	feedOrderInput,
 	feedUpdate,
@@ -34,12 +35,15 @@ import {
 	requireCategory,
 } from "./data";
 import { enqueueDiagnostic, getDiagnostic, runDiagnostic } from "./diagnostics";
-import { enqueueFeed, refreshFeed, scheduleFeeds } from "./feeds";
+import { enqueueFeed, refreshFeed } from "./feeds";
 import { withAuthorProfile } from "./lib/author-profile";
 import { extractArticle } from "./lib/content";
 import { fail } from "./lib/errors";
 import { fetchPublic, readBounded } from "./lib/network";
 import { demoArticleContent, demoHost } from "./local";
+import { feedLogs, withActivity } from "./logs";
+
+export { FeedLogCache } from "./logs";
 
 export const app = new Hono<AppEnv>();
 
@@ -150,9 +154,18 @@ app.post("/api/feeds", async (c) => {
 	const title =
 		input.title || new URL(resolveFeedUrl(url, (await preferences(c.env.DB)).rsshubUrl)).hostname;
 	await c.env.DB.prepare(
-		"INSERT INTO feeds (id, category_id, title, url, sort_order) VALUES (?, ?, ?, ?, (SELECT COALESCE(MAX(sort_order), -1) + 1 FROM feeds))",
+		"INSERT INTO feeds (id, category_id, title, url, auto_translate_content, auto_fetch_content, auto_translate, is_active, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, (SELECT COALESCE(MAX(sort_order), -1) + 1 FROM feeds))",
 	)
-		.bind(id, input.category_id ?? null, title, url)
+		.bind(
+			id,
+			input.category_id ?? null,
+			title,
+			url,
+			Number(input.auto_translate_content ?? false),
+			Number(input.auto_fetch_content ?? false),
+			Number(input.auto_translate ?? false),
+			Number(input.is_active ?? true),
+		)
 		.run();
 	// Persist first: a transient queue failure leaves a visible, retryable subscription.
 	try {
@@ -357,37 +370,65 @@ app.post("/api/read-all", async (c) => {
 	return c.json({ updated: result.meta.changes });
 });
 app.post("/api/articles/:id/full", async (c) => {
+	const body = await c.req.text();
+	const { automatic } = extractionInput.parse(body ? JSON.parse(body) : {});
 	const id = c.req.param("id");
 	const article = await articleDetail(c.env.DB, id);
 	if (!article.full_content_fetched) {
-		let html: string;
-		let baseUrl = article.url;
-		try {
-			if (c.get("local") && new URL(article.url).hostname === demoHost) {
-				html = `<article>${demoArticleContent(article.title)}</article>`;
-			} else {
-				const response = await fetchPublic(article.url, { Accept: "text/html" });
-				baseUrl = response.url || article.url;
-				html = new TextDecoder().decode(await readBounded(response, 4 * 1024 * 1024));
-			}
-			const content = extractArticle(html, baseUrl).content;
-			await c.env.DB.prepare(
-				"UPDATE articles SET content = ?, full_content_fetched = 1, summary = NULL, translated_content = NULL WHERE id = ?",
-			)
-				.bind(content, id)
-				.run();
-		} catch {
-			fail(502, "无法提取正文，网站可能限制抓取；可以打开原文阅读");
-		}
+		await withActivity(
+			c.env,
+			{
+				category: "extraction",
+				feed_id: article.feed_id,
+				feed_title: article.feed_title,
+				article_id: article.id,
+				article_title: article.title,
+				automatic,
+				message: `${automatic ? "自动" : ""}提取全文`,
+			},
+			async () => {
+				let html: string;
+				let baseUrl = article.url;
+				try {
+					if (c.get("local") && new URL(article.url).hostname === demoHost) {
+						html = `<article>${demoArticleContent(article.title)}</article>`;
+					} else {
+						const response = await fetchPublic(article.url, { Accept: "text/html" });
+						baseUrl = response.url || article.url;
+						html = new TextDecoder().decode(await readBounded(response, 4 * 1024 * 1024));
+					}
+					const content = extractArticle(html, baseUrl).content;
+					await c.env.DB.prepare(
+						"UPDATE articles SET content = ?, full_content_fetched = 1, summary = NULL, translated_content = NULL WHERE id = ?",
+					)
+						.bind(content, id)
+						.run();
+				} catch {
+					fail(502, "无法提取正文，网站可能限制抓取；可以打开原文阅读");
+				}
+			},
+		);
 	}
 	return c.json(await articleDetail(c.env.DB, id));
 });
 app.post("/api/articles/:id/ai", async (c) => {
-	const { action, force } = aiActionInput.parse(await c.req.json());
+	const { action, force, automatic } = aiActionInput.parse(await c.req.json());
 	const id = c.req.param("id");
 	const article = await articleDetail(c.env.DB, id);
 	if (force || !aiCached(article, action))
-		await transformArticle(c.env, article, action, c.get("local"));
+		await withActivity(
+			c.env,
+			{
+				feed_id: article.feed_id,
+				feed_title: article.feed_title,
+				article_id: article.id,
+				article_title: article.title,
+				category: action === "summary" ? "summary" : "translation",
+				automatic,
+				message: `${automatic ? "自动" : ""}${action === "summary" ? "生成摘要" : action === "translate" ? "翻译全文" : "翻译标题"}`,
+			},
+			() => transformArticle(c.env, article, action, c.get("local")),
+		);
 	return c.json(await articleDetail(c.env.DB, id));
 });
 
@@ -415,7 +456,7 @@ app.patch("/api/ai/settings", async (c) =>
 app.post("/api/ai/test", async (c) =>
 	c.json(await testAi(c.env, aiInput.parse(await c.req.json()), c.get("local"))),
 );
-app.get("/api/stats", async (c) => c.json(await dataStats(c.env.DB)));
+app.get("/api/stats", async (c) => c.json(await dataStats(c.env)));
 app.post("/api/cleanup", async (c) => {
 	const input = cleanupInput.parse(await c.req.json());
 	const params = [new Date(Date.now() - input.days * 86400_000).toISOString()];
@@ -431,32 +472,24 @@ app.get("/api/logs", async (c) => {
 	const input = z
 		.object({
 			feedId: z.string().optional(),
+			category: z.enum(["feed", "translation", "summary", "extraction", "diagnostic"]).optional(),
 			level: z.enum(["info", "success", "error"]).optional(),
-			limit: z.coerce.number().int().min(1).max(200).default(80),
+			limit: z.coerce.number().int().min(1).max(500).default(500),
 		})
 		.parse(c.req.query());
-	const clauses = ["1 = 1"];
-	const params: (string | number)[] = [];
-	if (input.feedId) {
-		clauses.push("feed_id = ?");
-		params.push(input.feedId);
-	}
-	if (input.level) {
-		clauses.push("level = ?");
-		params.push(input.level);
-	}
 	return c.json(
-		(
-			await c.env.DB.prepare(
-				`SELECT id, feed_id, feed_title, level, message, articles_added, duration_ms, created_at FROM fetch_logs WHERE ${clauses.join(" AND ")} ORDER BY id DESC LIMIT ?`,
+		(await feedLogs(c.env).list())
+			.filter(
+				(log) =>
+					(!input.feedId || log.feed_id === input.feedId) &&
+					(!input.level || log.level === input.level) &&
+					(!input.category || (log.category ?? "feed") === input.category),
 			)
-				.bind(...params, input.limit)
-				.all()
-		).results,
+			.slice(0, input.limit),
 	);
 });
 app.delete("/api/logs", async (c) => {
-	await c.env.DB.prepare("DELETE FROM fetch_logs").run();
+	await feedLogs(c.env).clear();
 	return c.json({ ok: true });
 });
 app.get("/api/directory", async (c) => {
@@ -508,8 +541,5 @@ export default {
 				message.retry({ delaySeconds: 60 });
 			}
 		}
-	},
-	async scheduled(_controller: ScheduledController, env: Env) {
-		await scheduleFeeds(env);
 	},
 } satisfies ExportedHandler<Env, QueueJob>;

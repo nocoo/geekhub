@@ -1,6 +1,11 @@
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
+	resolve: {
+		alias: {
+			"cloudflare:workers": new URL("./tests/unit/cloudflare-runtime.ts", import.meta.url).pathname,
+		},
+	},
 	test: {
 		include: ["tests/unit/**/*.test.{ts,tsx}"],
 		environment: "node",

@@ -1,5 +1,15 @@
 # 6DQ 质量证据
 
+2026-09-19：订阅诊断新增正文／摘要覆盖率、缺内容评分上限和旧报告未知状态。真实 Hugging Face 返回 862 条，前 200 条均无正文／摘要，综合评分为 49：[实际报告](evidence/diagnostic-content/real-huggingface.json)、[Chrome 截图](evidence/diagnostic-content/real-huggingface.png)。`bun run quality` 全部通过：G1、179 项 L1、106 项真实 HTTP 检查、36 项桌面／手机 L3 及 G2；语句／分支／函数／行覆盖率为 99.78%／97.8%／100%／99.91%。测试包含真实 RSS 响应夹具、HTML 空壳和链接排除、40 字符边界、200 条采样、D1 报告持久化、候选筛选和旧报告展示。[完整日志](evidence/diagnostic-content/quality.log)。本次未部署生产。
+
+2026-09-19：阅读助手的协议、缓存切换、失败重试与文章状态隔离，以及设置页左右布局，见 [阅读助手与设置布局](09-ai-reader.md)。日常开发已禁用自动模拟并清除旧模拟缓存；缺少密钥返回 422，Chrome 验证见 [real-local.json](evidence/ai-reader/real-local.json)。统一 `next-ai` 后，真实自定义服务已通过连接、摘要、标题翻译、全文翻译和刷新持久化验证：[真实调用记录](evidence/ai-reader/next-ai-real-provider.json)。自动化门禁仍使用隔离数据库与协议夹具。
+
+2026-09-19：全站纵向间距、仓耳今楷字体、响应式正文侧栏和彩色 Lucide 图标，以及订阅右键／长按菜单的设计与验证记录，见 [阅读排版与侧栏操作](08-reader-layout.md)。
+
+2026-09-19：抓取日志改为共享内存最新 100 条，移除 Cron 调度和日志清理扫描。G1、G2、生产构建、152 项 L1、95 项真实 HTTP 检查（33/33 endpoints）及 24 项桌面／手机 L3 均通过。L2 验证实际 Queue → Durable Object → 日志 API 和清空；L1 覆盖容量、筛选、重启丢失、无 D1／storage 访问以及缓存故障时抓取仍正确完成。四项覆盖率为 99.77%／97.93%／100%／99.91%，日志缓存本身全部覆盖：[coverage-summary.json](evidence/memory-logs/coverage-summary.json)。
+
+本地迁移删除 90 条旧日志，45 个订阅和 1,526 篇文章不变。通过 Caddy HTTPS 和正常 TLS 校验，在 Google Chrome 桌面／手机视口确认日志面板、统计和无脚本错误：[local-smoke.json](evidence/memory-logs/local-smoke.json)。构建仍提示已有客户端 chunk 超过 500 kB；Biome 零警告。此次尚未部署生产，线上 Cron 和旧日志未改变，生产烟测待部署后补充。
+
 v1.3.0 的阅读隔离、订阅管理和源诊断见 [阅读更新与订阅诊断](07-reader-workflow.md)。
 
 v1.2.1 的侧栏搜索、导航留白与两行文章头部已完成完整 6DQ，最新记录见 [侧栏与文章头部](06-sidebar-layout.md)。以下保留 v1.2.0 重写与首次上线的证据。
@@ -28,7 +38,7 @@ v1.2.1 的侧栏搜索、导航留白与两行文章头部已完成完整 6DQ，
 
 关键检查包括：真实签名的 Access JWT、伪造／过期／错误 issuer 或 audience、拒绝单独邮箱 header；不同已验证 subject 共用阅读库；状态和偏好的并发局部更新；RSS／Atom、HTML 清理、跳转与响应体限制；Queue 租约、重试、去重；AI SDK 请求格式、凭据加密、端点更换后的密钥清除；CSV 外键、重复数据、无效 RSS 和重复导入时保留文章状态。
 
-AI L1 使用真实 SDK 配合 HTTP transport fixture，L2／L3 使用本地明确标记的模拟输出。没有在生产调用付费模型，不声称真实服务商密钥已验证。
+AI L1 使用真实 SDK 配合 HTTP transport fixture，L2／L3 使用本地明确标记的模拟输出。自动化门禁不读取真实服务商密钥；2026-09-19 的开发环境真实服务验证及 D1 缓存默认展示验证另见 [阅读助手验证记录](09-ai-reader.md)。没有在生产调用付费模型。
 
 ## L2／L3 与数据隔离
 
@@ -53,3 +63,5 @@ gitleaks 扫描受 Git 管理及待加入的文件，也覆盖旧代码／文档
 生产 HTTP 验证：`/api/live` 返回 200、`status=ok`、`version=1.2.0` 和 `storage=d1`；未登录访问首页、会话 API、图片和 JS 均跳转 `nocoo.cloudflareaccess.com`，audience 与配置一致。Cloudflare 和 Google 公共 DNS 均返回新站地址；本机尚有删除记录期间的 NXDOMAIN 缓存，因此验证使用公共解析地址配合 `curl --resolve`，保留域名与 TLS 证书验证。证据：[production-smoke.json](evidence/production-smoke.json)。本次没有可用的生产登录会话，登录后的阅读流程由本地 L3 和真实签名 JWT 测试验证。
 
 [CI 工作流](../.github/workflows/ci.yml) 使用独立本地质量与 HTTP／浏览器任务，[运行结果](https://github.com/nocoo/geekhub/actions/workflows/ci.yml)以 GitHub Actions 为准。Git hooks 保留：pre-commit 执行 G1 + L1，pre-push 执行 L2 + G2。
+
+2026-09-20：活动中心、500 条内存日志、右下角 toast、Settings 与空状态优化已通过完整 `bun run quality`。187 项 L1、108 项真实 HTTP 检查、48 项桌面／手机 L3，覆盖率 99.72%／97.93%／100%／99.92%，G1/G2 通过；生产未部署。[验证详情](10-activity-settings.md)、[最终日志](evidence/settings-empty/final-quality.log)。

@@ -1,0 +1,164 @@
+diff --git a/dist/server-next.d.ts b/dist/server-next.d.ts
+index 97037b4540307bf27cf2cc4770f702a2c64a39f5..d1224099e562261219bfe49f5c25223f3befac87 100644
+--- a/dist/server-next.d.ts
++++ b/dist/server-next.d.ts
+@@ -70,9 +70,15 @@ interface AiConfigError {
+  * - 缺省 / `"apiKey"`：按 SDK 默认行为（Anthropic 走 `x-api-key`，
+  *   OpenAI 走 `Authorization: Bearer`）。
+  */
+-declare function createAiClient(config: AiConfig): _ai_sdk_openai.OpenAIProvider | _ai_sdk_anthropic.AnthropicProvider;
++interface AiClientOptions {
++    /** Per-client transport; never replaces global fetch. */
++    fetch?: _ai_sdk_openai.OpenAIProviderSettings["fetch"];
++    /** Defaults to Responses for compatibility with existing consumers. */
++    openaiApi?: "responses" | "chat";
++}
++declare function createAiClient(config: AiConfig, options?: AiClientOptions): _ai_sdk_openai.OpenAIProvider | _ai_sdk_anthropic.AnthropicProvider;
+ /** 创建 AI 模型实例（用于 Vercel AI SDK） */
+-declare function createAiModel(config: AiConfig): _ai_sdk_provider.LanguageModelV4;
++declare function createAiModel(config: AiConfig, options?: AiClientOptions): _ai_sdk_provider.LanguageModelV4;
+ 
+ /** AI Helper 选项 */
+ interface AiHelperOptions {
+@@ -193,4 +199,4 @@ declare class PromptTemplateRegistry {
+     build(templateId: string, variables: TemplateVariables, customSections?: Record<string, string>): string;
+ }
+ 
+-export { type AiCompletionResult, type AiConfig, type AiConfigError, type AiHelperOptions, PromptTemplateRegistry, type TemplateVariables, aiChat, aiComplete, aiCompleteWithRetry, aiStream, createAiClient, createAiModel, expandTemplate, resolveAiConfig, validateAiConfig, validateTestConfig };
++export { type AiClientOptions, type AiCompletionResult, type AiConfig, type AiConfigError, type AiHelperOptions, PromptTemplateRegistry, type TemplateVariables, aiChat, aiComplete, aiCompleteWithRetry, aiStream, createAiClient, createAiModel, expandTemplate, resolveAiConfig, validateAiConfig, validateTestConfig };
+diff --git a/dist/server-next.js b/dist/server-next.js
+index a749df2e0fbdee3931ba769896b0dc9aab8e5fe4..b57e542a8caef68eeda92171c058a64b454230d0 100644
+--- a/dist/server-next.js
++++ b/dist/server-next.js
+@@ -4,31 +4,22 @@ import "server-only";
+ // src/server/client.ts
+ import { createAnthropic } from "@ai-sdk/anthropic";
+ import { createOpenAI } from "@ai-sdk/openai";
+-function createAiClient(config) {
++function createAiClient(config, options = {}) {
+   const { baseURL, apiKey, sdkType, authType } = config;
+-  const useBearer = authType === "bearer";
++  const transport = { baseURL, fetch: options.fetch };
+   if (sdkType === "openai") {
+-    if (useBearer) {
+-      return createOpenAI({
+-        baseURL,
+-        apiKey,
+-        headers: { Authorization: `Bearer ${apiKey}` }
+-      });
+-    }
+-    return createOpenAI({ baseURL, apiKey });
++    return createOpenAI({ ...transport, apiKey });
+   }
+-  if (useBearer) {
+-    return createAnthropic({
+-      baseURL,
+-      apiKey,
+-      headers: { Authorization: `Bearer ${apiKey}` }
+-    });
+-  }
+-  return createAnthropic({ baseURL, apiKey });
++  return createAnthropic({
++    ...transport,
++    ...(authType === "bearer" ? { authToken: apiKey } : { apiKey })
++  });
+ }
+-function createAiModel(config) {
+-  const client = createAiClient(config);
+-  return client(config.model);
++function createAiModel(config, options = {}) {
++  const client = createAiClient(config, options);
++  return options.openaiApi === "chat" && "chat" in client
++    ? client.chat(config.model)
++    : client(config.model);
+ }
+ 
+ // src/server/helpers.ts
+@@ -329,4 +320,3 @@ export {
+   validateAiConfig,
+   validateTestConfig
+ };
+-//# sourceMappingURL=server-next.js.map
+\ No newline at end of file
+diff --git a/dist/server.d.ts b/dist/server.d.ts
+index 97037b4540307bf27cf2cc4770f702a2c64a39f5..d1224099e562261219bfe49f5c25223f3befac87 100644
+--- a/dist/server.d.ts
++++ b/dist/server.d.ts
+@@ -70,9 +70,15 @@ interface AiConfigError {
+  * - 缺省 / `"apiKey"`：按 SDK 默认行为（Anthropic 走 `x-api-key`，
+  *   OpenAI 走 `Authorization: Bearer`）。
+  */
+-declare function createAiClient(config: AiConfig): _ai_sdk_openai.OpenAIProvider | _ai_sdk_anthropic.AnthropicProvider;
++interface AiClientOptions {
++    /** Per-client transport; never replaces global fetch. */
++    fetch?: _ai_sdk_openai.OpenAIProviderSettings["fetch"];
++    /** Defaults to Responses for compatibility with existing consumers. */
++    openaiApi?: "responses" | "chat";
++}
++declare function createAiClient(config: AiConfig, options?: AiClientOptions): _ai_sdk_openai.OpenAIProvider | _ai_sdk_anthropic.AnthropicProvider;
+ /** 创建 AI 模型实例（用于 Vercel AI SDK） */
+-declare function createAiModel(config: AiConfig): _ai_sdk_provider.LanguageModelV4;
++declare function createAiModel(config: AiConfig, options?: AiClientOptions): _ai_sdk_provider.LanguageModelV4;
+ 
+ /** AI Helper 选项 */
+ interface AiHelperOptions {
+@@ -193,4 +199,4 @@ declare class PromptTemplateRegistry {
+     build(templateId: string, variables: TemplateVariables, customSections?: Record<string, string>): string;
+ }
+ 
+-export { type AiCompletionResult, type AiConfig, type AiConfigError, type AiHelperOptions, PromptTemplateRegistry, type TemplateVariables, aiChat, aiComplete, aiCompleteWithRetry, aiStream, createAiClient, createAiModel, expandTemplate, resolveAiConfig, validateAiConfig, validateTestConfig };
++export { type AiClientOptions, type AiCompletionResult, type AiConfig, type AiConfigError, type AiHelperOptions, PromptTemplateRegistry, type TemplateVariables, aiChat, aiComplete, aiCompleteWithRetry, aiStream, createAiClient, createAiModel, expandTemplate, resolveAiConfig, validateAiConfig, validateTestConfig };
+diff --git a/dist/server.js b/dist/server.js
+index 3f6be283f583003b830a5cec828bdbe5d2c0f1db..dbd2bd233d055cb22eb4386b416db29bb892702c 100644
+--- a/dist/server.js
++++ b/dist/server.js
+@@ -1,31 +1,22 @@
+ // src/server/client.ts
+ import { createAnthropic } from "@ai-sdk/anthropic";
+ import { createOpenAI } from "@ai-sdk/openai";
+-function createAiClient(config) {
++function createAiClient(config, options = {}) {
+   const { baseURL, apiKey, sdkType, authType } = config;
+-  const useBearer = authType === "bearer";
++  const transport = { baseURL, fetch: options.fetch };
+   if (sdkType === "openai") {
+-    if (useBearer) {
+-      return createOpenAI({
+-        baseURL,
+-        apiKey,
+-        headers: { Authorization: `Bearer ${apiKey}` }
+-      });
+-    }
+-    return createOpenAI({ baseURL, apiKey });
++    return createOpenAI({ ...transport, apiKey });
+   }
+-  if (useBearer) {
+-    return createAnthropic({
+-      baseURL,
+-      apiKey,
+-      headers: { Authorization: `Bearer ${apiKey}` }
+-    });
+-  }
+-  return createAnthropic({ baseURL, apiKey });
++  return createAnthropic({
++    ...transport,
++    ...(authType === "bearer" ? { authToken: apiKey } : { apiKey })
++  });
+ }
+-function createAiModel(config) {
+-  const client = createAiClient(config);
+-  return client(config.model);
++function createAiModel(config, options = {}) {
++  const client = createAiClient(config, options);
++  return options.openaiApi === "chat" && "chat" in client
++    ? client.chat(config.model)
++    : client(config.model);
+ }
+ 
+ // src/server/helpers.ts
+@@ -326,4 +317,3 @@ export {
+   validateAiConfig,
+   validateTestConfig
+ };
+-//# sourceMappingURL=server.js.map
+\ No newline at end of file

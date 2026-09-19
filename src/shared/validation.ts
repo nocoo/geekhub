@@ -18,6 +18,10 @@ export const feedInput = z
 		url: z.string().trim().min(1).max(2048),
 		title: z.string().trim().max(200).optional(),
 		category_id: z.string().min(1).max(100).nullable().optional(),
+		auto_translate_content: z.boolean().optional(),
+		auto_fetch_content: z.boolean().optional(),
+		auto_translate: z.boolean().optional(),
+		is_active: z.boolean().optional(),
 	})
 	.strict();
 export const feedUpdate = z
@@ -27,6 +31,8 @@ export const feedUpdate = z
 		title: z.string().trim().min(1).max(200).optional(),
 		category_id: z.string().min(1).max(100).nullable().optional(),
 		auto_translate: z.boolean().optional(),
+		auto_translate_content: z.boolean().optional(),
+		auto_fetch_content: z.boolean().optional(),
 		is_active: z.boolean().optional(),
 		refresh_minutes: z.number().int().min(15).max(1440).optional(),
 	})
@@ -86,8 +92,10 @@ export const aiActionInput = z
 	.object({
 		action: z.enum(["summary", "translate", "translate-title"]),
 		force: z.boolean().default(false),
+		automatic: z.boolean().default(false),
 	})
 	.strict();
+export const extractionInput = z.object({ automatic: z.boolean().default(false) }).strict();
 export const cleanupInput = z
 	.object({
 		days: z.number().int().min(1).max(3650),

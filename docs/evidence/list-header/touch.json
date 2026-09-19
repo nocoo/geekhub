@@ -1,0 +1,9 @@
+{
+	"nativeTouch": true,
+	"menuStable": true,
+	"escape": true,
+	"outsideTap": true,
+	"editCancel": true,
+	"writes": [],
+	"violations": []
+}

@@ -14,6 +14,7 @@ import { parseFeed, safeLink } from "./lib/content";
 import { errorMessage, fail } from "./lib/errors";
 import { fetchPublic, readBounded } from "./lib/network";
 import { demoHost, localDiagnosticResponse } from "./local";
+import { withActivity } from "./logs";
 
 type DiagnosticRow = Omit<FeedDiagnostic, "report"> & {
 	report: string | null;
@@ -158,6 +159,11 @@ export async function inspectFeed(
 			siteUrl: parsed.declaredSiteUrl,
 			entries: parsed.entries,
 			readableEntries: parsed.articles.length,
+			contentEntries: parsed.articles.filter((article) => {
+				const $ = load(article.content);
+				$("a").remove();
+				return $.text().replace(article.title, "").replace(/\s+/g, "").length >= 40;
+			}).length,
 			oldestAt: parsed.oldestAt,
 			latestAt: parsed.latestAt,
 			undatedEntries: parsed.undatedEntries,
@@ -272,12 +278,18 @@ export async function runDiagnostic(env: Env, job: DiagnosticJob): Promise<void>
 	if (!row) return;
 	try {
 		const feed = await getFeed(env.DB, job.feedId);
-		const report = await diagnoseFeed(env, feed, row.site_url ?? undefined);
-		await env.DB.prepare(
-			"UPDATE feed_diagnostics SET status = 'success', report = ?, finished_at = ? WHERE feed_id = ? AND run_id = ?",
-		)
-			.bind(JSON.stringify(report), new Date().toISOString(), job.feedId, job.runId)
-			.run();
+		await withActivity(
+			env,
+			{ category: "diagnostic", feed_id: feed.id, feed_title: feed.title, message: "订阅诊断" },
+			async () => {
+				const report = await diagnoseFeed(env, feed, row.site_url ?? undefined);
+				await env.DB.prepare(
+					"UPDATE feed_diagnostics SET status = 'success', report = ?, finished_at = ? WHERE feed_id = ? AND run_id = ?",
+				)
+					.bind(JSON.stringify(report), new Date().toISOString(), job.feedId, job.runId)
+					.run();
+			},
+		);
 	} catch (error) {
 		await env.DB.prepare(
 			"UPDATE feed_diagnostics SET status = 'error', error = ?, finished_at = ? WHERE feed_id = ? AND run_id = ?",

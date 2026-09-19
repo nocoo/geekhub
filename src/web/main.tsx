@@ -36,7 +36,14 @@ createRoot(root).render(
 				<AccentProvider accent="green" persist={false}>
 					<TooltipProvider>
 						<App />
-						<Toaster position="bottom-center" customAriaLabel="操作通知" />
+						<Toaster
+							position="bottom-right"
+							className="reader-toasts"
+							offset={20}
+							mobileOffset={12}
+							visibleToasts={3}
+							customAriaLabel="操作通知"
+						/>
 					</TooltipProvider>
 				</AccentProvider>
 			</ThemeProvider>

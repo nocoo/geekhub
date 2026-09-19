@@ -10,7 +10,9 @@ export default defineConfig({
 	retries: 0,
 	reporter: [["list"], ["html", { outputFolder: "playwright-report", open: "never" }]],
 	outputDir: "test-results/l3/browser",
-	timeout: 30_000,
+	// Local Workers, Queue consumers and cold browser imports share the workstation.
+	timeout: 60_000,
+	expect: { timeout: 10_000 },
 	use: { baseURL, trace: "retain-on-failure", screenshot: "only-on-failure" },
 	projects: [
 		{

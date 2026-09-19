@@ -90,7 +90,7 @@ export function localFeedXml(url: URL): string {
 	const index = demoSources.findIndex((source) => url.pathname === `/rss/${source.id}`);
 	const source = demoSources[index];
 	if (!source) throw new Error("本地示例订阅源不存在");
-	return `<rss version="2.0"><channel><title>${source.title}</title><link>${source.site}</link><description>${source.description}</description>${(demoTitles[index] ?? []).map((title, i) => `<item><guid>${source.id}-${i}</guid><title>${title}</title><link>https://${demoHost}/articles/${source.id}-${i}</link><pubDate>${new Date(Date.now() - (index * 25 + i * 240) * 60_000).toUTCString()}</pubDate><author>${source.title}</author><description><![CDATA[${demoArticleContent(title)}]]></description></item>`).join("")}</channel></rss>`;
+	return `<rss version="2.0"><channel><title>${source.title}</title><link>${source.site}</link><description>${source.description}</description>${(demoTitles[index] ?? []).map((title, i) => `<item><guid>${source.id}-${i}</guid><title>${title}</title><link>https://${demoHost}/articles/${source.id}-${i}</link><pubDate>${new Date(Date.now() - (index * 25 + i * 240) * 60_000).toUTCString()}</pubDate><author>${source.title}</author><description><![CDATA[${url.searchParams.get("content") === "none" ? "" : demoArticleContent(title)}]]></description></item>`).join("")}</channel></rss>`;
 }
 
 export function localDiagnosticResponse(url: URL): Response {

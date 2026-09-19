@@ -41,11 +41,18 @@ export function normalizeImport(input: unknown) {
 		"分类名称",
 	);
 	const feeds = raw.feeds.map((row) => {
-		const value = feedInput.parse({
-			title: row.title,
-			url: row.url,
-			category_id: row.category_id || null,
-		});
+		const value = feedInput
+			.omit({
+				auto_translate_content: true,
+				auto_fetch_content: true,
+				auto_translate: true,
+				is_active: true,
+			})
+			.parse({
+				title: row.title,
+				url: row.url,
+				category_id: row.category_id || null,
+			});
 		const resolved = resolveFeedUrl(value.url, "https://rsshub.app");
 		if (value.category_id && !categories.some((item) => item.id === value.category_id))
 			throw new Error(`订阅「${value.title}」的分类不存在`);

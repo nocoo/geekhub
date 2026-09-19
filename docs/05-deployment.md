@@ -10,7 +10,8 @@
 | D1 | `geekhub-db`，APAC |
 | D1 ID | `c502f821-0242-46c5-8bdf-f73dc7ad1ee7` |
 | Queue | `geekhub-feed-refresh` |
-| Cron | 每 15 分钟 |
+| Cron | 已移除，`crons: []` 清除现有触发器 |
+| 日志 | `FEED_LOGS` → `FeedLogCache`，仅内存 500 条 |
 | Access team | `nocoo` |
 | Access audience | 用户提供的应用 AUD，见根 `wrangler.jsonc` |
 | Worker secret | `AI_ENCRYPTION_KEY`，至少 32 字符 |
@@ -19,7 +20,7 @@
 
 会话接口将已验证的 Access 邮箱规范化并做 SHA-256，再查询 `https://lizheng.blog/api/authors/profile?hash=...` 获取公开姓名和头像。查询有 2.5 秒超时与 16 KiB 响应上限，不传邮箱明文或 JWT，不跟随重定向；异常时回退到 Access 姓名和 Basalt 首字母头像。头像经过公开 URL 校验，通过同源图片代理加载。本地可在 `.dev.vars.local` 设置 `LOCAL_USER_EMAIL` 预览对应公开头像；仅回环本地请求生效，L2／L3 不调用外部头像服务。
 
-版本以根 `package.json` 为唯一来源，侧栏显示 `vX.Y.Z`，`/api/live.version` 和抓取 User-Agent 同步。当前发布为 **v1.3.1**；发布标签与 GitHub Release 使用相同版本。
+版本以根 `package.json` 为唯一来源，侧栏显示 `vX.Y.Z`，`/api/live.version` 和抓取 User-Agent 同步。当前发布为 **v1.4.0**；发布标签与 GitHub Release 使用相同版本。
 
 ## 发布
 
@@ -31,6 +32,8 @@ bun run deploy
 ```
 
 脚本拒绝 `CLOUDFLARE_ENV`、测试持久化目录或测试 runtime，随后按顺序执行：远程迁移、生产构建、Wrangler 部署。迁移失败即停止，不上传依赖新 schema 的代码。
+
+日志改造迁移 `0003_clear_fetch_logs.sql` 清空旧日志并保留空表，兼容部署期间的旧 Worker。新代码不再读写该表；部署完成后再次执行 `bun x wrangler d1 execute geekhub-db --remote --command "DELETE FROM fetch_logs"`，移除切换期间旧消费者可能写入的日志。DO 使用 `new_sqlite_classes` 注册，但代码没有任何 storage 调用，不保存日志；不要回退到仍写 D1 日志或启用 Cron 的旧版本。
 
 首次发布可以使用 `bun run deploy --secrets-file <生产密钥文件>` 一次上传加密密钥和 Worker 版本。Wrangler 后续发布保留已有 secret；密钥不写入 `wrangler.jsonc`、浏览器或 Git。不要使用本地开发密钥作为生产密钥。首次生成的本机备份在 Git 忽略的 `.wrangler/deploy/production-secrets.json`，权限 0600。
 

@@ -23,9 +23,6 @@ export async function seedSql(): Promise<string> {
 			statements.push(`INSERT OR IGNORE INTO articles(id,feed_id,source_id,title,url,author,published_at,content,description,is_read,is_starred,is_later)
         VALUES (${[id, source.id, sourceId, title, `https://${demoHost}/articles/${sourceId}`, source.title, new Date(Date.now() - (index * 25 + i * 240) * 60_000).toISOString(), content, index === 3 ? "在订阅、收藏与打开的标签之间，总有一个值得停下来思考的想法。给阅读留一点空间，给好奇心留一扇窗。" : "Somewhere between the feeds, the bookmarks, and the open tabs, there is an idea worth sitting with. A small invitation to slow down and follow that idea."].map(quote).join(",")},${i > 3 ? 1 : 0},${i === 2 ? 1 : 0},${i === 1 ? 1 : 0});`);
 		}
-		statements.push(
-			`INSERT INTO fetch_logs(feed_id,feed_title,level,message,articles_added,duration_ms) VALUES (${quote(source.id)},${quote(source.title)},'success','本地阅读集已就绪',6,${120 + index * 43});`,
-		);
 	}
 	return statements.join("\n");
 }

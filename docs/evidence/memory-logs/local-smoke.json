@@ -1,0 +1,43 @@
+{
+	"checkedAt": "2026-09-19T03:03:00.646Z",
+	"origin": "https://geekhub.dev.hexly.ai",
+	"browser": "Google Chrome",
+	"tlsVerification": true,
+	"productionDeployed": false,
+	"results": [
+		{
+			"viewport": {
+				"width": 1440,
+				"height": 1000
+			},
+			"stats": {
+				"articles": 1526,
+				"unread": 1492,
+				"starred": 0,
+				"later": 0,
+				"bytes": 5345196,
+				"feeds": 45,
+				"logs": 0
+			},
+			"scriptErrors": [],
+			"activityPanel": "passed"
+		},
+		{
+			"viewport": {
+				"width": 412,
+				"height": 915
+			},
+			"stats": {
+				"articles": 1526,
+				"unread": 1492,
+				"starred": 0,
+				"later": 0,
+				"bytes": 5345196,
+				"feeds": 45,
+				"logs": 0
+			},
+			"scriptErrors": [],
+			"activityPanel": "passed"
+		}
+	]
+}

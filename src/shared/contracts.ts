@@ -20,6 +20,8 @@ export interface Feed {
 	site_url: string;
 	description: string;
 	auto_translate: number;
+	auto_translate_content: number;
+	auto_fetch_content: number;
 	is_active: number;
 	refresh_minutes: number;
 	sort_order: number;
@@ -90,6 +92,11 @@ export interface Stats {
 	bytes: number;
 }
 export interface FetchLog {
+	category?: "feed" | "translation" | "summary" | "extraction" | "diagnostic";
+	activity_id?: string;
+	article_id?: string;
+	article_title?: string;
+	automatic?: boolean;
 	id: number;
 	feed_id: string | null;
 	feed_title: string;
@@ -147,6 +154,8 @@ export interface FeedInspection extends ConnectionCheck {
 	siteUrl: string | null;
 	entries: number | null;
 	readableEntries: number;
+	/** Entries with usable body/summary text in the first 200; absent in older reports. */
+	contentEntries?: number;
 	oldestAt: string | null;
 	latestAt: string | null;
 	undatedEntries: number;

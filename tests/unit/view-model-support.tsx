@@ -45,6 +45,8 @@ export const feed = (id = "f1"): Feed => ({
 	site_url: "https://example.com",
 	description: "Feed",
 	auto_translate: 0,
+	auto_translate_content: 0,
+	auto_fetch_content: 0,
 	is_active: 1,
 	refresh_minutes: 60,
 	status: "success",

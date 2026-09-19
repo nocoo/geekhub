@@ -5,7 +5,15 @@ import { api } from "./api";
 import { assessDiagnostic } from "./diagnostic-score";
 import type { SavedChange } from "./reader-view-model";
 
-export type Panel = "add" | "discover" | "settings" | "logs" | "diagnose" | null;
+export type Panel =
+	| "add"
+	| "discover"
+	| "settings"
+	| "logs"
+	| "diagnose"
+	| "edit-feed"
+	| "delete-feed"
+	| null;
 export type Save = (
 	path: string,
 	method: string,

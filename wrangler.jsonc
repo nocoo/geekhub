@@ -13,6 +13,10 @@
 		"run_worker_first": ["/api/*"]
 	},
 	"observability": { "enabled": true, "head_sampling_rate": 1 },
+	"durable_objects": {
+		"bindings": [{ "name": "FEED_LOGS", "class_name": "FeedLogCache" }]
+	},
+	"migrations": [{ "tag": "v1-feed-log-cache", "new_sqlite_classes": ["FeedLogCache"] }],
 	"vars": {
 		"ENVIRONMENT": "production",
 		"RESOURCE_ENV": "production",
@@ -38,10 +42,13 @@
 			}
 		]
 	},
-	"triggers": { "crons": ["*/15 * * * *"] },
+	"triggers": { "crons": [] },
 	"env": {
 		"local": {
 			"name": "geekhub-local",
+			"durable_objects": {
+				"bindings": [{ "name": "FEED_LOGS", "class_name": "FeedLogCache" }]
+			},
 			"workers_dev": false,
 			"routes": [],
 			"vars": {

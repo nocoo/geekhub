@@ -1,0 +1,8 @@
+L3: local Worker at http://127.0.0.1:27005, isolated SQLite at /Users/nocoo/workspace/personal/geekhub/.wrangler/tests/l3-m0MixB
+
+Running 2 tests using 1 worker
+
+  ✓  1 [desktop] › tests/browser/reader.spec.ts:564:1 › background updates preserve unread rows, scroll and prose until accepted (6.6s)
+  ✓  2 [mobile] › tests/browser/reader.spec.ts:564:1 › background updates preserve unread rows, scroll and prose until accepted (7.0s)
+
+  2 passed (15.5s)

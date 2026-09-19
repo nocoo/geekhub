@@ -18,6 +18,7 @@ const inspection = (patch: Partial<FeedInspection> = {}): FeedInspection => ({
 	siteUrl: "https://example.com/",
 	entries: 10,
 	readableEntries: 10,
+	contentEntries: 10,
 	oldestAt: "2026-09-01T00:00:00.000Z",
 	latestAt: "2026-09-11T00:00:00.000Z",
 	undatedEntries: 0,
@@ -80,6 +81,7 @@ describe("diagnostic assessment", () => {
 			feed: inspection({
 				ageDays: 45,
 				readableEntries: 8,
+				contentEntries: 8,
 				undatedEntries: 2,
 				futureEntries: 1,
 				durationMs: 4000,
@@ -170,14 +172,25 @@ describe("diagnostic assessment", () => {
 	test("the 200-entry reading sample does not penalize larger feeds or reward volume", () => {
 		for (const entries of [1, 200, 500]) {
 			const input = report({
-				feed: inspection({ entries, readableEntries: Math.min(entries, 200) }),
+				feed: inspection({
+					entries,
+					readableEntries: Math.min(entries, 200),
+					contentEntries: Math.min(entries, 200),
+				}),
 			});
 			expect(scores(input).integrity).toBe(100);
 			expect(assessDiagnostic(input).total).toBe(100);
 		}
 		expect(
 			scores(
-				report({ feed: inspection({ entries: 500, readableEntries: 100, undatedEntries: 250 }) }),
+				report({
+					feed: inspection({
+						entries: 500,
+						readableEntries: 100,
+						contentEntries: 100,
+						undatedEntries: 250,
+					}),
+				}),
 			).integrity,
 		).toBe(50);
 	});
@@ -205,6 +218,35 @@ describe("diagnostic assessment", () => {
 			expect(result.limit).toContain("没有可读文章");
 			expect(result.recommendation.title).toBe("建议检查源内容");
 		}
+	});
+
+	test("metadata-only and sparse bodies cannot earn high scores or a keep recommendation", () => {
+		for (const [contentEntries, integrity, total] of [
+			[0, 40, 49],
+			[1, 46, 69],
+			[4, 64, 69],
+			[5, 70, 94],
+		]) {
+			const result = assessDiagnostic(report({ feed: inspection({ contentEntries }) }));
+			expect(result.total).toBe(total);
+			expect(result.dimensions.find((item) => item.id === "integrity")?.score).toBe(integrity);
+			if ((contentEntries ?? 0) < 5) {
+				expect(result.recommendation.action).toBe("review");
+				expect(result.recommendation.reason).toContain("正文");
+				expect(result.limit).toContain(String(total));
+			}
+		}
+	});
+
+	test("legacy reports need a new body check and are not silently treated as healthy", () => {
+		const feed = inspection();
+		delete feed.contentEntries;
+		const result = assessDiagnostic(report({ feed }));
+		expect(result).toMatchObject({ total: 79, coverage: 80, recommendation: { action: "review" } });
+		expect(result.dimensions.find((item) => item.id === "integrity")).toMatchObject({
+			score: null,
+		});
+		expect(result.limit).toContain("重新检查");
 	});
 
 	test("site scores honor the final protocol, including redirects, failures and missing sites", () => {
@@ -244,6 +286,9 @@ describe("diagnostic assessment", () => {
 				candidate("failure", { error: "bad XML" }),
 				candidate("empty", { entries: 0, readableEntries: 0 }),
 				candidate("unreadable", { readableEntries: 0 }),
+				candidate("no-body", { contentEntries: 0, ageDays: 0 }),
+				candidate("sparse-body", { contentEntries: 1, ageDays: 0 }),
+				candidate("legacy", { contentEntries: undefined, ageDays: 0 }),
 				candidate("undated", { ageDays: null }),
 				candidate("old", { ageDays: 90 }),
 				candidate("rss"),
@@ -260,6 +305,8 @@ describe("diagnostic assessment", () => {
 		for (const feed of [
 			inspection({ ageDays: 180 }),
 			inspection({ entries: 0, readableEntries: 0 }),
+			inspection({ contentEntries: 0 }),
+			inspection({ contentEntries: 1 }),
 		]) {
 			expect(assessDiagnostic({ ...input, feed }).replacement).toBe(latest);
 		}

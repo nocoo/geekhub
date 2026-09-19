@@ -12,15 +12,15 @@ GeekHub brings RSS / Atom subscriptions, reading states, AI summaries and transl
 - The settings gear groups subscriptions, categories, reading, AI and data. Edit feed/site URLs, drag to reorder and move feeds between categories.
 - RSS, Atom and RSSHub support, curated blog discovery and search; changing a source URL preserves articles and reading states.
 - A three-pane reader with full-text retrieval, search, pagination, read/unread, stars and read-later lists.
-- AI summaries and translations of titles, introductions and full articles, with results saved in D1.
+- AI summaries and translations of titles, introductions and full articles. Per-feed options fetch full text before translating, reusing results saved in D1.
 - Public `@nocoo/next-ai` settings components, encrypted AI keys and connection testing.
-- Light/dark themes, font and size controls, image preferences, data cleanup and terminal-style fetch logs.
-- The bottom-left Basalt avatar uses public lizheng.blog identity; the top-right Activity line opens loading details.
-- Background fetching and automatic translation announce updates without disturbing the list, article, selection or scroll position. Apply updates explicitly to merge new content.
+- Light/dark themes, font and size controls, image preferences, data cleanup and filterable activity logs.
+- The bottom-left Basalt avatar uses public lizheng.blog identity; the top-right Activity center groups fetching, translation, summaries, extraction and diagnostics, keeping the latest 500 entries in memory.
+- New articles load automatically above the list, with a bottom-right toast and preserved reading position, prose and selection. Automatic translation stays silent.
 - Feeds, categories, articles and search have direct URLs. Browser back/forward and reload restore the article, list pagination and reading position.
 - Sanitized HTML becomes Markdown with images, links, code and tables, simplifying source layouts. Images load through a restricted proxy.
 - Feed diagnostics show connectivity, duration, article count, time range, stale-feed hints and HTTP/HTTPS site and RSS rediscovery. A total score, five metrics and radar chart support keep/review/replace/pause recommendations; replacement preserves historical articles.
-- Keyboard shortcuts: `J/K` move between articles, `/` searches, `M/S/L` change reading states, `O` opens the original and `R` refreshes. Reader shortcuts stay inactive inside inputs and dialogs.
+- Keyboard shortcuts: `J/K` smoothly move between articles, placing selection 38.2% from the top of the list; `/` searches, `M/S/L` change reading states, `O` opens the original and `R` refreshes. Reader shortcuts stay inactive inside inputs and dialogs.
 - A GitHub project link is available in the top-right corner.
 - Desktop and mobile layouts retain the GeekHub identity, green accent and decorative details.
 
@@ -76,7 +76,7 @@ Vitest runs unit tests. HTTP and Playwright browser tests use ports 17005 / 2700
 | React · Vite · Basalt | Responsive reader |
 | TypeScript · Bun · Biome | Types, scripts and static checks |
 | Hono · Cloudflare Workers | API and authentication |
-| D1 · Queues · Cron | Storage, RSS fetching and scheduling |
+| D1 · Queues | Storage and reader-triggered RSS fetching |
 | @nocoo/next-ai | AI configuration, summaries and translation |
 | Vitest · Playwright | Unit, HTTP and browser tests |
 

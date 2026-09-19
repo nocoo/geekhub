@@ -1,0 +1,354 @@
+$ bun run typecheck && bun run lint && bun run test:coverage && bun run build && bun run test:l2 && bun run test:l3 && bun run gate:security
+$ bun run cf-typegen && tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.worker.json && tsc --noEmit -p tsconfig.tools.json && tsc --noEmit -p tsconfig.test.json
+$ wrangler types --env local --include-runtime=false --strict-vars=false
+
+ ⛅️ wrangler 4.131.1 (update available 4.135.0)
+───────────────────────────────────────────────
+Generating project types...
+
+interface __BaseEnv_Env {
+	DB: D1Database;
+	FEED_QUEUE: Queue;
+	ENVIRONMENT: string;
+	RESOURCE_ENV: string;
+	LOCAL_USER_EMAIL: string;
+	CF_ACCESS_TEAM_DOMAIN: string;
+	CF_ACCESS_AUD: string;
+	AI_ENCRYPTION_KEY: string;
+	FEED_LOGS: DurableObjectNamespace<import("./src/worker/index").FeedLogCache>;
+}
+declare namespace Cloudflare {
+	interface GlobalProps {
+		mainModule: typeof import("./src/worker/index");
+		durableNamespaces: "FeedLogCache";
+	}
+	interface Env extends __BaseEnv_Env {}
+}
+interface Env extends __BaseEnv_Env {}
+type StringifyValues<EnvType extends Record<string, unknown>> = {
+	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
+};
+declare namespace NodeJS {
+	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "ENVIRONMENT" | "RESOURCE_ENV" | "LOCAL_USER_EMAIL" | "CF_ACCESS_TEAM_DOMAIN" | "CF_ACCESS_AUD" | "AI_ENCRYPTION_KEY">> {}
+}
+
+
+✨ Types written to worker-configuration.d.ts
+
+📣 Remember to rerun 'wrangler types' after you change your wrangler.jsonc file.
+
+$ biome check --error-on-warnings .
+Checked 125 files in 50ms. No fixes applied.
+$ vitest run --coverage
+
+ RUN  v5.0.1 /Users/nocoo/workspace/personal/geekhub
+      Coverage enabled with v8
+
+
+ Test Files  17 passed (17)
+      Tests  187 passed (187)
+   Start at  06:32:47
+   Duration  4.39s (tests 35%, environment 25%, import 22%, transform 17%, worker 2%)
+
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   99.72 |    97.93 |     100 |   99.92 |                   
+ shared            |     100 |    96.22 |     100 |     100 |                   
+  import.ts        |     100 |    94.11 |     100 |     100 | 57,82             
+ web/lib           |   99.82 |     98.3 |     100 |     100 |                   
+  ...stic-score.ts |     100 |    98.01 |     100 |     100 | 72,110,159        
+  ...view-model.ts |     100 |    96.87 |     100 |     100 | 86                
+  ...r-position.ts |     100 |       95 |     100 |     100 | 32                
+  ...view-model.ts |    99.6 |    97.29 |     100 |     100 | ...81,398,418,464 
+ worker            |   99.52 |    97.03 |     100 |   99.82 |                   
+  ai.ts            |     100 |       99 |     100 |     100 | 25                
+  auth.ts          |     100 |    95.74 |     100 |     100 | 52,80             
+  data.ts          |   96.29 |    95.45 |     100 |     100 | 85                
+  diagnostics.ts   |     100 |    97.46 |     100 |     100 | 187,244           
+  feeds.ts         |     100 |    86.66 |     100 |     100 | 92,136            
+  index.ts         |   99.62 |    99.31 |     100 |     100 | 271               
+  local.ts         |      95 |    83.33 |     100 |   93.75 | 103               
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 99.72% ( 1429/1433 )
+Branches     : 97.93% ( 1185/1210 )
+Functions    : 100% ( 317/317 )
+Lines        : 99.92% ( 1272/1273 )
+================================================================================
+$ vite build
+vite v8.2.2 building worker environment for production...
+transforming...
+✓ 391 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/worker/.vite/manifest.json      0.15 kB │ gzip:   0.11 kB
+dist/worker/wrangler.json            2.12 kB │ gzip:   1.09 kB
+dist/worker/index.js             2,304.75 kB │ gzip: 535.79 kB │ map: 5,264.90 kB
+
+✓ built in 401ms
+vite v8.2.2 building client environment for production...
+transforming...
+✓ 2402 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/client/.assetsignore                       0.02 kB
+dist/client/index.html                          0.77 kB │ gzip:   0.47 kB
+dist/client/assets/index-BSOQ-xv8.css         120.32 kB │ gzip:  21.55 kB
+dist/client/assets/ReaderContent-DhMQP1sx.js  256.34 kB │ gzip:  76.25 kB │ map: 1,471.21 kB
+dist/client/assets/index-DjIiJYxX.js          563.03 kB │ gzip: 174.51 kB │ map: 2,206.55 kB
+
+✓ built in 498ms
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+$ bun scripts/run-tests.ts l2
+L2: local Worker at http://127.0.0.1:17005, isolated SQLite at /Users/nocoo/workspace/personal/geekhub/.wrangler/tests/l2-tqKTVW
+L2 passed: 108 real HTTP checks, 33/33 API endpoints, queue, pagination, missing records, AI and cleanup.
+$ bun scripts/run-tests.ts l3
+L3: local Worker at http://127.0.0.1:27005, isolated SQLite at /Users/nocoo/workspace/personal/geekhub/.wrangler/tests/l3-MCxU5o
+
+Running 48 tests using 1 worker
+
+  ✓   1 [desktop] › tests/browser/activity.spec.ts:5:1 › empty lists are centered and offer actions for the actual feed state (2.2s)
+  ✓   2 [desktop] › tests/browser/activity.spec.ts:53:1 › category controls keep full colors and single-line actions on a narrow settings panel (988ms)
+  ✓   3 [desktop] › tests/browser/activity.spec.ts:83:1 › automatic full translation appears in the activity center without a toast (3.1s)
+  ✓   4 [desktop] › tests/browser/activity.spec.ts:139:1 › activity categories, errors and search keep separate task details (695ms)
+  ✓   5 [desktop] › tests/browser/activity.spec.ts:176:1 › notices use a Lucide icon at the bottom right without obstructing reading (1.4s)
+  ✓   6 [desktop] › tests/browser/ai.spec.ts:34:1 › AI results persist, cached views avoid requests, and extraction invalidates old results (5.6s)
+  ✓   7 [desktop] › tests/browser/ai.spec.ts:118:1 › AI failure stays visible, retries succeed, and pending requests belong to their article (3.6s)
+  ✓   8 [desktop] › tests/browser/ai.spec.ts:193:1 › settings use accessible vertical navigation and AI configuration is required outside demo mode (4.9s)
+  ✘   9 [desktop] › tests/browser/ai.spec.ts:246:1 › per-feed full translation persists, starts on opening and silently reuses cached text (3.2s)
+  ✓  10 [desktop] › tests/browser/diagnostics.spec.ts:4:1 › metadata-only RSS cannot score highly and legacy reports request a body recheck (3.8s)
+  ✓  11 [desktop] › tests/browser/reader.spec.ts:12:1 › list header shows scoped totals, unread filters and subscription settings (3.1s)
+  ✓  12 [desktop] › tests/browser/reader.spec.ts:65:1 › sidebar menu edits grouped and ungrouped feeds and confirms deletion (4.1s)
+  ✓  13 [desktop] › tests/browser/reader.spec.ts:153:1 › reading, persistent states, AI summary, translation and original article (5.0s)
+  ✓  14 [desktop] › tests/browser/reader.spec.ts:197:1 › search, navigation and feed/category CRUD (10.5s)
+  ✓  15 [desktop] › tests/browser/reader.spec.ts:268:1 › reading preferences, public next-ai settings and logs (4.4s)
+  ✓  16 [desktop] › tests/browser/reader.spec.ts:308:1 › accessible reader, responsive layout and discovery (2.2s)
+  ✓  17 [desktop] › tests/browser/reader.spec.ts:344:1 › feed/category paths, browser history, search and article positions survive reloads (5.1s)
+  ✓  18 [desktop] › tests/browser/reader.spec.ts:411:1 › reload and history restore a later article page and both scroll containers (3.0s)
+  ✓  19 [desktop] › tests/browser/reader.spec.ts:465:1 › Markdown reading keeps images, typography and responsive reading space (1.8s)
+  ✓  20 [desktop] › tests/browser/reader.spec.ts:542:1 › keyboard navigation, reading actions and editable/modal guards (2.8s)
+  ✓  21 [desktop] › tests/browser/reader.spec.ts:636:1 › background updates load automatically while preserving list anchors, prose and selection (2.0s)
+  ✓  22 [desktop] › tests/browser/reader.spec.ts:749:1 › subscription and category ordering persists, including moving between groups (3.6s)
+  ✓  23 [desktop] › tests/browser/reader.spec.ts:864:1 › diagnostic scoring recommends a verified replacement for an unavailable feed (2.4s)
+  ✓  24 [desktop] › tests/browser/reader.spec.ts:914:1 › the feed-title diagnostic verifies a replacement and supports pausing without losing articles (4.6s)
+  ✓  25 [mobile] › tests/browser/activity.spec.ts:5:1 › empty lists are centered and offer actions for the actual feed state (1.9s)
+  ✓  26 [mobile] › tests/browser/activity.spec.ts:53:1 › category controls keep full colors and single-line actions on a narrow settings panel (1.3s)
+  ✘  27 [mobile] › tests/browser/activity.spec.ts:83:1 › automatic full translation appears in the activity center without a toast (2.7s)
+  ✓  28 [mobile] › tests/browser/activity.spec.ts:139:1 › activity categories, errors and search keep separate task details (2.0s)
+  ✓  29 [mobile] › tests/browser/activity.spec.ts:176:1 › notices use a Lucide icon at the bottom right without obstructing reading (1.7s)
+  ✓  30 [mobile] › tests/browser/ai.spec.ts:34:1 › AI results persist, cached views avoid requests, and extraction invalidates old results (5.4s)
+  ✓  31 [mobile] › tests/browser/ai.spec.ts:118:1 › AI failure stays visible, retries succeed, and pending requests belong to their article (3.2s)
+  ✓  32 [mobile] › tests/browser/ai.spec.ts:193:1 › settings use accessible vertical navigation and AI configuration is required outside demo mode (4.1s)
+  ✘  33 [mobile] › tests/browser/ai.spec.ts:246:1 › per-feed full translation persists, starts on opening and silently reuses cached text (2.4s)
+  ✓  34 [mobile] › tests/browser/diagnostics.spec.ts:4:1 › metadata-only RSS cannot score highly and legacy reports request a body recheck (3.3s)
+  ✓  35 [mobile] › tests/browser/reader.spec.ts:12:1 › list header shows scoped totals, unread filters and subscription settings (2.6s)
+  ✓  36 [mobile] › tests/browser/reader.spec.ts:65:1 › sidebar menu edits grouped and ungrouped feeds and confirms deletion (10.1s)
+  ✓  37 [mobile] › tests/browser/reader.spec.ts:153:1 › reading, persistent states, AI summary, translation and original article (3.7s)
+  ✓  38 [mobile] › tests/browser/reader.spec.ts:197:1 › search, navigation and feed/category CRUD (7.3s)
+  ✓  39 [mobile] › tests/browser/reader.spec.ts:268:1 › reading preferences, public next-ai settings and logs (3.8s)
+  ✓  40 [mobile] › tests/browser/reader.spec.ts:308:1 › accessible reader, responsive layout and discovery (2.4s)
+  ✓  41 [mobile] › tests/browser/reader.spec.ts:344:1 › feed/category paths, browser history, search and article positions survive reloads (6.7s)
+  ✓  42 [mobile] › tests/browser/reader.spec.ts:411:1 › reload and history restore a later article page and both scroll containers (2.8s)
+  ✓  43 [mobile] › tests/browser/reader.spec.ts:465:1 › Markdown reading keeps images, typography and responsive reading space (1.7s)
+  ✓  44 [mobile] › tests/browser/reader.spec.ts:542:1 › keyboard navigation, reading actions and editable/modal guards (3.3s)
+  ✓  45 [mobile] › tests/browser/reader.spec.ts:636:1 › background updates load automatically while preserving list anchors, prose and selection (3.9s)
+  ✓  46 [mobile] › tests/browser/reader.spec.ts:749:1 › subscription and category ordering persists, including moving between groups (4.5s)
+  ✓  47 [mobile] › tests/browser/reader.spec.ts:864:1 › diagnostic scoring recommends a verified replacement for an unavailable feed (3.4s)
+  ✓  48 [mobile] › tests/browser/reader.spec.ts:914:1 › the feed-title diagnostic verifies a replacement and supports pausing without losing articles (6.0s)
+
+
+  1) [desktop] › tests/browser/ai.spec.ts:246:1 › per-feed full translation persists, starts on opening and silently reuses cached text 
+
+    Error: expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 0
+    + Received  + 1
+
+      Array [
+        Object {
+          "action": "translate",
+    +     "automatic": true,
+        },
+      ]
+
+      268 | 		await page.locator(`[data-article-id="${first.id}"]`).click();
+      269 | 		await expect(page.locator(".prose")).toContainText("本地模拟译文");
+    > 270 | 		expect(calls.map((value) => JSON.parse(value))).toEqual([{ action: "translate" }]);
+          | 		                                                ^
+      271 | 		await expect(page.getByText(/已自动载入/)).toHaveCount(0);
+      272 | 		await page.getByRole("button", { name: "阅读原文", exact: true }).click();
+      273 | 		await expect(page.locator(".prose")).toContainText("Every good tool");
+        at /Users/nocoo/workspace/personal/geekhub/tests/browser/ai.spec.ts:270:51
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/l3/browser/ai-per-feed-full-translati-3d001-silently-reuses-cached-text-desktop/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/l3/browser/ai-per-feed-full-translati-3d001-silently-reuses-cached-text-desktop/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/l3/browser/ai-per-feed-full-translati-3d001-silently-reuses-cached-text-desktop/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/l3/browser/ai-per-feed-full-translati-3d001-silently-reuses-cached-text-desktop/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [mobile] › tests/browser/activity.spec.ts:83:1 › automatic full translation appears in the activity center without a toast 
+
+    Error: expect(received).toEqual(expected) // deep equality
+
+    - Expected  -  1
+    + Received  + 64
+
+    - Array []
+    + Array [
+    +   Object {
+    +     "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+    +     "help": "Elements must meet minimum color contrast ratio thresholds",
+    +     "helpUrl": "https://dequeuniversity.com/rules/axe/4.13/color-contrast?application=playwright",
+    +     "id": "color-contrast",
+    +     "impact": "serious",
+    +     "nodes": Array [
+    +       Object {
+    +         "all": Array [],
+    +         "any": Array [
+    +           Object {
+    +             "data": Object {
+    +               "bgColor": "#dde7de",
+    +               "contrastRatio": 2.89,
+    +               "expectedContrastRatio": "4.5:1",
+    +               "fgColor": "#599351",
+    +               "fontSize": "7.5pt (10px)",
+    +               "fontWeight": "normal",
+    +               "messageKey": null,
+    +             },
+    +             "id": "color-contrast",
+    +             "impact": "serious",
+    +             "message": "Element has insufficient color contrast of 2.89 (foreground color: #599351, background color: #dde7de, font size: 7.5pt (10px), font weight: normal). Expected contrast ratio of 4.5:1",
+    +             "relatedNodes": Array [
+    +               Object {
+    +                 "html": "<button class=\"basalt-ui relative i...\" type=\"button\" aria-pressed=\"true\">",
+    +                 "target": Array [
+    +                   ".activity-categories > .h-8.text-xs.px-3:nth-child(3)",
+    +                 ],
+    +               },
+    +               Object {
+    +                 "html": "<div role=\"dialog\" id=\"radix-_r_h_\" data-state=\"open\" data-basalt-surface-...=\"\" class=\"basalt-ui fixed top-...\" tabindex=\"-1\" aria-describedby=\"radix-_r_j_\" aria-labelledby=\"radix-_r_i_\" style=\"pointer-events: auto...\">",
+    +                 "target": Array [
+    +                   "#radix-_r_h_",
+    +                 ],
+    +               },
+    +             ],
+    +           },
+    +         ],
+    +         "failureSummary": "Fix any of the following:
+    +   Element has insufficient color contrast of 2.89 (foreground color: #599351, background color: #dde7de, font size: 7.5pt (10px), font weight: normal). Expected contrast ratio of 4.5:1",
+    +         "html": "<span>20</span>",
+    +         "impact": "serious",
+    +         "none": Array [],
+    +         "target": Array [
+    +           ".h-8.text-xs.px-3:nth-child(3) > span",
+    +         ],
+    +       },
+    +     ],
+    +     "tags": Array [
+    +       "cat.color",
+    +       "wcag2aa",
+    +       "wcag143",
+    +       "TTv5",
+    +       "TT13.c",
+    +       "EN-301-549",
+    +       "EN-9.1.4.3",
+    +       "ACT",
+    +       "RGAAv4",
+    +       "RGAA-3.2.1",
+    +     ],
+    +   },
+    + ]
+
+      130 | 					.analyze()
+      131 | 			).violations,
+    > 132 | 		).toEqual([]);
+          | 		  ^
+      133 | 		await page.screenshot({ path: `test-results/l3/activity-${test.info().project.name}.png` });
+      134 | 	} finally {
+      135 | 		await page.request.delete(`/api/feeds/${feed.id}`);
+        at /Users/nocoo/workspace/personal/geekhub/tests/browser/activity.spec.ts:132:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/l3/browser/activity-automatic-full-tr-4fd85-vity-center-without-a-toast-mobile/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/l3/browser/activity-automatic-full-tr-4fd85-vity-center-without-a-toast-mobile/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/l3/browser/activity-automatic-full-tr-4fd85-vity-center-without-a-toast-mobile/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/l3/browser/activity-automatic-full-tr-4fd85-vity-center-without-a-toast-mobile/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [mobile] › tests/browser/ai.spec.ts:246:1 › per-feed full translation persists, starts on opening and silently reuses cached text 
+
+    Error: expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 0
+    + Received  + 1
+
+      Array [
+        Object {
+          "action": "translate",
+    +     "automatic": true,
+        },
+      ]
+
+      268 | 		await page.locator(`[data-article-id="${first.id}"]`).click();
+      269 | 		await expect(page.locator(".prose")).toContainText("本地模拟译文");
+    > 270 | 		expect(calls.map((value) => JSON.parse(value))).toEqual([{ action: "translate" }]);
+          | 		                                                ^
+      271 | 		await expect(page.getByText(/已自动载入/)).toHaveCount(0);
+      272 | 		await page.getByRole("button", { name: "阅读原文", exact: true }).click();
+      273 | 		await expect(page.locator(".prose")).toContainText("Every good tool");
+        at /Users/nocoo/workspace/personal/geekhub/tests/browser/ai.spec.ts:270:51
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/l3/browser/ai-per-feed-full-translati-3d001-silently-reuses-cached-text-mobile/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/l3/browser/ai-per-feed-full-translati-3d001-silently-reuses-cached-text-mobile/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/l3/browser/ai-per-feed-full-translati-3d001-silently-reuses-cached-text-mobile/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/l3/browser/ai-per-feed-full-translati-3d001-silently-reuses-cached-text-mobile/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3 failed
+    [desktop] › tests/browser/ai.spec.ts:246:1 › per-feed full translation persists, starts on opening and silently reuses cached text 
+    [mobile] › tests/browser/activity.spec.ts:83:1 › automatic full translation appears in the activity center without a toast 
+    [mobile] › tests/browser/ai.spec.ts:246:1 › per-feed full translation persists, starts on opening and silently reuses cached text 
+  45 passed (3.0m)
+68 | 	const test = Bun.spawn(
+69 | 		tier === "l2" ? ["bun", "tests/http/reader.ts"] : ["bun", "x", "playwright", "test"],
+70 | 		{ env, stdout: "inherit", stderr: "inherit" },
+71 | 	);
+72 | 	const code = await test.exited;
+73 | 	if (code) throw new Error(`${tier.toUpperCase()} failed with exit ${code}`);
+                          ^
+error: L3 failed with exit 1
+      at /Users/nocoo/workspace/personal/geekhub/scripts/run-tests.ts:73:22
+
+Bun v1.4.0 (macOS arm64)
+error: script "test:l3" exited with code 1
+error: script "quality" exited with code 1

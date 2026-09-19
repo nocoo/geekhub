@@ -21,7 +21,7 @@ This handbook is the contract, together with [AGENTS.md](AGENTS.md); hooks, CI a
 - D1 is the source of truth for one shared dataset. Access authenticates entry; never partition subscriptions, reading state or settings by subject/email/legacy `user_id`.
 - Verify Access JWT signature, issuer and audience; production fails closed. Local identity and mock AI require local environment and loopback requests.
 - `src/web` is browser-only; `src/worker` is server-only; `src/shared` is browser-safe. AI server imports and secrets never enter the bundle.
-- Keep SQL parameterized, sanitize fetched HTML and validate outbound URLs/redirects. Queues own feed work; Cron owns scheduling; no floating promises or Worker filesystem storage.
+- Keep SQL parameterized, sanitize fetched HTML and validate outbound URLs/redirects. Queues own feed work triggered by reader actions; no Cron scheduling; no floating promises or Worker filesystem storage.
 - Use published Basalt 2.1.8 and public `@nocoo/next-ai` contracts/configuration components and `/server` entry. Keep MVVM and the existing green identity.
 - Keep reading selection, scroll and pagination stable during background updates; updates apply explicitly. Preserve keyboard/input boundaries and responsive layouts.
 - `docs/archieve/` is a historical documentation snapshot, outside active build/test/lint; do not treat it as current product documentation.
@@ -32,7 +32,7 @@ This handbook is the contract, together with [AGENTS.md](AGENTS.md); hooks, CI a
 | --- | --- |
 | Language/tooling | TypeScript 7.0.2 strict, Bun 1.4.0, Node 26.8.1, Biome |
 | UI/API | Vite 8, React 19, Hono, Cloudflare Worker |
-| State | D1, Queues and Cron; `migrations/` owns schema |
+| State | D1, Queues and a transient 500-entry Durable Object log cache; `migrations/` owns schema |
 | Checks | `tests/unit/`, `tests/http/`, browser specs; `scripts/` owns gates |
 
 ## Commands

@@ -1,0 +1,33 @@
+$ bun scripts/run-tests.ts l3
+L3: local Worker at http://127.0.0.1:27005, isolated SQLite at /Users/nocoo/workspace/personal/geekhub/.wrangler/tests/l3-DZBce4
+
+Running 26 tests using 1 worker
+
+  ✓   1 [desktop] › tests/browser/reader.spec.ts:12:1 › sidebar menu edits grouped and ungrouped feeds and confirms deletion (6.4s)
+  ✓   2 [desktop] › tests/browser/reader.spec.ts:94:1 › reading, persistent states, AI summary, translation and original article (6.7s)
+  ✓   3 [desktop] › tests/browser/reader.spec.ts:136:1 › search, navigation and feed/category CRUD (9.9s)
+  ✓   4 [desktop] › tests/browser/reader.spec.ts:206:1 › reading preferences, public next-ai settings and logs (3.7s)
+  ✓   5 [desktop] › tests/browser/reader.spec.ts:246:1 › accessible reader, responsive layout and discovery (3.7s)
+  ✓   6 [desktop] › tests/browser/reader.spec.ts:282:1 › feed/category paths, browser history, search and article positions survive reloads (10.7s)
+  ✓   7 [desktop] › tests/browser/reader.spec.ts:349:1 › reload and history restore a later article page and both scroll containers (5.3s)
+  ✓   8 [desktop] › tests/browser/reader.spec.ts:403:1 › Markdown reading keeps images, typography and responsive reading space (3.6s)
+  ✓   9 [desktop] › tests/browser/reader.spec.ts:480:1 › keyboard navigation, reading actions and editable/modal guards (3.8s)
+  ✓  10 [desktop] › tests/browser/reader.spec.ts:564:1 › background updates preserve unread rows, scroll and prose until accepted (4.2s)
+  ✓  11 [desktop] › tests/browser/reader.spec.ts:712:1 › subscription and category ordering persists, including moving between groups (7.2s)
+  ✓  12 [desktop] › tests/browser/reader.spec.ts:813:1 › diagnostic scoring recommends a verified replacement for an unavailable feed (4.2s)
+  ✓  13 [desktop] › tests/browser/reader.spec.ts:863:1 › the feed-title diagnostic verifies a replacement and supports pausing without losing articles (6.1s)
+  ✓  14 [mobile] › tests/browser/reader.spec.ts:12:1 › sidebar menu edits grouped and ungrouped feeds and confirms deletion (7.3s)
+  ✓  15 [mobile] › tests/browser/reader.spec.ts:94:1 › reading, persistent states, AI summary, translation and original article (4.4s)
+  ✓  16 [mobile] › tests/browser/reader.spec.ts:136:1 › search, navigation and feed/category CRUD (22.6s)
+  ✓  17 [mobile] › tests/browser/reader.spec.ts:206:1 › reading preferences, public next-ai settings and logs (16.4s)
+  ✓  18 [mobile] › tests/browser/reader.spec.ts:246:1 › accessible reader, responsive layout and discovery (18.5s)
+  ✓  19 [mobile] › tests/browser/reader.spec.ts:282:1 › feed/category paths, browser history, search and article positions survive reloads (16.6s)
+  ✓  20 [mobile] › tests/browser/reader.spec.ts:349:1 › reload and history restore a later article page and both scroll containers (5.1s)
+  ✓  21 [mobile] › tests/browser/reader.spec.ts:403:1 › Markdown reading keeps images, typography and responsive reading space (4.1s)
+  ✓  22 [mobile] › tests/browser/reader.spec.ts:480:1 › keyboard navigation, reading actions and editable/modal guards (4.5s)
+  ✓  23 [mobile] › tests/browser/reader.spec.ts:564:1 › background updates preserve unread rows, scroll and prose until accepted (5.0s)
+  ✓  24 [mobile] › tests/browser/reader.spec.ts:712:1 › subscription and category ordering persists, including moving between groups (8.3s)
+  ✓  25 [mobile] › tests/browser/reader.spec.ts:813:1 › diagnostic scoring recommends a verified replacement for an unavailable feed (4.7s)
+  ✓  26 [mobile] › tests/browser/reader.spec.ts:863:1 › the feed-title diagnostic verifies a replacement and supports pausing without losing articles (8.2s)
+
+  26 passed (3.4m)

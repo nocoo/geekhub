@@ -17,9 +17,27 @@ import {
 	useConfirm,
 } from "@nocoo/basalt";
 import { AiConfigProvider, AiSettingsPanel } from "@nocoo/next-ai/react";
-import { ArrowUpRight, Check, Compass, Plus, Sparkles, Terminal, Trash2, X } from "lucide-react";
+import {
+	ArrowUpRight,
+	BookOpen,
+	Bug,
+	Check,
+	Compass,
+	Database,
+	FolderOpen,
+	Keyboard,
+	Pencil,
+	Plus,
+	Rss,
+	Settings2,
+	Sparkles,
+	Terminal,
+	Trash2,
+	X,
+} from "lucide-react";
 import { useState } from "react";
 import type { Category, Feed, FetchLog, Preferences, Stats } from "../shared/contracts";
+import { ActivityPanel } from "./ActivityPanel";
 import { FeedDiagnostics } from "./FeedDiagnostics";
 import { aiAdapter } from "./lib/api";
 import {
@@ -30,9 +48,10 @@ import {
 } from "./lib/panels-view-model";
 import { sizeLabel } from "./lib/reader";
 import type { SavedChange } from "./lib/reader-view-model";
-import { Categories, Subscriptions } from "./Subscriptions";
+import { Categories, FeedEditor, FeedOptions, Subscriptions } from "./Subscriptions";
 
 interface Props {
+	settingsTab?: string;
 	panel: Panel;
 	onClose: () => void;
 	feeds: Feed[];
@@ -40,9 +59,13 @@ interface Props {
 	preferences: Preferences;
 	stats?: Stats;
 	logs: FetchLog[];
+	logsUpdatedAt: number;
+	logsError?: string;
+	logsLoading: boolean;
+	onRetryLogs: () => void;
 	local: boolean;
 	onChanged: (change: SavedChange) => Promise<void>;
-	diagnosticFeed?: Feed;
+	selectedFeed?: Feed;
 	onDiagnose: (feed: Feed) => void;
 	onNotice: (message: string) => void;
 }
@@ -52,7 +75,9 @@ const titles = {
 	discover: ["发现好内容", "独立的声音、深入的思考，以及下一次灵感。"],
 	settings: ["设置", "整理订阅与分类，调整阅读和 AI 偏好。"],
 	diagnose: ["订阅源诊断", "检查内容是否仍在更新，找到更合适的订阅地址。"],
-	logs: ["抓取日志", "订阅源的最近活动。"],
+	"edit-feed": ["编辑订阅", "调整订阅信息，保存后生效。"],
+	"delete-feed": ["删除订阅", ""],
+	logs: ["活动中心", "订阅与 AI 活动 · 最近 500 条内存记录，服务重启后清空。"],
 };
 
 export function Panels(props: Props) {
@@ -72,23 +97,47 @@ export function Panels(props: Props) {
 				if (props.panel === "diagnose") props.onClose();
 			}
 	};
+	const PanelIcon = props.panel
+		? {
+				add: Rss,
+				discover: Compass,
+				settings: Settings2,
+				diagnose: Bug,
+				logs: Terminal,
+				"edit-feed": Pencil,
+				"delete-feed": Trash2,
+			}[props.panel]
+		: Settings2;
 	const title = props.panel ? titles[props.panel] : ["", ""];
 	return (
 		<>
 			<Dialog
-				open={Boolean(props.panel)}
+				open={Boolean(props.panel) && props.panel !== "delete-feed"}
 				onOpenChange={(open) => {
 					if (!open) props.onClose();
 				}}
 			>
 				<DialogContent
 					key={props.panel}
-					size={props.panel === "add" ? "lg" : "xl"}
-					className="app-dialog"
+					size={props.panel === "add" || props.panel === "edit-feed" ? "lg" : "xl"}
+					className={`app-dialog ${props.panel === "settings" ? "settings-dialog" : props.panel === "logs" ? "activity-dialog" : ""}`}
 				>
-					<DialogHeader>
-						<DialogTitle>{title[0]}</DialogTitle>
-						<DialogDescription>{title[1]}</DialogDescription>
+					<DialogHeader className="gap-1 space-y-0">
+						<DialogTitle className="panel-title leading-7">
+							<PanelIcon
+								size={20}
+								className={
+									props.panel === "discover"
+										? "icon-discover"
+										: props.panel === "add" || props.panel === "diagnose"
+											? "icon-feed"
+											: "icon-info"
+								}
+								aria-hidden="true"
+							/>
+							{title[0]}
+						</DialogTitle>
+						<DialogDescription className="leading-5">{title[1]}</DialogDescription>
 					</DialogHeader>
 					{props.panel === "add" && (
 						<AddFeed
@@ -98,11 +147,22 @@ export function Panels(props: Props) {
 							onClose={props.onClose}
 						/>
 					)}
+					{props.panel === "edit-feed" && props.selectedFeed && (
+						<FeedEditor
+							key={props.selectedFeed.id}
+							feed={props.selectedFeed}
+							categories={props.categories}
+							pending={pending}
+							save={save}
+							onDone={props.onClose}
+						/>
+					)}
 					{props.panel === "discover" && (
 						<Discover feeds={props.feeds} pending={pending} save={save} />
 					)}
 					{props.panel === "settings" && (
 						<Settings
+							initialTab={props.settingsTab}
 							feeds={props.feeds}
 							categories={props.categories}
 							remove={remove}
@@ -120,18 +180,23 @@ export function Panels(props: Props) {
 						/>
 					)}
 					{props.panel === "logs" && (
-						<Logs
+						<ActivityPanel
+							updatedAt={props.logsUpdatedAt}
+							error={props.logsError}
+							loading={props.logsLoading}
+							onRetry={props.onRetryLogs}
+							onDiagnose={props.onDiagnose}
 							logs={props.logs}
 							feeds={props.feeds}
 							onClear={() =>
-								void remove("/logs", "抓取日志", "仅清除抓取日志，订阅源和文章不受影响。")
+								void remove("/logs", "活动日志", "清除内存中的活动记录，正在进行的任务会继续运行。")
 							}
 						/>
 					)}
-					{props.panel === "diagnose" && props.diagnosticFeed && (
+					{props.panel === "diagnose" && props.selectedFeed && (
 						<FeedDiagnostics
-							key={props.diagnosticFeed.id}
-							feed={props.diagnosticFeed}
+							key={props.selectedFeed.id}
+							feed={props.selectedFeed}
 							pending={pending}
 							save={save}
 							remove={remove}
@@ -146,6 +211,22 @@ export function Panels(props: Props) {
 				</DialogContent>
 			</Dialog>
 			<ConfirmDialog {...dialogProps} />
+			<ConfirmDialog
+				open={props.panel === "delete-feed"}
+				onOpenChange={(open) => {
+					if (!open) props.onClose();
+				}}
+				title={`删除「${props.selectedFeed?.title ?? "订阅源"}」？`}
+				description="该订阅及其中的文章、收藏和稍后阅读记录将一并删除。此操作不可撤销。"
+				confirmLabel="确认删除"
+				cancelLabel="保留"
+				variant="destructive"
+				loading={pending}
+				onConfirm={async () => {
+					if (props.selectedFeed)
+						await save(`/feeds/${props.selectedFeed.id}`, "DELETE", undefined, props.onClose);
+				}}
+			/>
 		</>
 	);
 }
@@ -174,6 +255,10 @@ function AddFeed({
 						url: data.get("url"),
 						title: data.get("title") || undefined,
 						category_id: data.get("category") || null,
+						auto_translate_content: data.get("translate-content") === "on",
+						auto_fetch_content: data.get("fetch-content") === "on",
+						auto_translate: data.get("translate") === "on",
+						is_active: data.get("active") === "on",
 					},
 					onClose,
 				);
@@ -207,6 +292,7 @@ function AddFeed({
 					))}
 				</select>
 			</label>
+			<FeedOptions disabled={pending} />
 			<div className="form-actions">
 				<Button variant="ghost" type="button" onClick={onClose}>
 					取消
@@ -227,7 +313,7 @@ function Discover({ feeds, pending, save }: { feeds: Feed[]; pending: boolean; s
 	return (
 		<div className="form-stack">
 			<div className="discovery-intro">
-				<Compass size={32} />
+				<Compass size={32} className="icon-discover" aria-hidden="true" />
 				<div>
 					<h3>订阅你关心的世界。</h3>
 					<p>没有推荐算法，只有你自己选择的好内容。</p>
@@ -288,6 +374,7 @@ function Discover({ feeds, pending, save }: { feeds: Feed[]; pending: boolean; s
 }
 
 function Settings({
+	initialTab = "feeds",
 	feeds,
 	categories,
 	remove,
@@ -301,6 +388,7 @@ function Settings({
 	onNotice,
 	confirm,
 }: {
+	initialTab?: string;
 	feeds: Feed[];
 	categories: Category[];
 	remove: (path: string, name: string, description: string) => Promise<void>;
@@ -316,301 +404,280 @@ function Settings({
 }) {
 	const [adding, setAdding] = useState(false);
 	return (
-		<Tabs defaultValue="feeds" className="settings-tabs">
-			<TabsList className="panel-tabs" aria-label="设置范围">
+		<Tabs defaultValue={initialTab} orientation="vertical" className="settings-tabs">
+			<TabsList className="settings-nav" showIndicator={false} aria-label="设置范围">
 				<TabsTrigger value="feeds">
+					<Rss size={14} className="icon-feed" aria-hidden="true" />
 					订阅源 <Badge>{feeds.length}</Badge>
 				</TabsTrigger>
 				<TabsTrigger value="categories">
+					<FolderOpen size={14} className="icon-save" aria-hidden="true" />
 					分类 <Badge>{categories.length}</Badge>
 				</TabsTrigger>
-				<TabsTrigger value="reading">阅读</TabsTrigger>
-				<TabsTrigger value="ai">AI 助手</TabsTrigger>
-				<TabsTrigger value="data">数据管理</TabsTrigger>
+				<TabsTrigger value="reading">
+					<BookOpen size={14} className="icon-reading" aria-hidden="true" />
+					阅读
+				</TabsTrigger>
+				<TabsTrigger value="ai">
+					<Sparkles size={14} className="icon-ai" aria-hidden="true" />
+					AI 助手
+				</TabsTrigger>
+				<TabsTrigger value="data">
+					<Database size={14} className="icon-info" aria-hidden="true" />
+					数据管理
+				</TabsTrigger>
 			</TabsList>
-			<TabsContent value="feeds">
-				{adding ? (
-					<AddFeed
-						categories={categories}
-						pending={pending}
-						save={save}
-						onClose={() => setAdding(false)}
-					/>
-				) : (
-					<Subscriptions
+			<div className="settings-content">
+				<TabsContent value="feeds">
+					<div className="settings-section-heading">
+						<h3>订阅源</h3>
+						<p>管理订阅、分类归属与自动翻译。</p>
+					</div>
+					{adding ? (
+						<AddFeed
+							categories={categories}
+							pending={pending}
+							save={save}
+							onClose={() => setAdding(false)}
+						/>
+					) : (
+						<Subscriptions
+							feeds={feeds}
+							categories={categories}
+							pending={pending}
+							save={save}
+							remove={remove}
+							onAdd={() => setAdding(true)}
+							onDiagnose={onDiagnose}
+						/>
+					)}
+				</TabsContent>
+				<TabsContent value="categories">
+					<div className="settings-section-heading">
+						<h3>分类</h3>
+						<p>整理订阅，让内容各归其位。</p>
+					</div>
+					<Categories
 						feeds={feeds}
 						categories={categories}
 						pending={pending}
 						save={save}
 						remove={remove}
-						onAdd={() => setAdding(true)}
-						onDiagnose={onDiagnose}
 					/>
-				)}
-			</TabsContent>
-			<TabsContent value="categories">
-				<Categories
-					feeds={feeds}
-					categories={categories}
-					pending={pending}
-					save={save}
-					remove={remove}
-				/>
-			</TabsContent>
-			<TabsContent value="reading">
-				<form
-					className="form-stack"
-					onSubmit={(event) => {
-						event.preventDefault();
-						const data = new FormData(event.currentTarget);
-						void save(
-							"/settings",
-							"PATCH",
-							{
-								theme: data.get("theme"),
-								fontSize: Number(data.get("fontSize")),
-								fontFamily: data.get("fontFamily"),
-								showImages: data.get("showImages") === "on",
-								rsshubUrl: data.get("rsshubUrl"),
-							},
-							() => onNotice("阅读偏好已保存"),
-						);
-					}}
-				>
-					<div className="form-grid">
-						<label className="field-label">
-							主题
-							<select
-								name="theme"
-								className="select-control"
-								aria-label="主题"
-								defaultValue={preferences.theme}
-							>
-								<option value="dark">深色</option>
-								<option value="light">浅色</option>
-								<option value="system">跟随系统</option>
-							</select>
-						</label>
-						<label className="field-label">
-							正文字体
-							<select
-								name="fontFamily"
-								className="select-control"
-								defaultValue={preferences.fontFamily}
-							>
-								<option value="serif">衬线 · 适合长文</option>
-								<option value="sans">无衬线 · 清晰简洁</option>
-							</select>
-						</label>
-					</div>
-					<label className="field-label">
-						文字大小
-						<select name="fontSize" className="select-control" defaultValue={preferences.fontSize}>
-							{[14, 16, 18, 20, 22, 24].map((size) => (
-								<option value={size} key={size}>
-									{size} px
-								</option>
-							))}
-						</select>
-					</label>
-					<label className="checkbox-label">
-						<input type="checkbox" name="showImages" defaultChecked={preferences.showImages} />
-						显示文章中的图片
-					</label>
-					<label className="field-label" htmlFor="settings-rsshub">
-						RSSHub 实例
-						<Input
-							id="settings-rsshub"
-							name="rsshubUrl"
-							type="url"
-							defaultValue={preferences.rsshubUrl}
-							required
-						/>
-					</label>
-					<p className="field-hint">rsshub:// 路由将通过此实例转换为订阅地址。</p>
-					<div className="form-actions">
-						<Button type="submit" disabled={pending}>
-							保存阅读偏好
-						</Button>
-					</div>
-				</form>
-				<div className="shortcut-guide">
-					<h3>键盘快捷键</h3>
-					<dl>
-						{[
-							["J / K", "下一篇 / 上一篇"],
-							["↑ / ↓", "在列表中切换文章"],
-							["/", "搜索文章"],
-							["Esc", "返回列表或关闭窗口"],
-							["M", "切换已读"],
-							["S", "收藏 / 取消收藏"],
-							["L", "稍后阅读"],
-							["O", "打开原文"],
-							["R", "刷新订阅"],
-						].map(([key, label]) => (
-							<div key={key}>
-								<dt>
-									<kbd>{key}</kbd>
-								</dt>
-								<dd>{label}</dd>
-							</div>
-						))}
-					</dl>
-					<p className="field-hint">
-						输入文字和打开弹窗时，阅读快捷键暂停；正文中的方向键保留滚动。
-					</p>
-				</div>
-			</TabsContent>
-			<TabsContent value="ai">
-				<div className="form-stack">
-					{local && (
-						<p className="local-ai-note">
-							<Sparkles size={16} />
-							未配置密钥时提供本地模拟摘要与翻译；保存密钥后使用真实模型。
-						</p>
-					)}
-					<AiConfigProvider adapter={aiAdapter}>
-						<AiSettingsPanel
-							className="next-ai-panel"
-							onSaveSuccess={() => {
-								void onRefresh();
-								onNotice("AI 设置已保存");
-							}}
-							onTestError={onNotice}
-						/>
-					</AiConfigProvider>
-					<p className="field-hint">
-						密钥加密保存。切换服务商或自定义地址后，需要重新填写密钥。仅在你使用 AI
-						或启用自动翻译时发送文章内容。
-					</p>
-					<Button
-						variant="outline"
-						size="sm"
-						disabled={pending}
-						onClick={() =>
-							void save("/ai/settings", "PATCH", { apiKey: "" }, () => onNotice("AI 密钥已移除"))
-						}
-					>
-						移除已保存的密钥
-					</Button>
-				</div>
-			</TabsContent>
-			<TabsContent value="data">
-				<div className="form-stack">
-					<div className="stats-grid">
-						{[
-							{ label: "订阅源", value: stats?.feeds },
-							{ label: "已保存文章", value: stats?.articles },
-							{ label: "收藏文章", value: stats?.starred },
-							{ label: "正文数据", value: sizeLabel(stats?.bytes ?? 0) },
-						].map((item) => (
-							<LayerCard key={item.label}>
-								<span>{item.label}</span>
-								<strong>{item.value ?? "—"}</strong>
-							</LayerCard>
-						))}
+				</TabsContent>
+				<TabsContent value="reading">
+					<div className="settings-section-heading">
+						<h3>阅读偏好</h3>
+						<p>调整字体、主题与阅读方式。</p>
 					</div>
 					<form
-						className="form-stack cleanup-form"
-						onSubmit={async (event) => {
+						className="form-stack"
+						onSubmit={(event) => {
 							event.preventDefault();
 							const data = new FormData(event.currentTarget);
-							const days = Number(data.get("days"));
-							if (
-								await confirm({
-									title: "清理已读文章？",
-									description: `删除 ${days} 天前的已读文章，保留收藏和稍后阅读。此操作不可撤销。`,
-									confirmLabel: "清理文章",
-									cancelLabel: "取消",
-									variant: "destructive",
-								})
-							)
-								await save("/cleanup", "POST", { days, onlyRead: true }, () =>
-									onNotice("文章清理完成"),
-								);
+							void save(
+								"/settings",
+								"PATCH",
+								{
+									theme: data.get("theme"),
+									fontSize: Number(data.get("fontSize")),
+									fontFamily: data.get("fontFamily"),
+									showImages: data.get("showImages") === "on",
+									rsshubUrl: data.get("rsshubUrl"),
+								},
+								() => onNotice("阅读偏好已保存"),
+							);
 						}}
 					>
-						<h3>整理旧文章</h3>
-						<p className="field-hint">清理较早的已读内容，收藏和稍后阅读会保留。</p>
+						<div className="form-grid">
+							<label className="field-label">
+								主题
+								<select
+									name="theme"
+									className="select-control"
+									aria-label="主题"
+									defaultValue={preferences.theme}
+								>
+									<option value="dark">深色</option>
+									<option value="light">浅色</option>
+									<option value="system">跟随系统</option>
+								</select>
+							</label>
+							<label className="field-label">
+								正文字体
+								<select
+									name="fontFamily"
+									className="select-control"
+									defaultValue={preferences.fontFamily}
+								>
+									<option value="serif">仓耳今楷 · 适合长文</option>
+									<option value="sans">无衬线 · 清晰简洁</option>
+								</select>
+							</label>
+						</div>
 						<label className="field-label">
-							保留最近
-							<select name="days" className="select-control" defaultValue="30">
-								<option value="7">7 天</option>
-								<option value="30">30 天</option>
-								<option value="90">90 天</option>
-								<option value="365">一年</option>
+							文字大小
+							<select
+								name="fontSize"
+								className="select-control"
+								defaultValue={preferences.fontSize}
+							>
+								{[14, 16, 18, 20, 22, 24].map((size) => (
+									<option value={size} key={size}>
+										{size} px
+									</option>
+								))}
 							</select>
 						</label>
+						<label className="checkbox-label">
+							<input type="checkbox" name="showImages" defaultChecked={preferences.showImages} />
+							显示文章中的图片
+						</label>
+						<label className="field-label" htmlFor="settings-rsshub">
+							RSSHub 实例
+							<Input
+								id="settings-rsshub"
+								name="rsshubUrl"
+								type="url"
+								defaultValue={preferences.rsshubUrl}
+								required
+							/>
+						</label>
+						<p className="field-hint">rsshub:// 路由将通过此实例转换为订阅地址。</p>
 						<div className="form-actions">
-							<Button type="submit" variant="outline" disabled={pending}>
-								<Trash2 size={14} />
-								清理已读文章
+							<Button type="submit" disabled={pending}>
+								保存阅读偏好
 							</Button>
 						</div>
 					</form>
-				</div>
-			</TabsContent>
-		</Tabs>
-	);
-}
-
-function Logs({ logs, feeds, onClear }: { logs: FetchLog[]; feeds: Feed[]; onClear: () => void }) {
-	const [feedId, setFeedId] = useState("");
-	const [level, setLevel] = useState("");
-	const filtered = logs.filter(
-		(log) => (!feedId || log.feed_id === feedId) && (!level || log.level === level),
-	);
-	return (
-		<div className="form-stack">
-			<div className="log-filters">
-				<select
-					className="select-control"
-					aria-label="按订阅源筛选日志"
-					value={feedId}
-					onChange={(event) => setFeedId(event.target.value)}
-				>
-					<option value="">全部订阅源</option>
-					{feeds.map((feed) => (
-						<option value={feed.id} key={feed.id}>
-							{feed.title}
-						</option>
-					))}
-				</select>
-				<select
-					className="select-control"
-					aria-label="按状态筛选日志"
-					value={level}
-					onChange={(event) => setLevel(event.target.value)}
-				>
-					<option value="">全部状态</option>
-					<option value="success">成功</option>
-					<option value="error">错误</option>
-					<option value="info">信息</option>
-				</select>
-				<Button variant="ghost" size="sm" onClick={onClear}>
-					清空日志
-				</Button>
-			</div>
-			<div className="terminal-window">
-				<div className="terminal-bar">
-					<Terminal size={14} />
-					<span>geekhub / feed activity</span>
-					<span className="status-led" />
-				</div>
-				<div className="terminal-lines" role="log" aria-label="订阅抓取日志">
-					{!filtered.length && <p className="muted">$ 没有匹配的日志_</p>}
-					{filtered.map((log) => (
-						<div className={`log-line ${log.level}`} key={log.id}>
-							<time>{new Date(log.created_at).toLocaleTimeString("zh-CN")}</time>
-							<span>{log.level === "success" ? "✓" : log.level === "error" ? "!" : "›"}</span>
-							<p>
-								<strong>{log.feed_title}</strong> {log.message}
-								<small>{log.duration_ms !== null ? ` · ${log.duration_ms}ms` : ""}</small>
+					<div className="shortcut-guide">
+						<h3>
+							<Keyboard size={15} className="icon-later" aria-hidden="true" />
+							键盘快捷键
+						</h3>
+						<dl>
+							{[
+								["J / K", "下一篇 / 上一篇"],
+								["↑ / ↓", "在列表中切换文章"],
+								["/", "搜索文章"],
+								["Esc", "返回列表或关闭窗口"],
+								["M", "切换已读"],
+								["S", "收藏 / 取消收藏"],
+								["L", "稍后阅读"],
+								["O", "打开原文"],
+								["R", "刷新订阅"],
+							].map(([key, label]) => (
+								<div key={key}>
+									<dt>
+										<kbd>{key}</kbd>
+									</dt>
+									<dd>{label}</dd>
+								</div>
+							))}
+						</dl>
+						<p className="field-hint">
+							输入文字和打开弹窗时，阅读快捷键暂停；正文中的方向键保留滚动。
+						</p>
+					</div>
+				</TabsContent>
+				<TabsContent value="ai">
+					<div className="settings-section-heading">
+						<h3>AI 助手</h3>
+						<p>配置摘要与翻译使用的服务商和模型。</p>
+					</div>
+					<div className="form-stack">
+						{local && (
+							<p className="local-ai-note">
+								<Sparkles size={16} className="icon-ai" aria-hidden="true" />
+								本地使用真实 AI 服务。请填写服务商密钥，测试连接并保存后使用。
 							</p>
+						)}
+						<AiConfigProvider adapter={aiAdapter}>
+							<AiSettingsPanel
+								className="next-ai-panel"
+								onSaveSuccess={() => {
+									void onRefresh();
+									onNotice("AI 设置已保存");
+								}}
+								onTestError={onNotice}
+							/>
+						</AiConfigProvider>
+						<p className="field-hint">
+							密钥加密保存。切换服务商或自定义地址后，需要重新填写密钥。仅在你使用 AI
+							或启用自动翻译时发送文章内容。
+						</p>
+						<Button
+							variant="outline"
+							size="sm"
+							disabled={pending}
+							onClick={() =>
+								void save("/ai/settings", "PATCH", { apiKey: "" }, () => onNotice("AI 密钥已移除"))
+							}
+						>
+							移除已保存的密钥
+						</Button>
+					</div>
+				</TabsContent>
+				<TabsContent value="data">
+					<div className="settings-section-heading">
+						<h3>数据管理</h3>
+						<p>查看存储用量，清理过期文章。</p>
+					</div>
+					<div className="form-stack">
+						<div className="stats-grid">
+							{[
+								{ label: "订阅源", value: stats?.feeds },
+								{ label: "已保存文章", value: stats?.articles },
+								{ label: "收藏文章", value: stats?.starred },
+								{ label: "正文数据", value: sizeLabel(stats?.bytes ?? 0) },
+							].map((item) => (
+								<LayerCard key={item.label}>
+									<span>{item.label}</span>
+									<strong>{item.value ?? "—"}</strong>
+								</LayerCard>
+							))}
 						</div>
-					))}
-				</div>
+						<form
+							className="form-stack cleanup-form"
+							onSubmit={async (event) => {
+								event.preventDefault();
+								const data = new FormData(event.currentTarget);
+								const days = Number(data.get("days"));
+								if (
+									await confirm({
+										title: "清理已读文章？",
+										description: `删除 ${days} 天前的已读文章，保留收藏和稍后阅读。此操作不可撤销。`,
+										confirmLabel: "清理文章",
+										cancelLabel: "取消",
+										variant: "destructive",
+									})
+								)
+									await save("/cleanup", "POST", { days, onlyRead: true }, () =>
+										onNotice("文章清理完成"),
+									);
+							}}
+						>
+							<h3>整理旧文章</h3>
+							<p className="field-hint">清理较早的已读内容，收藏和稍后阅读会保留。</p>
+							<label className="field-label">
+								保留最近
+								<select name="days" className="select-control" defaultValue="30">
+									<option value="7">7 天</option>
+									<option value="30">30 天</option>
+									<option value="90">90 天</option>
+									<option value="365">一年</option>
+								</select>
+							</label>
+							<div className="form-actions">
+								<Button type="submit" variant="outline" disabled={pending}>
+									<Trash2 size={14} />
+									清理已读文章
+								</Button>
+							</div>
+						</form>
+					</div>
+				</TabsContent>
 			</div>
-		</div>
+		</Tabs>
 	);
 }

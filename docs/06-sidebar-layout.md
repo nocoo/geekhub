@@ -1,5 +1,15 @@
 # v1.2.1 侧栏与文章头部
 
+## 2026-09-20 侧栏细节修正（本地，未发布）
+
+侧栏焦点轮廓使用 `outline-offset: -2px`，保留键盘焦点提示，避免被折叠容器的 `overflow-hidden` 裁切。分组子项缩进从 28px 减至 12px，订阅行图文间距从 12px 减至 8px。RSS 图标禁止 flex 收缩，长标题只截断文字。
+
+在 `https://geekhub.dev.hexly.ai` 使用现有开发数据检查桌面和 Pixel 7：42 个订阅的 RSS 图标均为 14×14px，分组收起／展开正常，无页面横向溢出或脚本错误。截图：[桌面焦点](evidence/sidebar-refinement/desktop-focus.png)、[手机焦点](evidence/sidebar-refinement/mobile-focus.png)；[测量记录](evidence/sidebar-refinement/layout.json)。
+
+本轮全部质量门禁已通过，详见[2026-09-20 验证记录](09-ai-reader.md#本轮验证2026-09-20)。
+
+## v1.2.1 实现记录
+
 2026-09-12 将搜索移到 Basalt 侧栏品牌下方，使用 `SidebarSearch`，折叠后使用 `SidebarIconItem`。点击或按 `/` 打开搜索框，回车查询当前阅读范围；手机提交后关闭侧栏并显示结果列表。搜索可取消，结果可一键清除。
 
 “你的阅读空间”使用 `SidebarPartition`，四个导航项的外层左右各留 12px，与 `SidebarGroup` 对齐。折叠时导航显示图标与提示，左下角保留头像及管理入口。

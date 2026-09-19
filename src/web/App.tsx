@@ -32,21 +32,32 @@ import {
 } from "@nocoo/basalt";
 import { AppHeader } from "@nocoo/basalt/components/app-header";
 import { AppMain, AppShell, AppSkipLink } from "@nocoo/basalt/components/app-shell";
+import {
+	ContextMenu,
+	ContextMenuItem,
+	ContextMenuPanel,
+	ContextMenuTrigger,
+} from "@nocoo/basalt/components/context-menu";
 import { useTheme } from "@nocoo/basalt/providers/theme";
 import { useQuery } from "@tanstack/react-query";
 import {
+	Activity,
 	ArrowDown,
+	ArrowUpRight,
 	Bookmark,
 	BookOpen,
 	Bug,
 	CheckCheck,
 	ChevronRight,
+	CircleAlert,
 	Clock3,
 	Compass,
 	Inbox,
+	Info,
 	LoaderCircle,
 	LogOut,
 	Menu,
+	Pencil,
 	Plus,
 	RefreshCw,
 	Rss,
@@ -54,7 +65,7 @@ import {
 	Settings,
 	Sparkles,
 	Star,
-	Terminal,
+	Trash2,
 	X,
 } from "lucide-react";
 import {
@@ -71,7 +82,13 @@ import { APP_VERSION } from "../shared/version";
 import { HeaderTooltip, HexlyLink } from "./header-links";
 import { ApiError, api } from "./lib/api";
 import type { Panel } from "./lib/panels-view-model";
-import { dateLabel, readerShortcut, titleOf } from "./lib/reader";
+import {
+	dateLabel,
+	emptyReaderState,
+	readerShortcut,
+	runningActivities,
+	titleOf,
+} from "./lib/reader";
 import { useReadingPosition } from "./lib/reader-position";
 import { useReaderViewModel } from "./lib/reader-view-model";
 import { Panels } from "./Panels";
@@ -127,9 +144,10 @@ function ReaderApp({ session }: { session: Session }) {
 	const [search, setSearch] = useState("");
 	const [searchOpen, setSearchOpen] = useState(false);
 	const [panel, setPanel] = useState<Panel>(null);
-	const [diagnosticId, setDiagnosticId] = useState<string | null>(null);
+	const [settingsTab, setSettingsTab] = useState("feeds");
+	const [selectedFeedId, setSelectedFeedId] = useState<string | null>(null);
 	const setNotice = useCallback((message: string) => {
-		toast(message, { duration: 8000 });
+		toast(message, { duration: 5000, icon: <Info size={18} aria-hidden="true" /> });
 	}, []);
 	const vm = useReaderViewModel(setNotice);
 	const {
@@ -155,68 +173,123 @@ function ReaderApp({ session }: { session: Session }) {
 		action,
 	} = vm;
 	const { setTheme } = useTheme();
-	const latestActivity = logs.data?.[0];
+	const running = runningActivities(logs.data ?? [], logs.dataUpdatedAt);
+	const activityBusy = busy || running.length > 0;
+	const latestActivity = running[0] ?? logs.data?.[0];
 	const activityMessage = latestActivity
 		? `${latestActivity.feed_title} · ${latestActivity.message}`
 		: "等待第一次同步";
+	const scopeFeeds = feeds.data?.filter(
+		(feed) =>
+			(!filter.feedId || feed.id === filter.feedId) &&
+			(!filter.categoryId || feed.category_id === filter.categoryId),
+	);
+	const empty = emptyReaderState(filter, scopeFeeds ?? []);
+	const total = scopeFeeds?.reduce((sum, feed) => sum + feed.total_count, 0);
+	const unread = scopeFeeds?.reduce((sum, feed) => sum + feed.unread_count, 0);
+	const readPercent = total ? Math.round(((total - (unread ?? 0)) / total) * 100) : 0;
+	const syncing =
+		scopeFeeds?.filter((feed) => feed.status === "queued" || feed.status === "fetching").length ??
+		0;
+	const failed = scopeFeeds?.filter((feed) => feed.status === "error").length ?? 0;
+	const lastFetched = scopeFeeds
+		?.flatMap((feed) => (feed.last_fetched_at ? [feed.last_fetched_at] : []))
+		.sort()
+		.at(-1);
+	const syncLabel = syncing
+		? currentFeed
+			? "正在同步"
+			: `${syncing} 个源同步中`
+		: failed
+			? currentFeed
+				? "同步失败"
+				: `${failed} 个源异常`
+			: lastFetched
+				? `${dateLabel(lastFetched)}同步`
+				: "尚未同步";
 	const list = useRef<HTMLDivElement>(null);
 	useReadingPosition(
 		list,
 		`list:${visit}`,
 		Boolean(pages.data) && !vm.restoringPages && (!mobile || !selected),
 	);
-	const [anchor, setAnchor] = useState<{ id: string; offset: number }[] | null>(null);
+	const anchor = useRef<{ visit: string; positions: { id: string; offset: number }[] } | null>(
+		null,
+	);
 	const keyboardNavigation = useRef(false);
 	function choose(next: ReaderFilter) {
 		keyboardNavigation.current = false;
-		setAnchor(null);
+		anchor.current = null;
 		vm.choose(next);
 		setSearch(next.search);
 		if (mobile) setCollapsed(true);
 	}
 	function diagnose(feed: Feed) {
-		setDiagnosticId(feed.id);
+		setSelectedFeedId(feed.id);
 		setPanel("diagnose");
 	}
-	async function acceptUpdates() {
-		const bounds = list.current?.getBoundingClientRect();
-		const positions = Array.from(
-			list.current?.querySelectorAll<HTMLElement>("[data-article-id]") ?? [],
-		).flatMap((row) => {
-			const rect = row.getBoundingClientRect();
-			return bounds && rect.bottom > bounds.top && rect.top < bounds.bottom
-				? [{ id: row.dataset.articleId ?? "", offset: rect.top - bounds.top }]
-				: [];
-		});
-		if (await vm.acceptUpdates()) setAnchor(positions);
+	function manageFeed(feed: Feed, action: "edit-feed" | "delete-feed") {
+		setSelectedFeedId(feed.id);
+		setPanel(action);
 	}
 	useLayoutEffect(() => {
-		if (!anchor || !list.current) return;
-		const rows = new Map(
-			Array.from(list.current.querySelectorAll<HTMLElement>("[data-article-id]"), (row) => [
-				row.dataset.articleId,
-				row,
-			]),
-		);
-		for (const position of anchor) {
-			const row = rows.get(position.id);
-			if (!row) continue;
-			list.current.scrollTop +=
-				row.getBoundingClientRect().top -
-				list.current.getBoundingClientRect().top -
-				position.offset;
-			break;
+		const element = list.current;
+		if (!element?.clientHeight || vm.restoringPages || (mobile && selected) || !articles.length)
+			return;
+		const rows = Array.from(element.querySelectorAll<HTMLElement>("[data-article-id]"));
+		if (anchor.current?.visit === visit) {
+			for (const position of anchor.current.positions) {
+				const row = rows.find((row) => row.dataset.articleId === position.id);
+				if (!row) continue;
+				const shift =
+					row.getBoundingClientRect().top - element.getBoundingClientRect().top - position.offset;
+				// Writing even the same scrollTop cancels an ongoing native smooth scroll.
+				if (Math.abs(shift) > 1) element.scrollTop += shift;
+				break;
+			}
 		}
-		setAnchor(null);
-	}, [anchor]);
+		const remember = () => {
+			if (!element.clientHeight) return;
+			const bounds = element.getBoundingClientRect();
+			anchor.current = {
+				visit,
+				positions: rows.flatMap((row) => {
+					const rect = row.getBoundingClientRect();
+					return rect.bottom > bounds.top && rect.top < bounds.bottom
+						? [{ id: row.dataset.articleId ?? "", offset: rect.top - bounds.top }]
+						: [];
+				}),
+			};
+		};
+		remember();
+		element.addEventListener("scroll", remember, { passive: true });
+		return () => element.removeEventListener("scroll", remember);
+	}, [articles, visit, mobile, selected, vm.restoringPages]);
 	useLayoutEffect(() => {
+		const element = list.current;
 		if (
 			selected &&
+			element?.clientHeight &&
 			(keyboardNavigation.current || document.activeElement?.matches(".article-item"))
 		) {
-			const row = list.current?.querySelector<HTMLElement>("[aria-current='true']");
+			const row = element.querySelector<HTMLElement>("[aria-current='true']");
 			row?.focus({ preventScroll: true });
-			row?.scrollIntoView({ block: "nearest" });
+			if (row && keyboardNavigation.current) {
+				const bounds = row.getBoundingClientRect();
+				// Keep 61.8% of the list below the selected row's center for reading ahead.
+				const top =
+					element.scrollTop +
+					bounds.top -
+					element.getBoundingClientRect().top +
+					bounds.height / 2 -
+					element.clientHeight * 0.382;
+				element.scrollTo({
+					top: Math.max(0, Math.min(top, element.scrollHeight - element.clientHeight)),
+					behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+						? "instant"
+						: "smooth",
+				});
+			} else row?.scrollIntoView({ block: "nearest" });
 		}
 		keyboardNavigation.current = false;
 	}, [selected]);
@@ -283,7 +356,9 @@ function ReaderApp({ session }: { session: Session }) {
 			<AppShell className="geekhub-shell">
 				<AppSkipLink>跳到阅读内容</AppSkipLink>
 				<Sidebar aria-label="订阅导航" className="reader-sidebar">
-					<SidebarHeader className={collapsed ? "justify-center px-0" : undefined}>
+					<SidebarHeader
+						className={`reader-sidebar-header ${collapsed ? "justify-center px-0" : ""}`}
+					>
 						<div className="brand">
 							<img src="/logo-64.png" width="36" height="36" alt="" />
 							{!collapsed && (
@@ -327,21 +402,45 @@ function ReaderApp({ session }: { session: Session }) {
 						<div className="flex flex-col gap-0.5 px-3">
 							{(
 								[
-									{ view: "all", label: "全部文章", icon: Inbox, count: stats.data?.articles },
-									{ view: "unread", label: "未读文章", icon: BookOpen, count: stats.data?.unread },
-									{ view: "starred", label: "我的收藏", icon: Star, count: stats.data?.starred },
-									{ view: "later", label: "稍后阅读", icon: Bookmark, count: stats.data?.later },
+									{
+										view: "all",
+										label: "全部文章",
+										icon: Inbox,
+										tone: "info",
+										count: stats.data?.articles,
+									},
+									{
+										view: "unread",
+										label: "未读文章",
+										icon: BookOpen,
+										tone: "reading",
+										count: stats.data?.unread,
+									},
+									{
+										view: "starred",
+										label: "我的收藏",
+										icon: Star,
+										tone: "save",
+										count: stats.data?.starred,
+									},
+									{
+										view: "later",
+										label: "稍后阅读",
+										icon: Bookmark,
+										tone: "later",
+										count: stats.data?.later,
+									},
 								] as const
 							).map((item) => (
 								<Tooltip key={item.view}>
 									<TooltipTrigger asChild>
 										<SidebarViewItem
-											className={collapsed ? "self-center" : undefined}
+											className={`sidebar-view-link ${collapsed ? "self-center" : ""}`}
 											aria-label={item.label}
 											active={filter.view === item.view && !filter.feedId && !filter.categoryId}
 											onClick={() => choose({ view: item.view, search: "" })}
 										>
-											<item.icon size={17} aria-hidden="true" />
+											<item.icon size={17} className={`icon-${item.tone}`} aria-hidden="true" />
 											{!collapsed && (
 												<>
 													<span>{item.label}</span>
@@ -374,6 +473,7 @@ function ReaderApp({ session }: { session: Session }) {
 										feeds={feeds.data?.filter((feed) => feed.category_id === category.id) ?? []}
 										filter={filter}
 										onChoose={choose}
+										onManage={manageFeed}
 									/>
 								))}
 								<div className="flex flex-col gap-0.5 px-3">
@@ -385,6 +485,7 @@ function ReaderApp({ session }: { session: Session }) {
 												feed={feed}
 												active={filter.feedId === feed.id}
 												onClick={() => choose({ view: "all", feedId: feed.id, search: "" })}
+												onManage={manageFeed}
 											/>
 										))}
 								</div>
@@ -394,11 +495,11 @@ function ReaderApp({ session }: { session: Session }) {
 						<Tooltip>
 							<TooltipTrigger asChild>
 								<SidebarViewItem
-									className={`discover-nav ${collapsed ? "self-center" : "mx-3 w-auto"}`}
+									className={`sidebar-view-link discover-nav ${collapsed ? "self-center" : "mx-3 w-auto"}`}
 									aria-label="发现好内容"
 									onClick={() => setPanel("discover")}
 								>
-									<Compass size={17} aria-hidden="true" />
+									<Compass size={17} className="icon-discover" aria-hidden="true" />
 									{!collapsed && (
 										<>
 											<span>发现好内容</span>
@@ -435,10 +536,12 @@ function ReaderApp({ session }: { session: Session }) {
 					</SidebarFooter>
 				</Sidebar>
 				<Dialog open={searchOpen} onOpenChange={setSearchOpen}>
-					<DialogContent size="base" className="search-dialog grid gap-4">
-						<DialogHeader>
-							<DialogTitle>搜索文章</DialogTitle>
-							<DialogDescription>搜索「{heading}」中的文章。</DialogDescription>
+					<DialogContent size="base" className="search-dialog grid gap-3">
+						<DialogHeader className="gap-1 space-y-0">
+							<DialogTitle className="leading-7">搜索文章</DialogTitle>
+							<DialogDescription className="leading-5">
+								搜索「{heading}」中的文章。
+							</DialogDescription>
 						</DialogHeader>
 						<form
 							className="flex items-center gap-2"
@@ -490,22 +593,22 @@ function ReaderApp({ session }: { session: Session }) {
 						title={heading}
 						actions={
 							<>
-								<HeaderTooltip label={`查看加载详情 · ${activityMessage}`}>
+								<HeaderTooltip label={`后台活动 · ${activityMessage}`}>
 									<Button
 										variant="ghost"
 										size="sm"
 										className="feed-activity"
-										aria-label="查看订阅加载详情"
+										aria-label="查看后台活动详情"
 										aria-haspopup="dialog"
 										aria-expanded={panel === "logs"}
-										data-level={busy ? "info" : latestActivity?.level}
+										data-level={activityBusy ? "info" : latestActivity?.level}
 										onClick={() => setPanel("logs")}
 									>
-										<Terminal size={13} aria-hidden="true" />
+										<Activity size={14} className="icon-reading" aria-hidden="true" />
 										<span className="activity-label">ACTIVITY</span>
-										<span className={`status-led ${busy ? "pulsing" : ""}`} />
+										<span className={`status-led ${activityBusy ? "pulsing" : ""}`} />
 										<span className="activity-message">
-											{busy ? `同步中 · ${activityMessage}` : activityMessage}
+											{activityBusy ? `进行中 · ${activityMessage}` : activityMessage}
 										</span>
 										<ChevronRight size={12} aria-hidden="true" />
 									</Button>
@@ -522,7 +625,7 @@ function ReaderApp({ session }: { session: Session }) {
 											onClick={() => vm.refresh.mutate()}
 											aria-keyshortcuts="r"
 										>
-											<RefreshCw size={16} className={busy ? "spinning" : ""} />
+											<RefreshCw size={16} className={`icon-reading ${busy ? "spinning" : ""}`} />
 										</Button>
 									</span>
 								</HeaderTooltip>
@@ -557,7 +660,7 @@ function ReaderApp({ session }: { session: Session }) {
 										aria-haspopup="dialog"
 										onClick={() => setPanel("settings")}
 									>
-										<Settings size={17} />
+										<Settings size={17} className="icon-info" aria-hidden="true" />
 									</Button>
 								</HeaderTooltip>
 							</>
@@ -568,119 +671,272 @@ function ReaderApp({ session }: { session: Session }) {
 							<section className="article-list" aria-label="文章列表">
 								<div className="list-heading">
 									<div className="list-title">
-										<h2 title={currentFeed?.description || heading}>{heading}</h2>
-										{currentFeed && (
+										<h2
+											title={
+												currentFeed?.description
+													? `${heading} · ${currentFeed.description}`
+													: heading
+											}
+										>
+											{heading}
+										</h2>
+										{currentFeed?.site_url && (
+											<HeaderTooltip label="打开订阅网站">
+												<Button variant="ghost" size="icon" className="list-icon-button" asChild>
+													<a
+														href={currentFeed.site_url}
+														target="_blank"
+														rel="noopener noreferrer"
+														aria-label="打开订阅网站"
+													>
+														<ArrowUpRight size={14} className="icon-feed" aria-hidden="true" />
+														<span className="sr-only">打开订阅网站</span>
+													</a>
+												</Button>
+											</HeaderTooltip>
+										)}
+										<HeaderTooltip
+											label={
+												currentFeed ? "订阅设置 · 名称、分类与翻译" : "阅读器设置 · 订阅、阅读与 AI"
+											}
+										>
 											<Button
 												variant="ghost"
 												size="icon"
-												className="feed-debug h-8 w-8"
-												aria-label={`诊断 ${currentFeed.title}`}
-												title="检查连接、内容时效与替代 RSS"
-												onClick={() => diagnose(currentFeed)}
+												className="list-icon-button"
+												aria-label={currentFeed ? "订阅设置" : "阅读器设置"}
+												aria-haspopup="dialog"
+												onClick={() =>
+													currentFeed ? manageFeed(currentFeed, "edit-feed") : setPanel("settings")
+												}
 											>
-												<Bug size={15} />
+												<Settings size={15} className="icon-info" aria-hidden="true" />
 											</Button>
-										)}
-										<Tooltip>
-											<TooltipTrigger asChild>
-												<Button
-													variant="ghost"
-													size="icon"
-													className="h-8 w-8"
-													aria-label="全部标为已读"
-													disabled={!articles.length || vm.markRead.isPending}
-													onClick={() => vm.markRead.mutate(filter)}
-												>
-													<CheckCheck size={16} aria-hidden="true" />
-												</Button>
-											</TooltipTrigger>
-											<TooltipContent>全部标为已读</TooltipContent>
-										</Tooltip>
+										</HeaderTooltip>
 									</div>
-									<div className="list-meta">
-										<span className="list-context">
-											{filter.search ? (
-												<Search size={12} aria-hidden="true" />
-											) : (
-												<Clock3 size={12} aria-hidden="true" />
-											)}
-											<span title={filter.search ? `搜索「${filter.search}」` : undefined}>
-												{filter.search ? `搜索「${filter.search}」` : "最近更新"}
+									<fieldset
+										className="list-stats"
+										aria-label="当前订阅范围统计"
+										title="统计当前订阅范围的全部文章，不受搜索或阅读状态筛选影响"
+									>
+										<button
+											type="button"
+											className="list-stat"
+											aria-label="查看范围内全部文章"
+											aria-pressed={filter.view === "all"}
+											onClick={() => choose({ ...filter, view: "all" })}
+										>
+											<Inbox size={12} className="icon-info" aria-hidden="true" />
+											<span>文章</span>
+											<strong>{total?.toLocaleString("zh-CN") ?? "—"}</strong>
+										</button>
+										<button
+											type="button"
+											className="list-stat"
+											aria-label="只看范围内未读文章"
+											aria-pressed={filter.view === "unread"}
+											onClick={() => choose({ ...filter, view: "unread" })}
+										>
+											<BookOpen size={12} className="icon-reading" aria-hidden="true" />
+											<span>未读</span>
+											<strong>{unread?.toLocaleString("zh-CN") ?? "—"}</strong>
+										</button>
+										<div
+											className="list-stat"
+											title={`已读 ${(total ?? 0) - (unread ?? 0)} 篇；列表已载入 ${articles.length} 篇${pages.hasNextPage ? "，可继续加载" : ""}`}
+										>
+											<CheckCheck size={12} className="icon-save" aria-hidden="true" />
+											<span>已读</span>
+											<strong>{total === undefined ? "—" : `${readPercent}%`}</strong>
+										</div>
+									</fieldset>
+									{filter.search && (
+										<div className="list-meta">
+											<span className="list-context">
+												<Search size={12} className="icon-info" aria-hidden="true" />
+												<span title={`搜索「${filter.search}」`}>搜索「{filter.search}」</span>
 											</span>
-											{filter.search && (
-												<Button
-													variant="ghost"
-													size="icon"
-													className="h-6 w-6"
-													aria-label="清除搜索"
-													title="清除搜索"
-													onClick={() => {
-														setSearch("");
-														choose({ ...filter, search: "" });
-													}}
-												>
-													<X size={12} aria-hidden="true" />
-												</Button>
-											)}
-										</span>
-										<span className="list-count">
-											{articles.length} 篇{pages.hasNextPage ? "+" : ""}
-										</span>
-									</div>
-								</div>
-								<div className="list-update-slot">
-									{pages.isError && pages.data ? (
-										<Button
-											variant="ghost"
-											size="sm"
-											disabled={pages.isFetching}
-											onClick={() => void acceptUpdates()}
-											title={pages.error.message}
-										>
-											更新失败，点击重试
-										</Button>
-									) : vm.updatesAvailable ? (
-										<Button
-											variant="ghost"
-											size="sm"
-											disabled={pages.isFetching}
-											onClick={() => void acceptUpdates()}
-										>
-											<RefreshCw size={12} className={pages.isFetching ? "spinning" : ""} />
-											{pages.isFetching ? "载入中…" : "有内容更新，点击载入"}
-										</Button>
-									) : (
-										<span>J / K 切换文章 · / 搜索</span>
+											<span className="list-count">
+												{articles.length} 篇{pages.hasNextPage ? "+" : ""}
+											</span>
+											<Button
+												variant="ghost"
+												size="icon"
+												className="list-icon-button"
+												aria-label="清除搜索"
+												title="清除搜索"
+												onClick={() => choose({ ...filter, search: "" })}
+											>
+												<X size={12} aria-hidden="true" />
+											</Button>
+										</div>
 									)}
 								</div>
+								<div className="list-toolbar">
+									<div className="list-update-slot">
+										{pages.isError && pages.data ? (
+											<Button
+												variant="ghost"
+												size="sm"
+												disabled={pages.isFetching}
+												onClick={() => void vm.reloadArticles()}
+												title={pages.error.message}
+											>
+												更新失败，点击重试
+											</Button>
+										) : (
+											<Button
+												variant="ghost"
+												size="sm"
+												className="list-sync"
+												data-error={failed > 0 || undefined}
+												aria-label="查看当前同步状态"
+												title={
+													currentFeed?.last_error ||
+													`${scopeFeeds?.length ?? 0} 个订阅源 · 最新文章优先${lastFetched ? ` · 最近同步 ${new Date(lastFetched).toLocaleString("zh-CN")}` : ""}`
+												}
+												onClick={() =>
+													currentFeed && failed ? diagnose(currentFeed) : setPanel("logs")
+												}
+											>
+												{failed ? (
+													<CircleAlert size={12} aria-hidden="true" />
+												) : (
+													<Clock3 size={12} aria-hidden="true" />
+												)}
+												<span>{syncLabel}</span>
+											</Button>
+										)}
+									</div>
+									<HeaderTooltip label={currentFeed ? "刷新当前订阅 (R)" : "刷新全部订阅 (R)"}>
+										<span className="inline-flex">
+											<Button
+												variant="ghost"
+												size="icon"
+												className="list-icon-button"
+												aria-label={currentFeed ? "刷新当前订阅" : "刷新全部订阅"}
+												disabled={vm.refresh.isPending || busy}
+												onClick={() => vm.refresh.mutate()}
+											>
+												<RefreshCw
+													size={13}
+													className={`icon-reading ${syncing ? "spinning" : ""}`}
+													aria-hidden="true"
+												/>
+											</Button>
+										</span>
+									</HeaderTooltip>
+									<HeaderTooltip label="搜索当前范围 (/) · J / K 切换文章">
+										<Button
+											variant="ghost"
+											size="icon"
+											className="list-icon-button"
+											aria-label="在当前范围搜索"
+											aria-haspopup="dialog"
+											onClick={() => {
+												setSearch(filter.search);
+												setSearchOpen(true);
+											}}
+										>
+											<Search size={14} className="icon-info" aria-hidden="true" />
+										</Button>
+									</HeaderTooltip>
+									{currentFeed && (
+										<HeaderTooltip label="诊断订阅 · 连接、时效与替代 RSS">
+											<Button
+												variant="ghost"
+												size="icon"
+												className="feed-debug list-icon-button"
+												aria-label={`诊断 ${currentFeed.title}`}
+												onClick={() => diagnose(currentFeed)}
+											>
+												<Bug size={14} className="icon-feed" aria-hidden="true" />
+											</Button>
+										</HeaderTooltip>
+									)}
+									<HeaderTooltip label="将当前订阅范围全部标为已读">
+										<Button
+											variant="ghost"
+											size="icon"
+											className="list-icon-button"
+											aria-label="全部标为已读"
+											disabled={!unread || vm.markRead.isPending}
+											onClick={() => vm.markRead.mutate(filter)}
+										>
+											<CheckCheck size={15} className="icon-reading" aria-hidden="true" />
+										</Button>
+									</HeaderTooltip>
+								</div>
 								<div className="article-scroll" ref={list} key={visit}>
-									{pages.isPending ? (
+									{pages.isPending || (!articles.length && feeds.isPending) ? (
 										<div className="empty-state" role="status">
 											<LoaderCircle className="spinning" size={22} />
 											正在读取文章…
 										</div>
-									) : pages.isError && !pages.data ? (
+									) : (pages.isError && !pages.data) || (!articles.length && feeds.isError) ? (
 										<div className="empty-state" role="alert">
-											<p>{pages.error.message}</p>
-											<Button onClick={() => void pages.refetch()}>重试</Button>
+											<h3>暂时无法读取文章</h3>
+											<p>{pages.error?.message || feeds.error?.message}</p>
+											<Button
+												onClick={() => {
+													void pages.refetch();
+													void feeds.refetch();
+												}}
+											>
+												重试
+											</Button>
 										</div>
 									) : !articles.length ? (
 										<div className="empty-state">
 											<BookOpen size={28} />
-											<h3>{filter.search ? "还没有找到这篇文章" : "给好内容留一个位置"}</h3>
-											<p>
-												{filter.search
-													? "试试其他关键词。"
-													: filter.view === "all"
-														? "添加一个订阅源，开始今天的阅读。"
-														: "这里暂时没有文章，去其他分类看看。"}
-											</p>
-											{filter.view === "all" && !filter.search && (
-												<Button size="sm" onClick={() => setPanel("add")}>
-													<Plus size={15} />
-													添加订阅
-												</Button>
-											)}
+											<h3>{empty.title}</h3>
+											<p>{empty.description}</p>
+											<div className="empty-state-actions">
+												{empty.action === "add" && (
+													<Button size="sm" onClick={() => setPanel("add")}>
+														添加订阅
+													</Button>
+												)}
+												{empty.action === "search" && (
+													<Button size="sm" onClick={() => choose({ ...filter, search: "" })}>
+														重置关键词
+													</Button>
+												)}
+												{empty.action === "all" && (
+													<Button size="sm" onClick={() => choose({ ...filter, view: "all" })}>
+														查看全部文章
+													</Button>
+												)}
+												{empty.action === "home" && (
+													<Button size="sm" onClick={() => choose({ view: "all", search: "" })}>
+														返回全部文章
+													</Button>
+												)}
+												{(empty.action === "refresh" || empty.action === "syncing") && (
+													<>
+														<Button
+															size="sm"
+															disabled={vm.refresh.isPending || busy || empty.action === "syncing"}
+															onClick={() => vm.refresh.mutate()}
+														>
+															{empty.action === "syncing"
+																? "正在同步…"
+																: currentFeed
+																	? "刷新订阅"
+																	: "刷新全部订阅"}
+														</Button>
+														<Button
+															size="sm"
+															variant="outline"
+															onClick={() =>
+																currentFeed ? diagnose(currentFeed) : setPanel("logs")
+															}
+														>
+															{currentFeed ? "诊断订阅源" : "查看抓取日志"}
+														</Button>
+													</>
+												)}
+											</div>
 										</div>
 									) : (
 										articles.map((article) => (
@@ -714,7 +970,8 @@ function ReaderApp({ session }: { session: Session }) {
 													<span>
 														{article.translated_title ? (
 															<>
-																<Sparkles size={11} /> AI 译文
+																<Sparkles size={11} className="icon-ai" aria-hidden="true" /> AI
+																译文
 															</>
 														) : (
 															"阅读全文"
@@ -743,6 +1000,7 @@ function ReaderApp({ session }: { session: Session }) {
 								</div>
 							</section>
 							<Reader
+								key={selected}
 								article={detail.data}
 								loading={Boolean(selected) && detail.isPending}
 								error={detail.error?.message}
@@ -756,9 +1014,15 @@ function ReaderApp({ session }: { session: Session }) {
 								onStatus={(body) => {
 									if (selected) articleWrite.mutate({ id: selected, body });
 								}}
-								onAction={(kind) => {
-									if (selected) action.mutate({ id: selected, kind });
+								onAction={(kind, force) => {
+									if (selected && !vm.actionBusy) action.mutate({ id: selected, kind, force });
 								}}
+								onAiSettings={() => {
+									setSettingsTab("ai");
+									setPanel("settings");
+								}}
+								ai={vm.ai.data}
+								actionError={vm.actionError}
 								statusBusy={vm.statusBusy}
 								actionBusy={vm.actionBusy}
 							/>
@@ -773,15 +1037,23 @@ function ReaderApp({ session }: { session: Session }) {
 				</AppMain>
 				<Panels
 					panel={panel}
-					onClose={() => setPanel(null)}
+					settingsTab={settingsTab}
+					onClose={() => {
+						setPanel(null);
+						setSettingsTab("feeds");
+					}}
 					feeds={feeds.data ?? []}
 					categories={categories.data ?? []}
 					preferences={pref}
 					stats={stats.data}
 					logs={logs.data ?? []}
+					logsUpdatedAt={logs.dataUpdatedAt}
+					logsError={logs.error?.message}
+					logsLoading={logs.isPending}
+					onRetryLogs={() => void logs.refetch()}
 					local={session.local}
 					onChanged={vm.changed}
-					diagnosticFeed={feeds.data?.find((feed) => feed.id === diagnosticId)}
+					selectedFeed={feeds.data?.find((feed) => feed.id === selectedFeedId)}
 					onDiagnose={diagnose}
 					onNotice={setNotice}
 				/>
@@ -795,11 +1067,13 @@ function CategoryGroup({
 	feeds,
 	filter,
 	onChoose,
+	onManage,
 }: {
 	category: Category;
 	feeds: Feed[];
 	filter: ReaderFilter;
 	onChoose: (filter: ReaderFilter) => void;
+	onManage: (feed: Feed, action: "edit-feed" | "delete-feed") => void;
 }) {
 	const unread = feeds.reduce((count, feed) => count + feed.unread_count, 0);
 	return (
@@ -843,6 +1117,7 @@ function CategoryGroup({
 							feed={feed}
 							active={filter.feedId === feed.id}
 							onClick={() => onChoose({ view: "all", feedId: feed.id, search: "" })}
+							onManage={onManage}
 						/>
 					))}
 				</div>
@@ -851,18 +1126,94 @@ function CategoryGroup({
 	);
 }
 
-function FeedItem({ feed, active, onClick }: { feed: Feed; active: boolean; onClick: () => void }) {
+function FeedItem({
+	feed,
+	active,
+	onClick,
+	onManage,
+}: {
+	feed: Feed;
+	active: boolean;
+	onClick: () => void;
+	onManage: (feed: Feed, action: "edit-feed" | "delete-feed") => void;
+}) {
+	const openingDialog = useRef(false);
 	return (
-		<SidebarItem active={active} onClick={onClick} title={feed.last_error ?? feed.title}>
-			<Rss size={14} className={feed.status === "error" ? "error-color" : "muted"} />
-			<span className="truncate">{feed.title}</span>
-			<span className="nav-count">
-				{feed.status === "fetching" || feed.status === "queued" ? (
-					<LoaderCircle size={12} className="spinning" />
-				) : (
-					feed.unread_count || ""
-				)}
-			</span>
-		</SidebarItem>
+		<ContextMenu modal={false}>
+			<ContextMenuTrigger asChild>
+				<SidebarItem
+					data-feed-id={feed.id}
+					className="sidebar-feed-link"
+					aria-label={feed.title}
+					aria-haspopup="menu"
+					aria-keyshortcuts="Shift+F10"
+					active={active}
+					onClick={(event) => {
+						// Releasing a long press can emit a click after the menu has opened.
+						if (event.currentTarget.dataset.state === "open") {
+							event.preventDefault();
+							event.stopPropagation();
+						} else onClick();
+					}}
+					onKeyDown={(event) => {
+						if (event.key !== "ContextMenu" && !(event.shiftKey && event.key === "F10")) return;
+						event.preventDefault();
+						const bounds = event.currentTarget.getBoundingClientRect();
+						event.currentTarget.dispatchEvent(
+							new MouseEvent("contextmenu", {
+								bubbles: true,
+								clientX: bounds.left + bounds.width / 2,
+								clientY: bounds.bottom,
+							}),
+						);
+					}}
+					title={feed.last_error ?? feed.title}
+				>
+					<Rss size={14} className={feed.status === "error" ? "error-color" : "muted"} />
+					<span className="truncate">{feed.title}</span>
+					<span className="nav-count">
+						{feed.status === "fetching" || feed.status === "queued" ? (
+							<LoaderCircle size={12} className="spinning" />
+						) : (
+							feed.unread_count || ""
+						)}
+					</span>
+				</SidebarItem>
+			</ContextMenuTrigger>
+			<ContextMenuPanel
+				className="feed-context-menu"
+				aria-label={`${feed.title} 的订阅菜单`}
+				onFocusOutside={(event) => {
+					// Touch release can return focus to the trigger before a menu item is chosen.
+					if (event.target instanceof HTMLElement && event.target.dataset.feedId === feed.id)
+						event.preventDefault();
+				}}
+				onCloseAutoFocus={(event) => {
+					if (openingDialog.current) {
+						event.preventDefault();
+						openingDialog.current = false;
+					}
+				}}
+			>
+				<ContextMenuItem
+					onSelect={() => {
+						openingDialog.current = true;
+						onManage(feed, "edit-feed");
+					}}
+				>
+					<Pencil size={15} className="icon-info" aria-hidden="true" />
+					编辑订阅
+				</ContextMenuItem>
+				<ContextMenuItem
+					onSelect={() => {
+						openingDialog.current = true;
+						onManage(feed, "delete-feed");
+					}}
+				>
+					<Trash2 size={15} className="error-color" aria-hidden="true" />
+					删除订阅
+				</ContextMenuItem>
+			</ContextMenuPanel>
+		</ContextMenu>
 	);
 }

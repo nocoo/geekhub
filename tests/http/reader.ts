@@ -6,6 +6,7 @@ import type {
 	Category,
 	Feed,
 	FeedDiagnostic,
+	FetchLog,
 	Stats,
 } from "../../src/shared/contracts";
 
@@ -92,6 +93,8 @@ const added = await request<Feed>(
 await request("PATCH", `/feeds/${added.id}`, {
 	title: "HTTP updated feed",
 	auto_translate: true,
+	auto_translate_content: true,
+	auto_fetch_content: true,
 	refresh_minutes: 30,
 });
 await request("POST", "/feeds", { url: added.url }, 409);
@@ -105,6 +108,28 @@ for (let attempt = 0; attempt < 100; attempt++) {
 }
 assert.equal(refreshed?.status, "success", "Queue consumer must actually complete");
 assert.equal(refreshed.total_count, 6);
+assert.equal(refreshed.auto_translate_content, 1);
+assert.equal(refreshed.auto_fetch_content, 1);
+await request("PATCH", `/feeds/${added.id}`, {
+	auto_translate_content: false,
+	auto_fetch_content: false,
+});
+assert.equal(
+	(await request<Feed[]>("GET", "/feeds")).find((feed) => feed.id === added.id)
+		?.auto_translate_content,
+	0,
+);
+// Real Queue -> Durable Object -> HTTP API; no seeded or mocked log rows.
+const activity = await request<FetchLog[]>(
+	"GET",
+	`/logs?feedId=${added.id}&level=success&limit=10`,
+);
+assert.ok(activity.some((log) => log.feed_id === added.id && log.articles_added === 6));
+assert.ok((await request<FetchLog[]>("GET", "/logs")).length <= 500);
+await request("DELETE", "/logs");
+assert.deepEqual(await request("GET", "/logs"), []);
+assert.equal((await request<Stats>("GET", "/stats")).logs, 0);
+await request("GET", "/logs?limit=501", undefined, 400);
 const feedIds = (await request<Feed[]>("GET", "/feeds")).map((feed) => feed.id).reverse();
 await request("POST", "/feeds/reorder", { ids: feedIds, feedId: added.id, categoryId: null });
 let ordered = await request<Feed[]>("GET", "/feeds");
@@ -140,6 +165,7 @@ for (let attempt = 0; attempt < 100; attempt++) {
 }
 assert.equal(diagnostic?.status, "success", "Diagnostic must run through the real local queue");
 assert.equal(diagnostic.report?.feed.entries, 6);
+assert.equal(diagnostic.report?.feed.contentEntries, 6);
 assert.equal(diagnostic.report?.sites.length, 2);
 assert.ok(diagnostic.report?.sites.every((site) => site.status === 200));
 const replacement = diagnostic.report?.candidates.find((candidate) => !candidate.inspection.error);
@@ -155,6 +181,37 @@ assert.equal(replaced.total_count, 6);
 assert.equal(await request("GET", `/feeds/${added.id}/diagnostics`), null);
 assert.equal((await request<ArticleDetail>("GET", `/articles/${retained.id}`)).is_starred, 1);
 assert.equal((await request<ArticleDetail>("GET", `/articles/${retained.id}`)).is_later, 1);
+// Metadata-only RSS still imports links but its persisted diagnostic must not claim body coverage.
+const metadataOnly = await request<Feed>(
+	"POST",
+	"/feeds",
+	{
+		url: "https://demo.geekhub.example/rss/simon?content=none&integration=1",
+		title: "Metadata-only feed",
+	},
+	201,
+);
+await request(
+	"POST",
+	`/feeds/${metadataOnly.id}/diagnostics`,
+	{ siteUrl: "https://demo.geekhub.example/site/missing" },
+	202,
+);
+let emptyBodyReport: FeedDiagnostic | undefined;
+for (let attempt = 0; attempt < 100; attempt++) {
+	emptyBodyReport = await request<FeedDiagnostic>("GET", `/feeds/${metadataOnly.id}/diagnostics`);
+	if (emptyBodyReport.status === "success" || emptyBodyReport.status === "error") break;
+	await Bun.sleep(100);
+}
+assert.equal(emptyBodyReport?.status, "success");
+assert.equal(emptyBodyReport.report?.feed.readableEntries, 6);
+assert.equal(emptyBodyReport.report?.feed.contentEntries, 0);
+assert.equal(
+	(await request<FeedDiagnostic>("GET", `/feeds/${metadataOnly.id}/diagnostics`)).report?.feed
+		.contentEntries,
+	0,
+);
+await request("DELETE", `/feeds/${metadataOnly.id}`);
 await request("PATCH", `/feeds/${added.id}`, { url: "http://127.0.0.1/private" }, 400);
 await request("POST", `/feeds/${added.id}/refresh`, undefined, 202);
 const first = await request<ArticlePage>("GET", "/articles?limit=5");
@@ -211,7 +268,11 @@ assert.equal(
 	(await request<ArticlePage>("GET", `/articles?feedId=${added.id}&view=unread`)).articles.length,
 	0,
 );
-const full = await request<ArticleDetail>("POST", `/articles/${article.id}/full`);
+const full = await request<ArticleDetail>("POST", `/articles/${article.id}/full`, {
+	automatic: true,
+});
+const extractions = await request<FetchLog[]>("GET", "/logs?category=extraction&level=success");
+assert.ok(extractions.some((log) => log.article_id === article.id && log.automatic));
 assert.equal(full.full_content_fetched, 1);
 for (const action of ["summary", "translate", "translate-title"]) {
 	const result: ArticleDetail = await request<ArticleDetail>("POST", `/articles/${article.id}/ai`, {
@@ -221,6 +282,23 @@ for (const action of ["summary", "translate", "translate-title"]) {
 }
 const aiArticle = await request<ArticleDetail>("GET", `/articles/${article.id}`);
 assert.ok(aiArticle.summary && aiArticle.translated_content && aiArticle.translated_title);
+for (const action of ["summary", "translate", "translate-title"]) {
+	const cached: ArticleDetail = await request<ArticleDetail>("POST", `/articles/${article.id}/ai`, {
+		action,
+	});
+	assert.equal(cached.summary, aiArticle.summary);
+	assert.equal(cached.translated_content, aiArticle.translated_content);
+	assert.equal(cached.translated_title, aiArticle.translated_title);
+}
+const regenerated = await request<ArticleDetail>("POST", `/articles/${article.id}/ai`, {
+	action: "summary",
+	force: true,
+});
+assert.ok(regenerated.summary);
+assert.equal(regenerated.translated_content, aiArticle.translated_content);
+const extractedAgain = await request<ArticleDetail>("POST", `/articles/${article.id}/full`);
+assert.equal(extractedAgain.summary, regenerated.summary);
+assert.equal(extractedAgain.translated_content, aiArticle.translated_content);
 await request("POST", "/articles/missing-article/ai", { action: "summary" }, 404);
 await request("GET", "/settings");
 await request("PATCH", "/settings", {

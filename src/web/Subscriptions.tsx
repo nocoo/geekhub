@@ -1,6 +1,6 @@
-import { Badge, Button, Input, LayerCard } from "@nocoo/basalt";
+import { Badge, Button, Input, LayerCard, Switch } from "@nocoo/basalt";
 import { ArrowDown, ArrowUp, Bug, GripVertical, Pencil, Plus, Rss, Trash2 } from "lucide-react";
-import { type DragEvent, useState } from "react";
+import { type DragEvent, useId, useState } from "react";
 import type { Category, Feed } from "../shared/contracts";
 import { moveBefore, type Save } from "./lib/panels-view-model";
 import { dateLabel } from "./lib/reader";
@@ -34,6 +34,7 @@ function OrderControls({
 	return (
 		<div className="order-controls">
 			<Button
+				type="button"
 				variant="ghost"
 				size="icon"
 				className="drag-handle"
@@ -47,22 +48,26 @@ function OrderControls({
 				<GripVertical size={15} />
 			</Button>
 			<Button
+				type="button"
 				variant="ghost"
 				size="icon"
 				disabled={disabled || index === 0}
 				aria-label={`上移 ${name}`}
+				title="上移"
 				onClick={() => onMove(-1)}
 			>
-				<ArrowUp size={12} />
+				<ArrowUp size={14} />
 			</Button>
 			<Button
+				type="button"
 				variant="ghost"
 				size="icon"
 				disabled={disabled || index === count - 1}
 				aria-label={`下移 ${name}`}
+				title="下移"
 				onClick={() => onMove(1)}
 			>
-				<ArrowDown size={12} />
+				<ArrowDown size={14} />
 			</Button>
 		</div>
 	);
@@ -210,26 +215,34 @@ export function Subscriptions({
 												variant="ghost"
 												size="icon"
 												aria-label={`编辑 ${feed.title}`}
+												title="编辑订阅"
 												aria-expanded={editing === feed.id}
 												onClick={() => setEditing(editing === feed.id ? null : feed.id)}
 											>
-												<Pencil size={15} />
+												<Pencil size={15} className="icon-info" aria-hidden="true" />
 											</Button>
 										</div>
 										<div className="subscription-status">
 											<span>
 												{feed.total_count} 篇文章 · {feed.unread_count} 篇未读
 											</span>
-											<Badge>
-												{!feed.is_active
-													? "已暂停"
-													: feed.status === "error"
-														? "需要检查"
-														: feed.status === "queued" || feed.status === "fetching"
-															? "正在更新"
-															: "定时更新"}
-											</Badge>
+											{(!feed.is_active ||
+												feed.status === "error" ||
+												feed.status === "queued" ||
+												feed.status === "fetching") && (
+												<Badge>
+													{!feed.is_active
+														? "已暂停"
+														: feed.status === "error"
+															? "需要检查"
+															: feed.status === "queued" || feed.status === "fetching"
+																? "正在更新"
+																: "正在更新"}
+												</Badge>
+											)}
 											{Boolean(feed.auto_translate) && <Badge>自动翻译</Badge>}
+											{Boolean(feed.auto_fetch_content) && <Badge>自动获取全文</Badge>}
+											{Boolean(feed.auto_translate_content) && <Badge>全文自动翻译</Badge>}
 										</div>
 										{feed.last_error && <p className="inline-error">{feed.last_error}</p>}
 										<div className="subscription-actions">
@@ -240,18 +253,19 @@ export function Subscriptions({
 											</span>
 											<Button
 												variant="ghost"
-												size="sm"
+												size="icon"
+												title="诊断订阅源"
 												onClick={() => onDiagnose(feed)}
 												aria-label={`诊断 ${feed.title}`}
 											>
-												<Bug size={13} />
-												检查源
+												<Bug size={13} className="icon-feed" aria-hidden="true" />
 											</Button>
 											<Button
 												variant="ghost"
 												size="icon"
 												disabled={pending}
 												aria-label={`删除 ${feed.title}`}
+												title="删除订阅"
 												onClick={() =>
 													void remove(
 														`/feeds/${feed.id}`,
@@ -284,7 +298,57 @@ export function Subscriptions({
 	);
 }
 
-function FeedEditor({
+export function FeedOptions({ feed, disabled }: { feed?: Feed; disabled: boolean }) {
+	const id = useId();
+	const options = [
+		{
+			name: "translate",
+			title: "自动翻译标题和简介",
+			hint: "浏览列表时翻译标题和简介，已有译文直接复用。",
+			checked: Boolean(feed?.auto_translate),
+		},
+		{
+			name: "fetch-content",
+			title: "自动获取全文",
+			hint: "打开文章时从原网站获取完整正文，已获取的全文直接复用。",
+			checked: Boolean(feed?.auto_fetch_content),
+		},
+		{
+			name: "translate-content",
+			title: "自动翻译全文",
+			hint: "打开文章时翻译并显示译文；若开启自动获取全文，先获取再翻译。",
+			checked: Boolean(feed?.auto_translate_content),
+		},
+		{
+			name: "active",
+			title: "参与全部刷新",
+			hint: "刷新全部订阅时获取新文章；关闭后仍可单独刷新。",
+			checked: feed ? Boolean(feed.is_active) : true,
+		},
+	];
+	return (
+		<fieldset className="feed-options" disabled={disabled}>
+			<legend className="sr-only">订阅行为</legend>
+			{options.map((option) => (
+				<div className="feed-option" key={option.name}>
+					<div className="feed-option-copy">
+						<label htmlFor={`${id}-${option.name}`}>{option.title}</label>
+						<p id={`${id}-${option.name}-hint`}>{option.hint}</p>
+					</div>
+					<Switch
+						id={`${id}-${option.name}`}
+						name={option.name}
+						defaultChecked={option.checked}
+						disabled={disabled}
+						aria-describedby={`${id}-${option.name}-hint`}
+					/>
+				</div>
+			))}
+		</fieldset>
+	);
+}
+
+export function FeedEditor({
 	feed,
 	categories,
 	pending,
@@ -311,8 +375,9 @@ function FeedEditor({
 						url: data.get("url"),
 						site_url: data.get("site"),
 						category_id: data.get("category") || null,
-						refresh_minutes: Number(data.get("refresh")),
 						auto_translate: data.get("translate") === "on",
+						auto_translate_content: data.get("translate-content") === "on",
+						auto_fetch_content: data.get("fetch-content") === "on",
 						is_active: data.get("active") === "on",
 					},
 					onDone,
@@ -371,33 +436,8 @@ function FeedEditor({
 						))}
 					</select>
 				</label>
-				<label className="field-label" htmlFor={`feed-refresh-${feed.id}`}>
-					刷新间隔
-					<select
-						id={`feed-refresh-${feed.id}`}
-						name="refresh"
-						aria-label="刷新间隔"
-						className="select-control"
-						defaultValue={feed.refresh_minutes}
-					>
-						{[...new Set([15, 30, 60, 180, 360, 720, 1440, feed.refresh_minutes])]
-							.sort((a, b) => a - b)
-							.map((minutes) => (
-								<option key={minutes} value={minutes}>
-									{minutes < 60 ? `${minutes} 分钟` : `${minutes / 60} 小时`}
-								</option>
-							))}
-					</select>
-				</label>
 			</div>
-			<label className="checkbox-label">
-				<input type="checkbox" name="translate" defaultChecked={Boolean(feed.auto_translate)} />
-				自动翻译标题和简介
-			</label>
-			<label className="checkbox-label">
-				<input type="checkbox" name="active" defaultChecked={Boolean(feed.is_active)} />
-				定时更新订阅
-			</label>
+			<FeedOptions feed={feed} disabled={pending} />
 			<div className="form-actions">
 				<Button variant="ghost" type="button" onClick={onDone}>
 					取消
@@ -410,9 +450,9 @@ function FeedEditor({
 	);
 }
 
-function ColorSelect({ color, label }: { color: string; label: string }) {
+function ColorSelect({ color, label, id }: { color: string; label: string; id?: string }) {
 	return (
-		<select className="select-control" name="color" defaultValue={color} aria-label={label}>
+		<select id={id} className="select-control" name="color" defaultValue={color} aria-label={label}>
 			{Object.entries(colors).map(([value, name]) => (
 				<option value={value} key={value}>
 					{name}
@@ -481,24 +521,6 @@ export function Categories({ categories, feeds, pending, save, remove }: Props) 
 						}}
 					>
 						<LayerCard className="category-editor">
-							<div className="category-editor-heading">
-								<OrderControls
-									name={`分类 ${category.name}`}
-									index={index}
-									count={categories.length}
-									disabled={pending}
-									onMove={(direction) =>
-										order(category.id, ids[index + (direction === 1 ? 2 : -1)] ?? null)
-									}
-									onDragStart={(event) => {
-										event.dataTransfer.setData("application/x-geekhub-category", category.id);
-										event.dataTransfer.effectAllowed = "move";
-									}}
-								/>
-								<span>
-									{feeds.filter((feed) => feed.category_id === category.id).length} 个订阅
-								</span>
-							</div>
 							<form
 								className="category-row"
 								onSubmit={(event) => {
@@ -511,41 +533,73 @@ export function Categories({ categories, feeds, pending, save, remove }: Props) 
 									});
 								}}
 							>
-								<Input
-									name="name"
-									aria-label={`分类 ${category.name}`}
-									defaultValue={category.name}
-									required
-									maxLength={60}
-								/>
-								<Input
-									name="icon"
-									aria-label={`分类图标 ${category.name}`}
-									defaultValue={category.icon}
-									placeholder="图标"
-									maxLength={8}
-									className="category-icon-input"
-								/>
-								<ColorSelect color={category.color} label={`分类颜色 ${category.name}`} />
-								<Button type="submit" variant="outline" size="sm" disabled={pending}>
-									保存
-								</Button>
-								<Button
-									type="button"
-									variant="ghost"
-									size="icon"
-									aria-label={`删除分类 ${category.name}`}
-									disabled={pending}
-									onClick={() =>
-										void remove(
-											`/categories/${category.id}`,
-											`分类「${category.name}」`,
-											"其中的订阅源会保留并移至未分类。",
-										)
-									}
-								>
-									<Trash2 size={14} />
-								</Button>
+								<div className="category-editor-heading">
+									<OrderControls
+										name={`分类 ${category.name}`}
+										index={index}
+										count={categories.length}
+										disabled={pending}
+										onMove={(direction) =>
+											order(category.id, ids[index + (direction === 1 ? 2 : -1)] ?? null)
+										}
+										onDragStart={(event) => {
+											event.dataTransfer.setData("application/x-geekhub-category", category.id);
+											event.dataTransfer.effectAllowed = "move";
+										}}
+									/>
+									<Input
+										name="name"
+										aria-label={`分类 ${category.name}`}
+										defaultValue={category.name}
+										required
+										maxLength={60}
+									/>
+									<span>
+										{feeds.filter((feed) => feed.category_id === category.id).length} 个订阅
+									</span>
+								</div>
+								<div className="category-fields">
+									<label className="field-label" htmlFor={`category-icon-${category.id}`}>
+										图标
+										<Input
+											id={`category-icon-${category.id}`}
+											name="icon"
+											aria-label={`分类图标 ${category.name}`}
+											defaultValue={category.icon}
+											placeholder="图标"
+											maxLength={8}
+											className="category-icon-input"
+										/>
+									</label>
+									<label className="field-label" htmlFor={`category-color-${category.id}`}>
+										颜色
+										<ColorSelect
+											id={`category-color-${category.id}`}
+											color={category.color}
+											label={`分类颜色 ${category.name}`}
+										/>
+									</label>
+									<Button type="submit" variant="outline" size="sm" disabled={pending}>
+										保存
+									</Button>
+									<Button
+										type="button"
+										variant="ghost"
+										size="icon"
+										aria-label={`删除分类 ${category.name}`}
+										title="删除分类"
+										disabled={pending}
+										onClick={() =>
+											void remove(
+												`/categories/${category.id}`,
+												`分类「${category.name}」`,
+												"其中的订阅源会保留并移至未分类。",
+											)
+										}
+									>
+										<Trash2 size={14} />
+									</Button>
+								</div>
 							</form>
 						</LayerCard>
 					</li>

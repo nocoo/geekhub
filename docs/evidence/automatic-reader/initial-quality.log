@@ -1,0 +1,209 @@
+$ bun run typecheck && bun run lint && bun run test:coverage && bun run build && bun run test:l2 && bun run test:l3 && bun run gate:security
+$ bun run cf-typegen && tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.worker.json && tsc --noEmit -p tsconfig.tools.json && tsc --noEmit -p tsconfig.test.json
+$ wrangler types --env local --include-runtime=false --strict-vars=false
+
+ ⛅️ wrangler 4.131.1 (update available 4.135.0)
+───────────────────────────────────────────────
+Generating project types...
+
+interface __BaseEnv_Env {
+	DB: D1Database;
+	FEED_QUEUE: Queue;
+	ENVIRONMENT: string;
+	RESOURCE_ENV: string;
+	LOCAL_USER_EMAIL: string;
+	CF_ACCESS_TEAM_DOMAIN: string;
+	CF_ACCESS_AUD: string;
+	AI_ENCRYPTION_KEY: string;
+	FEED_LOGS: DurableObjectNamespace<import("./src/worker/index").FeedLogCache>;
+}
+declare namespace Cloudflare {
+	interface GlobalProps {
+		mainModule: typeof import("./src/worker/index");
+		durableNamespaces: "FeedLogCache";
+	}
+	interface Env extends __BaseEnv_Env {}
+}
+interface Env extends __BaseEnv_Env {}
+type StringifyValues<EnvType extends Record<string, unknown>> = {
+	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
+};
+declare namespace NodeJS {
+	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "ENVIRONMENT" | "RESOURCE_ENV" | "LOCAL_USER_EMAIL" | "CF_ACCESS_TEAM_DOMAIN" | "CF_ACCESS_AUD" | "AI_ENCRYPTION_KEY">> {}
+}
+
+
+✨ Types written to worker-configuration.d.ts
+
+📣 Remember to rerun 'wrangler types' after you change your wrangler.jsonc file.
+
+$ biome check --error-on-warnings .
+Checked 122 files in 30ms. No fixes applied.
+$ vitest run --coverage
+
+ RUN  v5.0.1 /Users/nocoo/workspace/personal/geekhub
+      Coverage enabled with v8
+
+
+ Test Files  17 passed (17)
+      Tests  183 passed (183)
+   Start at  06:03:54
+   Duration  3.59s (tests 53%, import 21%, environment 16%, transform 10%, worker 2%)
+
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   99.71 |    97.76 |     100 |   99.91 |                   
+ shared            |     100 |    96.22 |     100 |     100 |                   
+  import.ts        |     100 |    94.11 |     100 |     100 | 57,82             
+ web/lib           |   99.81 |     98.2 |     100 |     100 |                   
+  ...stic-score.ts |     100 |    98.01 |     100 |     100 | 72,110,159        
+  ...view-model.ts |     100 |    96.87 |     100 |     100 | 86                
+  ...r-position.ts |     100 |       95 |     100 |     100 | 32                
+  ...view-model.ts |    99.6 |     97.2 |     100 |     100 | ...66,383,403,449 
+ worker            |   99.51 |    96.71 |     100 |   99.82 |                   
+  ai.ts            |     100 |       99 |     100 |     100 | 25                
+  auth.ts          |     100 |    95.74 |     100 |     100 | 52,80             
+  data.ts          |   96.29 |    95.45 |     100 |     100 | 85                
+  diagnostics.ts   |     100 |    97.46 |     100 |     100 | 186,243           
+  feeds.ts         |     100 |    86.66 |     100 |     100 | 96,140            
+  index.ts         |   99.61 |    98.51 |     100 |     100 | 271,373           
+  local.ts         |      95 |    83.33 |     100 |   93.75 | 103               
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 99.71% ( 1393/1397 )
+Branches     : 97.76% ( 1139/1165 )
+Functions    : 100% ( 304/304 )
+Lines        : 99.91% ( 1240/1241 )
+================================================================================
+$ vite build
+vite v8.2.2 building worker environment for production...
+transforming...
+✓ 391 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/worker/.vite/manifest.json      0.15 kB │ gzip:   0.11 kB
+dist/worker/wrangler.json            2.12 kB │ gzip:   1.09 kB
+dist/worker/index.js             2,302.85 kB │ gzip: 535.31 kB │ map: 5,260.81 kB
+
+✓ built in 131ms
+vite v8.2.2 building client environment for production...
+transforming...
+✓ 2401 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/client/.assetsignore                       0.02 kB
+dist/client/index.html                          0.77 kB │ gzip:   0.47 kB
+dist/client/assets/index-DmbxganC.css         113.03 kB │ gzip:  20.33 kB
+dist/client/assets/ReaderContent-BqhZasar.js  256.32 kB │ gzip:  76.24 kB │ map: 1,471.13 kB
+dist/client/assets/index-Auj4jhPQ.js          554.57 kB │ gzip: 172.05 kB │ map: 2,183.04 kB
+
+✓ built in 285ms
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+$ bun scripts/run-tests.ts l2
+L2: local Worker at http://127.0.0.1:17005, isolated SQLite at /Users/nocoo/workspace/personal/geekhub/.wrangler/tests/l2-aB613d
+L2 passed: 108 real HTTP checks, 33/33 API endpoints, queue, pagination, missing records, AI and cleanup.
+$ bun scripts/run-tests.ts l3
+L3: local Worker at http://127.0.0.1:27005, isolated SQLite at /Users/nocoo/workspace/personal/geekhub/.wrangler/tests/l3-hVmAwP
+
+Running 38 tests using 1 worker
+
+  ✓   1 [desktop] › tests/browser/ai.spec.ts:34:1 › AI results persist, cached views avoid requests, and extraction invalidates old results (7.6s)
+  ✓   2 [desktop] › tests/browser/ai.spec.ts:118:1 › AI failure stays visible, retries succeed, and pending requests belong to their article (4.4s)
+  ✓   3 [desktop] › tests/browser/ai.spec.ts:193:1 › settings use accessible vertical navigation and AI configuration is required outside demo mode (4.2s)
+  ✓   4 [desktop] › tests/browser/ai.spec.ts:246:1 › per-feed full translation persists, starts on opening and silently reuses cached text (5.3s)
+  ✘   5 [desktop] › tests/browser/diagnostics.spec.ts:4:1 › metadata-only RSS cannot score highly and legacy reports request a body recheck (20.6s)
+  ✓   6 [desktop] › tests/browser/reader.spec.ts:12:1 › list header shows scoped totals, unread filters and subscription settings (2.9s)
+  ✓   7 [desktop] › tests/browser/reader.spec.ts:65:1 › sidebar menu edits grouped and ungrouped feeds and confirms deletion (4.2s)
+  ✓   8 [desktop] › tests/browser/reader.spec.ts:153:1 › reading, persistent states, AI summary, translation and original article (3.8s)
+  ✓   9 [desktop] › tests/browser/reader.spec.ts:197:1 › search, navigation and feed/category CRUD (6.6s)
+  ✓  10 [desktop] › tests/browser/reader.spec.ts:268:1 › reading preferences, public next-ai settings and logs (1.9s)
+  ✓  11 [desktop] › tests/browser/reader.spec.ts:308:1 › accessible reader, responsive layout and discovery (2.1s)
+  ✓  12 [desktop] › tests/browser/reader.spec.ts:344:1 › feed/category paths, browser history, search and article positions survive reloads (5.5s)
+  ✓  13 [desktop] › tests/browser/reader.spec.ts:411:1 › reload and history restore a later article page and both scroll containers (3.2s)
+  ✓  14 [desktop] › tests/browser/reader.spec.ts:465:1 › Markdown reading keeps images, typography and responsive reading space (1.9s)
+  ✓  15 [desktop] › tests/browser/reader.spec.ts:542:1 › keyboard navigation, reading actions and editable/modal guards (3.3s)
+  ✓  16 [desktop] › tests/browser/reader.spec.ts:636:1 › background updates load automatically while preserving list anchors, prose and selection (3.2s)
+  ✓  17 [desktop] › tests/browser/reader.spec.ts:749:1 › subscription and category ordering persists, including moving between groups (3.9s)
+  ✓  18 [desktop] › tests/browser/reader.spec.ts:864:1 › diagnostic scoring recommends a verified replacement for an unavailable feed (2.9s)
+  ✓  19 [desktop] › tests/browser/reader.spec.ts:914:1 › the feed-title diagnostic verifies a replacement and supports pausing without losing articles (5.2s)
+  ✓  20 [mobile] › tests/browser/ai.spec.ts:34:1 › AI results persist, cached views avoid requests, and extraction invalidates old results (6.2s)
+  ✓  21 [mobile] › tests/browser/ai.spec.ts:118:1 › AI failure stays visible, retries succeed, and pending requests belong to their article (4.1s)
+  ✓  22 [mobile] › tests/browser/ai.spec.ts:193:1 › settings use accessible vertical navigation and AI configuration is required outside demo mode (4.6s)
+  ✓  23 [mobile] › tests/browser/ai.spec.ts:246:1 › per-feed full translation persists, starts on opening and silently reuses cached text (6.3s)
+  ✓  24 [mobile] › tests/browser/diagnostics.spec.ts:4:1 › metadata-only RSS cannot score highly and legacy reports request a body recheck (3.0s)
+  ✓  25 [mobile] › tests/browser/reader.spec.ts:12:1 › list header shows scoped totals, unread filters and subscription settings (2.6s)
+  ✓  26 [mobile] › tests/browser/reader.spec.ts:65:1 › sidebar menu edits grouped and ungrouped feeds and confirms deletion (7.2s)
+  ✓  27 [mobile] › tests/browser/reader.spec.ts:153:1 › reading, persistent states, AI summary, translation and original article (2.8s)
+  ✓  28 [mobile] › tests/browser/reader.spec.ts:197:1 › search, navigation and feed/category CRUD (5.3s)
+  ✓  29 [mobile] › tests/browser/reader.spec.ts:268:1 › reading preferences, public next-ai settings and logs (3.1s)
+  ✓  30 [mobile] › tests/browser/reader.spec.ts:308:1 › accessible reader, responsive layout and discovery (2.1s)
+  ✓  31 [mobile] › tests/browser/reader.spec.ts:344:1 › feed/category paths, browser history, search and article positions survive reloads (5.0s)
+  ✓  32 [mobile] › tests/browser/reader.spec.ts:411:1 › reload and history restore a later article page and both scroll containers (2.9s)
+  ✓  33 [mobile] › tests/browser/reader.spec.ts:465:1 › Markdown reading keeps images, typography and responsive reading space (1.6s)
+  ✓  34 [mobile] › tests/browser/reader.spec.ts:542:1 › keyboard navigation, reading actions and editable/modal guards (2.7s)
+  ✓  35 [mobile] › tests/browser/reader.spec.ts:636:1 › background updates load automatically while preserving list anchors, prose and selection (2.6s)
+  ✓  36 [mobile] › tests/browser/reader.spec.ts:749:1 › subscription and category ordering persists, including moving between groups (3.5s)
+  ✓  37 [mobile] › tests/browser/reader.spec.ts:864:1 › diagnostic scoring recommends a verified replacement for an unavailable feed (2.9s)
+  ✓  38 [mobile] › tests/browser/reader.spec.ts:914:1 › the feed-title diagnostic verifies a replacement and supports pausing without losing articles (5.0s)
+
+
+  1) [desktop] › tests/browser/diagnostics.spec.ts:4:1 › metadata-only RSS cannot score highly and legacy reports request a body recheck 
+
+    Error: expect(locator).toHaveText(expected) failed
+
+    Locator: getByRole('dialog', { name: '订阅源诊断', exact: true }).getByTestId('diagnostic-total')
+    Expected: "49/ 100"
+    Timeout: 20000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toHaveText" getByRole('dialog', { name: '订阅源诊断', exact: true }).getByTestId('diagnostic-total') with timeout 20000ms
+      - waiting for getByRole('dialog', { name: '订阅源诊断', exact: true }).getByTestId('diagnostic-total')
+
+
+      20 | 		await page.getByRole("button", { name: `诊断 ${feed.title}`, exact: true }).click();
+      21 | 		const dialog = page.getByRole("dialog", { name: "订阅源诊断", exact: true });
+    > 22 | 		await expect(dialog.getByTestId("diagnostic-total")).toHaveText("49/ 100", { timeout: 20000 });
+         | 		                                                     ^
+      23 | 		await expect(dialog.locator(".diagnostic-score")).toHaveAttribute(
+      24 | 			"data-recommendation",
+      25 | 			"review",
+        at /Users/nocoo/workspace/personal/geekhub/tests/browser/diagnostics.spec.ts:22:56
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/l3/browser/diagnostics-metadata-only--09dad-orts-request-a-body-recheck-desktop/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/l3/browser/diagnostics-metadata-only--09dad-orts-request-a-body-recheck-desktop/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/l3/browser/diagnostics-metadata-only--09dad-orts-request-a-body-recheck-desktop/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/l3/browser/diagnostics-metadata-only--09dad-orts-request-a-body-recheck-desktop/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [desktop] › tests/browser/diagnostics.spec.ts:4:1 › metadata-only RSS cannot score highly and legacy reports request a body recheck 
+  37 passed (2.8m)
+68 | 	const test = Bun.spawn(
+69 | 		tier === "l2" ? ["bun", "tests/http/reader.ts"] : ["bun", "x", "playwright", "test"],
+70 | 		{ env, stdout: "inherit", stderr: "inherit" },
+71 | 	);
+72 | 	const code = await test.exited;
+73 | 	if (code) throw new Error(`${tier.toUpperCase()} failed with exit ${code}`);
+                          ^
+error: L3 failed with exit 1
+      at /Users/nocoo/workspace/personal/geekhub/scripts/run-tests.ts:73:22
+
+Bun v1.4.0 (macOS arm64)
+error: script "test:l3" exited with code 1
+error: script "quality" exited with code 1

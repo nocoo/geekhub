@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, test, vi } from "vitest";
 import type { DiagnosticJob, FeedDiagnostic, QueueJob } from "../../src/shared/contracts";
 import { getFeed } from "../../src/worker/data";
@@ -16,6 +17,63 @@ const signal = () => new AbortController().signal;
 const noSite = "<rss><channel><title>No main site</title></channel></rss>";
 
 describe("feed inspection and rediscovery", () => {
+	test("Hugging Face metadata-only RSS has importable entries but no body content", async () => {
+		const xml = readFileSync(new URL("../fixtures/huggingface-feed.xml", import.meta.url), "utf8");
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async () => new Response(xml)),
+		);
+		expect(
+			await inspectFeed(makeEnv(), "https://huggingface.co/blog/feed.xml", signal()),
+		).toMatchObject({
+			status: 200,
+			entries: 3,
+			readableEntries: 3,
+			contentEntries: 0,
+			error: null,
+		});
+	});
+
+	test("body coverage excludes empty HTML, scripts, images, repeated titles and links in RSS and Atom", async () => {
+		const title = "A sufficiently long article headline repeated without any actual body text";
+		const fragments = [
+			"",
+			"<p> &nbsp; </p>",
+			`<h1>${title}</h1>`,
+			`<a href="/post">${title}</a>`,
+			`<img src="/image.jpg" alt="${title}">`,
+			`<script>${"x".repeat(80)}</script>`,
+			"字".repeat(39),
+			"字".repeat(40),
+			`<p>${"Actual article text. ".repeat(8)}</p>`,
+		];
+		for (const atom of [false, true]) {
+			const items = fragments
+				.map((body, i) =>
+					atom
+						? `<entry><title>${title}</title><link href="https://example.com/${i}"/><content type="html"><![CDATA[${body}]]></content></entry>`
+						: `<item><title>${title}</title><link>https://example.com/${i}</link><description><![CDATA[${body}]]></description></item>`,
+				)
+				.join("");
+			vi.stubGlobal(
+				"fetch",
+				vi.fn(
+					async () =>
+						new Response(
+							atom
+								? `<feed><title>Atom</title>${items}</feed>`
+								: `<rss><channel><title>RSS</title>${items}</channel></rss>`,
+						),
+				),
+			);
+			expect(await inspectFeed(makeEnv(), "https://example.com/rss", signal())).toMatchObject({
+				entries: 9,
+				readableEntries: 9,
+				contentEntries: 2,
+			});
+		}
+	});
+
 	test("finds declared RSS/Atom and subscription links, resolves base URLs and rejects unsafe links", () => {
 		expect(
 			discoverFeedLinks(
@@ -48,6 +106,10 @@ describe("feed inspection and rediscovery", () => {
 	test("reports date coverage across the entire response, independently of the 200-entry ingest limit", async () => {
 		const env = makeEnv();
 		const xml = rss(205)
+			.replaceAll(
+				"Safe content",
+				"A complete paragraph of usable article text with sufficient reading content",
+			)
 			.replace("Fri, 11 Sep 2026 00:00:00 GMT", "2019-01-01")
 			.replace("<guid>204</guid>", "<guid>204</guid><published>unused</published>")
 			.replace(
@@ -65,6 +127,7 @@ describe("feed inspection and rediscovery", () => {
 			status: 200,
 			entries: 208,
 			readableEntries: 200,
+			contentEntries: 200,
 			undatedEntries: 2,
 			futureEntries: 1,
 			oldestAt: "2019-01-01T00:00:00.000Z",

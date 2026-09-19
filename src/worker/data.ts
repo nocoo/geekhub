@@ -6,6 +6,7 @@ import {
 	type Stats,
 } from "../shared/contracts";
 import { fail } from "./lib/errors";
+import { feedLogs } from "./logs";
 
 export async function preferences(db: D1Database): Promise<Preferences> {
 	const row = await db
@@ -74,16 +75,13 @@ export async function reorder(
 	if (result.meta.changes !== ids.length) fail(409, "订阅或分类已变化，请重新加载后再排序");
 }
 
-export async function dataStats(db: D1Database): Promise<Stats> {
-	const result = await db
-		.prepare(`SELECT COUNT(*) AS articles,
+export async function dataStats(env: Env): Promise<Stats> {
+	const result = await env.DB.prepare(`SELECT COUNT(*) AS articles,
     COALESCE(SUM(1 - a.is_read), 0) AS unread, COALESCE(SUM(a.is_starred), 0) AS starred,
     COALESCE(SUM(a.is_later), 0) AS later,
     COALESCE(SUM(length(CAST(a.content AS BLOB)) + length(CAST(COALESCE(a.translated_content, '') AS BLOB))), 0) AS bytes,
-    (SELECT COUNT(*) FROM feeds) AS feeds,
-    (SELECT COUNT(*) FROM fetch_logs) AS logs
-    FROM articles a`)
-		.first<Stats>();
+    (SELECT COUNT(*) FROM feeds) AS feeds
+    FROM articles a`).first<Omit<Stats, "logs">>();
 	if (!result) throw new Error("数据库统计查询失败");
-	return result;
+	return { ...result, logs: (await feedLogs(env).list()).length };
 }

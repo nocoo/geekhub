@@ -1,0 +1,844 @@
+{
+	"date": "2026-09-19",
+	"origin": "https://geekhub.dev.hexly.ai",
+	"browser": "Google Chrome",
+	"tlsVerification": true,
+	"comparisons": [
+		{
+			"viewport": "desktop",
+			"screen": "reader",
+			"selector": ".prose",
+			"measurement": "y",
+			"before": 477.8,
+			"after": 134.4
+		},
+		{
+			"viewport": "desktop",
+			"screen": "list",
+			"selector": ".article-item",
+			"measurement": "height",
+			"before": 179.3,
+			"after": 139.1
+		},
+		{
+			"viewport": "desktop",
+			"screen": "subscriptions",
+			"selector": ".manage-feed",
+			"measurement": "height",
+			"before": 150.3,
+			"after": 96.3
+		},
+		{
+			"viewport": "mobile",
+			"screen": "reading-settings",
+			"selector": ".app-dialog",
+			"measurement": "scrollHeight",
+			"before": 947,
+			"after": 673
+		},
+		{
+			"viewport": "mobile",
+			"screen": "reader",
+			"selector": ".prose",
+			"measurement": "y",
+			"before": 507.6,
+			"after": 426.8
+		}
+	],
+	"screenAudit": [
+		{
+			"viewport": "desktop",
+			"screen": "list",
+			"overflow": false,
+			"violations": []
+		},
+		{
+			"viewport": "desktop",
+			"screen": "reader",
+			"overflow": false,
+			"violations": []
+		},
+		{
+			"viewport": "desktop",
+			"screen": "subscriptions",
+			"overflow": false,
+			"violations": []
+		},
+		{
+			"viewport": "desktop",
+			"screen": "feed-edit",
+			"overflow": false,
+			"violations": []
+		},
+		{
+			"viewport": "desktop",
+			"screen": "categories",
+			"overflow": false,
+			"violations": []
+		},
+		{
+			"viewport": "desktop",
+			"screen": "reading-settings",
+			"overflow": false,
+			"violations": []
+		},
+		{
+			"viewport": "desktop",
+			"screen": "ai-settings",
+			"overflow": false,
+			"violations": []
+		},
+		{
+			"viewport": "desktop",
+			"screen": "data",
+			"overflow": false,
+			"violations": []
+		},
+		{
+			"viewport": "desktop",
+			"screen": "diagnostics",
+			"overflow": false,
+			"violations": []
+		},
+		{
+			"viewport": "desktop",
+			"screen": "discover",
+			"overflow": false,
+			"violations": []
+		},
+		{
+			"viewport": "desktop",
+			"screen": "add",
+			"overflow": false,
+			"violations": []
+		},
+		{
+			"viewport": "desktop",
+			"screen": "logs",
+			"overflow": false,
+			"violations": []
+		},
+		{
+			"viewport": "desktop",
+			"screen": "search",
+			"overflow": false,
+			"violations": []
+		},
+		{
+			"viewport": "mobile",
+			"screen": "list",
+			"overflow": false,
+			"violations": []
+		},
+		{
+			"viewport": "mobile",
+			"screen": "reader",
+			"overflow": false,
+			"violations": []
+		},
+		{
+			"viewport": "mobile",
+			"screen": "subscriptions",
+			"overflow": false,
+			"violations": []
+		},
+		{
+			"viewport": "mobile",
+			"screen": "feed-edit",
+			"overflow": false,
+			"violations": []
+		},
+		{
+			"viewport": "mobile",
+			"screen": "categories",
+			"overflow": false,
+			"violations": []
+		},
+		{
+			"viewport": "mobile",
+			"screen": "reading-settings",
+			"overflow": false,
+			"violations": []
+		},
+		{
+			"viewport": "mobile",
+			"screen": "ai-settings",
+			"overflow": false,
+			"violations": []
+		},
+		{
+			"viewport": "mobile",
+			"screen": "data",
+			"overflow": false,
+			"violations": []
+		},
+		{
+			"viewport": "mobile",
+			"screen": "diagnostics",
+			"overflow": false,
+			"violations": []
+		},
+		{
+			"viewport": "mobile",
+			"screen": "discover",
+			"overflow": false,
+			"violations": []
+		},
+		{
+			"viewport": "mobile",
+			"screen": "add",
+			"overflow": false,
+			"violations": []
+		},
+		{
+			"viewport": "mobile",
+			"screen": "logs",
+			"overflow": false,
+			"violations": []
+		},
+		{
+			"viewport": "mobile",
+			"screen": "search",
+			"overflow": false,
+			"violations": []
+		}
+	],
+	"readerAudit": [
+		{
+			"width": 390,
+			"theme": "light",
+			"metrics": {
+				".reader-scroll": {
+					"x": 7,
+					"y": 92,
+					"width": 376,
+					"height": 787,
+					"font": "Inter, \"SF Pro Text\", -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+					"fontSize": "16px",
+					"lineHeight": "24px",
+					"display": "block",
+					"scrollWidth": 376,
+					"clientWidth": 376
+				},
+				".reader-document": {
+					"x": 7,
+					"y": 92,
+					"width": 376,
+					"height": 9737.375,
+					"font": "Inter, \"SF Pro Text\", -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+					"fontSize": "16px",
+					"lineHeight": "24px",
+					"display": "block",
+					"scrollWidth": 376,
+					"clientWidth": 376
+				},
+				".article-context": {
+					"x": 29,
+					"y": 112,
+					"width": 332,
+					"height": 221.375,
+					"font": "Inter, \"SF Pro Text\", -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+					"fontSize": "16px",
+					"lineHeight": "24px",
+					"display": "block",
+					"scrollWidth": 332,
+					"clientWidth": 332
+				},
+				".article-body": {
+					"x": 29,
+					"y": 351.375,
+					"width": 332,
+					"height": 9458,
+					"font": "Inter, \"SF Pro Text\", -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+					"fontSize": "16px",
+					"lineHeight": "24px",
+					"display": "block",
+					"scrollWidth": 332,
+					"clientWidth": 332
+				},
+				".prose": {
+					"x": 29,
+					"y": 351.375,
+					"width": 332,
+					"height": 9333,
+					"font": "Charter, TsangerJinKai02, \"Iowan Old Style\", \"Noto Serif CJK SC\", \"Songti SC\", Georgia, serif",
+					"fontSize": "18px",
+					"lineHeight": "29.7px",
+					"display": "block",
+					"scrollWidth": 332,
+					"clientWidth": 332
+				},
+				".article-context h1": {
+					"x": 29,
+					"y": 138.5,
+					"width": 332,
+					"height": 75.375,
+					"font": "Charter, TsangerJinKai02, \"Iowan Old Style\", \"Noto Serif CJK SC\", \"Songti SC\", Georgia, serif",
+					"fontSize": "29px",
+					"lineHeight": "37.7px",
+					"display": "block",
+					"scrollWidth": 332,
+					"clientWidth": 332
+				}
+			},
+			"renderedFonts": {
+				"fonts": [
+					{
+						"familyName": "TsangerJinKai02 W04",
+						"postScriptName": "TsangerJinKai02-W04",
+						"isCustomFont": true,
+						"glyphCount": 3670
+					},
+					{
+						"familyName": "Charter",
+						"postScriptName": "Charter-Bold",
+						"isCustomFont": false,
+						"glyphCount": 33
+					},
+					{
+						"familyName": "Charter",
+						"postScriptName": "Charter-Roman",
+						"isCustomFont": false,
+						"glyphCount": 844
+					}
+				]
+			},
+			"fonts": 20,
+			"fontFailures": [],
+			"violations": [],
+			"errors": []
+		},
+		{
+			"width": 768,
+			"theme": "light",
+			"metrics": {
+				".reader-scroll": {
+					"x": 350,
+					"y": 92,
+					"width": 408,
+					"height": 785,
+					"font": "Inter, \"SF Pro Text\", -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+					"fontSize": "16px",
+					"lineHeight": "24px",
+					"display": "block",
+					"scrollWidth": 408,
+					"clientWidth": 408
+				},
+				".reader-document": {
+					"x": 350,
+					"y": 92,
+					"width": 408,
+					"height": 9233.890625,
+					"font": "Inter, \"SF Pro Text\", -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+					"fontSize": "16px",
+					"lineHeight": "24px",
+					"display": "block",
+					"scrollWidth": 408,
+					"clientWidth": 408
+				},
+				".article-context": {
+					"x": 378,
+					"y": 116,
+					"width": 352,
+					"height": 216.1875,
+					"font": "Inter, \"SF Pro Text\", -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+					"fontSize": "16px",
+					"lineHeight": "24px",
+					"display": "block",
+					"scrollWidth": 352,
+					"clientWidth": 352
+				},
+				".article-body": {
+					"x": 378,
+					"y": 350.1875,
+					"width": 352,
+					"height": 8951.703125,
+					"font": "Inter, \"SF Pro Text\", -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+					"fontSize": "16px",
+					"lineHeight": "24px",
+					"display": "block",
+					"scrollWidth": 352,
+					"clientWidth": 352
+				},
+				".prose": {
+					"x": 378,
+					"y": 350.1875,
+					"width": 352,
+					"height": 8826.703125,
+					"font": "Charter, TsangerJinKai02, \"Iowan Old Style\", \"Noto Serif CJK SC\", \"Songti SC\", Georgia, serif",
+					"fontSize": "18px",
+					"lineHeight": "29.7px",
+					"display": "block",
+					"scrollWidth": 352,
+					"clientWidth": 352
+				},
+				".article-context h1": {
+					"x": 378,
+					"y": 142.5,
+					"width": 352,
+					"height": 70.1875,
+					"font": "Charter, TsangerJinKai02, \"Iowan Old Style\", \"Noto Serif CJK SC\", \"Songti SC\", Georgia, serif",
+					"fontSize": "27px",
+					"lineHeight": "35.1px",
+					"display": "block",
+					"scrollWidth": 352,
+					"clientWidth": 352
+				}
+			},
+			"renderedFonts": {
+				"fonts": [
+					{
+						"familyName": "TsangerJinKai02 W04",
+						"postScriptName": "TsangerJinKai02-W04",
+						"isCustomFont": true,
+						"glyphCount": 3670
+					},
+					{
+						"familyName": "Charter",
+						"postScriptName": "Charter-Bold",
+						"isCustomFont": false,
+						"glyphCount": 33
+					},
+					{
+						"familyName": "Charter",
+						"postScriptName": "Charter-Roman",
+						"isCustomFont": false,
+						"glyphCount": 843
+					}
+				]
+			},
+			"fonts": 20,
+			"fontFailures": [],
+			"violations": [],
+			"errors": []
+		},
+		{
+			"width": 1024,
+			"theme": "light",
+			"metrics": {
+				".reader-scroll": {
+					"x": 544,
+					"y": 92,
+					"width": 468,
+					"height": 785,
+					"font": "Inter, \"SF Pro Text\", -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+					"fontSize": "16px",
+					"lineHeight": "24px",
+					"display": "block",
+					"scrollWidth": 468,
+					"clientWidth": 468
+				},
+				".reader-document": {
+					"x": 544,
+					"y": 92,
+					"width": 468,
+					"height": 8276.96875,
+					"font": "Inter, \"SF Pro Text\", -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+					"fontSize": "16px",
+					"lineHeight": "24px",
+					"display": "block",
+					"scrollWidth": 468,
+					"clientWidth": 468
+				},
+				".article-context": {
+					"x": 572,
+					"y": 116,
+					"width": 412,
+					"height": 181.1875,
+					"font": "Inter, \"SF Pro Text\", -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+					"fontSize": "16px",
+					"lineHeight": "24px",
+					"display": "block",
+					"scrollWidth": 412,
+					"clientWidth": 412
+				},
+				".article-body": {
+					"x": 572,
+					"y": 315.1875,
+					"width": 412,
+					"height": 8029.78125,
+					"font": "Inter, \"SF Pro Text\", -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+					"fontSize": "16px",
+					"lineHeight": "24px",
+					"display": "block",
+					"scrollWidth": 412,
+					"clientWidth": 412
+				},
+				".prose": {
+					"x": 572,
+					"y": 315.1875,
+					"width": 412,
+					"height": 7904.78125,
+					"font": "Charter, TsangerJinKai02, \"Iowan Old Style\", \"Noto Serif CJK SC\", \"Songti SC\", Georgia, serif",
+					"fontSize": "18px",
+					"lineHeight": "29.7px",
+					"display": "block",
+					"scrollWidth": 412,
+					"clientWidth": 412
+				},
+				".article-context h1": {
+					"x": 572,
+					"y": 142.5,
+					"width": 412,
+					"height": 70.1875,
+					"font": "Charter, TsangerJinKai02, \"Iowan Old Style\", \"Noto Serif CJK SC\", \"Songti SC\", Georgia, serif",
+					"fontSize": "27px",
+					"lineHeight": "35.1px",
+					"display": "block",
+					"scrollWidth": 412,
+					"clientWidth": 412
+				}
+			},
+			"renderedFonts": {
+				"fonts": [
+					{
+						"familyName": "TsangerJinKai02 W04",
+						"postScriptName": "TsangerJinKai02-W04",
+						"isCustomFont": true,
+						"glyphCount": 3670
+					},
+					{
+						"familyName": "Charter",
+						"postScriptName": "Charter-Bold",
+						"isCustomFont": false,
+						"glyphCount": 34
+					},
+					{
+						"familyName": "Charter",
+						"postScriptName": "Charter-Roman",
+						"isCustomFont": false,
+						"glyphCount": 840
+					}
+				]
+			},
+			"fonts": 20,
+			"fontFailures": [],
+			"violations": [],
+			"errors": []
+		},
+		{
+			"width": 1440,
+			"theme": "light",
+			"metrics": {
+				".reader-scroll": {
+					"x": 584,
+					"y": 92,
+					"width": 844,
+					"height": 785,
+					"font": "Inter, \"SF Pro Text\", -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+					"fontSize": "16px",
+					"lineHeight": "24px",
+					"display": "block",
+					"scrollWidth": 844,
+					"clientWidth": 844
+				},
+				".reader-document": {
+					"x": 584,
+					"y": 92,
+					"width": 844,
+					"height": 7076.40625,
+					"font": "Inter, \"SF Pro Text\", -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+					"fontSize": "16px",
+					"lineHeight": "24px",
+					"display": "grid",
+					"scrollWidth": 844,
+					"clientWidth": 844
+				},
+				".article-context": {
+					"x": 616,
+					"y": 120,
+					"width": 224,
+					"height": 423.75,
+					"font": "Inter, \"SF Pro Text\", -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+					"fontSize": "16px",
+					"lineHeight": "24px",
+					"display": "block",
+					"scrollWidth": 223,
+					"clientWidth": 223
+				},
+				".article-body": {
+					"x": 872,
+					"y": 120,
+					"width": 524,
+					"height": 7020.40625,
+					"font": "Inter, \"SF Pro Text\", -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+					"fontSize": "16px",
+					"lineHeight": "24px",
+					"display": "block",
+					"scrollWidth": 524,
+					"clientWidth": 524
+				},
+				".prose": {
+					"x": 872,
+					"y": 120,
+					"width": 524,
+					"height": 6895.40625,
+					"font": "Charter, TsangerJinKai02, \"Iowan Old Style\", \"Noto Serif CJK SC\", \"Songti SC\", Georgia, serif",
+					"fontSize": "18px",
+					"lineHeight": "29.7px",
+					"display": "block",
+					"scrollWidth": 524,
+					"clientWidth": 524
+				},
+				".article-context h1": {
+					"x": 616,
+					"y": 146.5,
+					"width": 199,
+					"height": 145.75,
+					"font": "Charter, TsangerJinKai02, \"Iowan Old Style\", \"Noto Serif CJK SC\", \"Songti SC\", Georgia, serif",
+					"fontSize": "27px",
+					"lineHeight": "36.45px",
+					"display": "block",
+					"scrollWidth": 199,
+					"clientWidth": 199
+				}
+			},
+			"renderedFonts": {
+				"fonts": [
+					{
+						"familyName": "TsangerJinKai02 W04",
+						"postScriptName": "TsangerJinKai02-W04",
+						"isCustomFont": true,
+						"glyphCount": 3670
+					},
+					{
+						"familyName": "Charter",
+						"postScriptName": "Charter-Bold",
+						"isCustomFont": false,
+						"glyphCount": 34
+					},
+					{
+						"familyName": "Charter",
+						"postScriptName": "Charter-Roman",
+						"isCustomFont": false,
+						"glyphCount": 850
+					}
+				]
+			},
+			"fonts": 20,
+			"fontFailures": [],
+			"violations": [],
+			"errors": []
+		},
+		{
+			"width": 1920,
+			"theme": "light",
+			"metrics": {
+				".reader-scroll": {
+					"x": 619,
+					"y": 92,
+					"width": 1289,
+					"height": 785,
+					"font": "Inter, \"SF Pro Text\", -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+					"fontSize": "16px",
+					"lineHeight": "24px",
+					"display": "block",
+					"scrollWidth": 1289,
+					"clientWidth": 1289
+				},
+				".reader-document": {
+					"x": 763.5,
+					"y": 92,
+					"width": 1000,
+					"height": 6062.59375,
+					"font": "Inter, \"SF Pro Text\", -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+					"fontSize": "16px",
+					"lineHeight": "24px",
+					"display": "grid",
+					"scrollWidth": 1000,
+					"clientWidth": 1000
+				},
+				".article-context": {
+					"x": 795.5,
+					"y": 120,
+					"width": 224,
+					"height": 423.75,
+					"font": "Inter, \"SF Pro Text\", -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+					"fontSize": "16px",
+					"lineHeight": "24px",
+					"display": "block",
+					"scrollWidth": 223,
+					"clientWidth": 223
+				},
+				".article-body": {
+					"x": 1051.5,
+					"y": 120,
+					"width": 680,
+					"height": 6006.59375,
+					"font": "Inter, \"SF Pro Text\", -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+					"fontSize": "16px",
+					"lineHeight": "24px",
+					"display": "block",
+					"scrollWidth": 680,
+					"clientWidth": 680
+				},
+				".prose": {
+					"x": 1051.5,
+					"y": 120,
+					"width": 680,
+					"height": 5881.59375,
+					"font": "Charter, TsangerJinKai02, \"Iowan Old Style\", \"Noto Serif CJK SC\", \"Songti SC\", Georgia, serif",
+					"fontSize": "18px",
+					"lineHeight": "29.7px",
+					"display": "block",
+					"scrollWidth": 680,
+					"clientWidth": 680
+				},
+				".article-context h1": {
+					"x": 795.5,
+					"y": 146.5,
+					"width": 199,
+					"height": 145.75,
+					"font": "Charter, TsangerJinKai02, \"Iowan Old Style\", \"Noto Serif CJK SC\", \"Songti SC\", Georgia, serif",
+					"fontSize": "27px",
+					"lineHeight": "36.45px",
+					"display": "block",
+					"scrollWidth": 199,
+					"clientWidth": 199
+				}
+			},
+			"renderedFonts": {
+				"fonts": [
+					{
+						"familyName": "TsangerJinKai02 W04",
+						"postScriptName": "TsangerJinKai02-W04",
+						"isCustomFont": true,
+						"glyphCount": 3670
+					},
+					{
+						"familyName": "Charter",
+						"postScriptName": "Charter-Bold",
+						"isCustomFont": false,
+						"glyphCount": 34
+					},
+					{
+						"familyName": "Charter",
+						"postScriptName": "Charter-Roman",
+						"isCustomFont": false,
+						"glyphCount": 850
+					}
+				]
+			},
+			"fonts": 20,
+			"fontFailures": [],
+			"violations": [],
+			"errors": []
+		},
+		{
+			"width": 1920,
+			"theme": "dark",
+			"metrics": {
+				".reader-scroll": {
+					"x": 619,
+					"y": 92,
+					"width": 1289,
+					"height": 785,
+					"font": "Inter, \"SF Pro Text\", -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+					"fontSize": "16px",
+					"lineHeight": "24px",
+					"display": "block",
+					"scrollWidth": 1289,
+					"clientWidth": 1289
+				},
+				".reader-document": {
+					"x": 763.5,
+					"y": 92,
+					"width": 1000,
+					"height": 5918.59375,
+					"font": "Inter, \"SF Pro Text\", -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+					"fontSize": "16px",
+					"lineHeight": "24px",
+					"display": "grid",
+					"scrollWidth": 1000,
+					"clientWidth": 1000
+				},
+				".article-context": {
+					"x": 795.5,
+					"y": 120,
+					"width": 224,
+					"height": 423.75,
+					"font": "Inter, \"SF Pro Text\", -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+					"fontSize": "16px",
+					"lineHeight": "24px",
+					"display": "block",
+					"scrollWidth": 223,
+					"clientWidth": 223
+				},
+				".article-body": {
+					"x": 1051.5,
+					"y": 120,
+					"width": 680,
+					"height": 5862.59375,
+					"font": "Inter, \"SF Pro Text\", -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+					"fontSize": "16px",
+					"lineHeight": "24px",
+					"display": "block",
+					"scrollWidth": 680,
+					"clientWidth": 680
+				},
+				".prose": {
+					"x": 1051.5,
+					"y": 120,
+					"width": 680,
+					"height": 5737.59375,
+					"font": "Charter, TsangerJinKai02, \"Iowan Old Style\", \"Noto Serif CJK SC\", \"Songti SC\", Georgia, serif",
+					"fontSize": "18px",
+					"lineHeight": "29.7px",
+					"display": "block",
+					"scrollWidth": 680,
+					"clientWidth": 680
+				},
+				".article-context h1": {
+					"x": 795.5,
+					"y": 146.5,
+					"width": 199,
+					"height": 145.75,
+					"font": "Charter, TsangerJinKai02, \"Iowan Old Style\", \"Noto Serif CJK SC\", \"Songti SC\", Georgia, serif",
+					"fontSize": "27px",
+					"lineHeight": "36.45px",
+					"display": "block",
+					"scrollWidth": 199,
+					"clientWidth": 199
+				}
+			},
+			"renderedFonts": {
+				"fonts": [
+					{
+						"familyName": "TsangerJinKai02 W04",
+						"postScriptName": "TsangerJinKai02-W04",
+						"isCustomFont": true,
+						"glyphCount": 3670
+					},
+					{
+						"familyName": "Charter",
+						"postScriptName": "Charter-Bold",
+						"isCustomFont": false,
+						"glyphCount": 34
+					},
+					{
+						"familyName": "Charter",
+						"postScriptName": "Charter-Roman",
+						"isCustomFont": false,
+						"glyphCount": 850
+					}
+				]
+			},
+			"fonts": 20,
+			"fontFailures": [],
+			"violations": [],
+			"errors": []
+		}
+	],
+	"menuAudit": [
+		{
+			"mobile": false,
+			"violations": [],
+			"writes": []
+		},
+		{
+			"mobile": true,
+			"violations": [],
+			"writes": []
+		}
+	]
+}

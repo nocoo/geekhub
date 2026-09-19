@@ -39,7 +39,7 @@ function recommend(
 		return {
 			action: "replace",
 			title: "建议核对后替换",
-			reason: `当前源不可读或内容过旧；已找到可读的新地址，返回 ${replacement.inspection.entries} 条，最近内容距检查 ${replacement.inspection.ageDays} 天。请先核对内容属于同一订阅，再使用推荐地址。`,
+			reason: `当前源不可读、缺少正文或内容过旧；已找到含正文的新地址，返回 ${replacement.inspection.entries} 条，最近内容距检查 ${replacement.inspection.ageDays} 天。请先核对内容属于同一订阅，再使用推荐地址。`,
 		};
 	if (!usable(feed))
 		return feed.status === 404 || feed.status === 410
@@ -67,12 +67,21 @@ function recommend(
 			title: "建议确认停更后暂停",
 			reason: `最近内容距检查 ${feed.ageDays} 天，超过 ${staleAfterDays} 天观察阈值，尚未验证到新鲜、可读的替代源。可查看主站，确认停更后暂停并保留文章；低频博客仍可继续订阅。`,
 		};
+	if (
+		feed.contentEntries !== undefined &&
+		feed.contentEntries < Math.min(200, feed.entries ?? 0) / 2
+	)
+		return {
+			action: "review",
+			title: "订阅内容不足，建议检查正文",
+			reason: `样本中只有 ${feed.contentEntries} 条提供有效正文或摘要，其余仅有标题、链接、图片或很短的文本。可打开原文或尝试提取全文；如希望直接阅读，可寻找提供正文的订阅源。`,
+		};
 	const unknown = dimensions.filter((dimension) => dimension.score === null);
 	if (unknown.length)
 		return {
 			action: "review",
 			title: "补充信息后再判断",
-			reason: `${unknown.map((dimension) => dimension.label).join("、")}缺少依据，当前分数为暂定值。可核对文章日期、补充主站地址后重新检查，不能将未知项视为健康。`,
+			reason: `${unknown.map((dimension) => dimension.label).join("、")}缺少依据，当前分数为暂定值。请重新检查以获取正文、文章日期和主站信息，不能将未知项视为健康。`,
 		};
 	const weak = dimensions.filter((dimension) => dimension.score !== null && dimension.score < 80);
 	if (total < 80 || weak.some((dimension) => dimension.score !== null && dimension.score < 60))
@@ -96,6 +105,9 @@ export function assessDiagnostic(report: DiagnosticReport) {
 	const stale = age !== null && age >= staleAfterDays;
 	const empty = feed.entries === 0 || feed.readableEntries === 0;
 	const sample = Math.min(200, feed.entries ?? 0);
+	const contentKnown = feed.contentEntries !== undefined;
+	const noContent = feed.contentEntries === 0;
+	const sparseContent = contentKnown && (feed.contentEntries ?? 0) < sample / 2;
 	const validDates = Math.max(0, (feed.entries ?? 0) - feed.undatedEntries - feed.futureEntries);
 	const reachable = sites.filter(connected);
 	const https = reachable.some((site) => site.finalUrl.startsWith("https:"));
@@ -138,15 +150,22 @@ export function assessDiagnostic(report: DiagnosticReport) {
 			id: "integrity",
 			label: "条目完整度",
 			weight: 20,
-			score: !available
-				? null
-				: feed.entries
-					? Math.round((feed.readableEntries / sample) * 80 + (validDates / feed.entries) * 20)
-					: 0,
+			score:
+				!available || !contentKnown
+					? null
+					: feed.entries
+						? Math.round(
+								(feed.readableEntries / sample) * 20 +
+									((feed.contentEntries ?? 0) / sample) * 60 +
+									(validDates / feed.entries) * 20,
+							)
+						: 0,
 			evidence: !available
 				? "RSS 检查未成功，无法评估条目结构。"
-				: `返回 ${feed.entries} 条；前 ${sample} 条中 ${feed.readableEntries} 条有标题和安全链接；全量 ${validDates} 条日期有效。`,
-			rule: "可读条目比例占 80%（最多检查前 200 条），有效日期比例占 20%（全部条目）；空源 0 分。不以条目多少评价内容质量。",
+				: !contentKnown
+					? "旧报告没有检查正文，无法确认内容是否完整，请重新检查。"
+					: `返回 ${feed.entries} 条；前 ${sample} 条中 ${feed.readableEntries} 条有标题和安全链接，${feed.contentEntries} 条有有效正文或摘要；全量 ${validDates} 条日期有效。`,
+			rule: "标题和安全链接占 20%，有效正文或摘要占 60%（前 200 条），有效日期占 20%（全部条目）。有效文本需去除 HTML、链接、重复标题和空白后至少 40 字符；仅图片不计为正文，不代表已提供全文。空源 0 分；旧报告未检查正文则标记未知。",
 		},
 		{
 			id: "speed",
@@ -189,20 +208,38 @@ export function assessDiagnostic(report: DiagnosticReport) {
 		(sum, dimension) => sum + (dimension.score ?? 0) * dimension.weight,
 		0,
 	);
-	const ceiling = !available ? 39 : empty ? 49 : stale ? 59 : 100;
+	const ceiling = !available
+		? 39
+		: empty || noContent
+			? 49
+			: stale
+				? 59
+				: sparseContent
+					? 69
+					: !contentKnown
+						? 79
+						: 100;
 	const limit = !available
 		? "当前 RSS 不可用，总分上限为 39 分。"
 		: empty
 			? "没有可读文章，总分上限为 49 分。"
-			: stale
-				? "内容超过停更观察阈值，总分上限为 59 分。"
-				: null;
+			: noContent
+				? "未返回有效正文或摘要，总分上限为 49 分。"
+				: stale
+					? "内容超过停更观察阈值，总分上限为 59 分。"
+					: sparseContent
+						? "不足半数条目提供有效正文或摘要，总分上限为 69 分。"
+						: !contentKnown
+							? "正文尚未检查，暂定总分上限为 79 分，请重新检查。"
+							: null;
 	const total = Math.min(ceiling, Math.round(weighted / coverage));
 	const freshCandidates = report.candidates
 		.flatMap((candidate) => {
 			const inspection = candidate.inspection;
 			return usable(inspection) &&
 				inspection.readableEntries > 0 &&
+				(inspection.contentEntries ?? 0) > 0 &&
+				(inspection.contentEntries ?? 0) >= Math.min(200, inspection.entries ?? 0) / 2 &&
 				inspection.entries !== 0 &&
 				inspection.ageDays !== null &&
 				inspection.ageDays < staleAfterDays &&
@@ -211,7 +248,10 @@ export function assessDiagnostic(report: DiagnosticReport) {
 				: [];
 		})
 		.sort((a, b) => a.age - b.age);
-	const replacement = !available || empty || stale ? (freshCandidates[0]?.candidate ?? null) : null;
+	const replacement =
+		!available || empty || noContent || sparseContent || stale
+			? (freshCandidates[0]?.candidate ?? null)
+			: null;
 	return {
 		total,
 		coverage,

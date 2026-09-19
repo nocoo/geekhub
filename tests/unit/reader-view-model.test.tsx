@@ -61,7 +61,7 @@ test("exposes defaults during loading and supports a direct article link", async
 
 test("metadata updates and focus/reconnect keep the visible list and detail snapshot", async () => {
 	const server = transport();
-	const { result, client } = await readerHarness();
+	const { result, client, notify } = await readerHarness();
 	act(() => result.current.open(article("a1")));
 	await waitFor(() => expect(result.current.detail.data?.is_read).toBe(1));
 	const snapshot = result.current.articles;
@@ -75,7 +75,6 @@ test("metadata updates and focus/reconnect keep the visible list and detail snap
 		await client.invalidateQueries({ queryKey: ["feeds"] });
 	});
 	await waitFor(() => expect(result.current.busy).toBe(true));
-	expect(result.current.updatesAvailable).toBe(false);
 	expect(result.current.articles).toBe(snapshot);
 	await act(async () => {
 		focusManager.setFocused(false);
@@ -86,21 +85,16 @@ test("metadata updates and focus/reconnect keep the visible list and detail snap
 	await waitFor(() => expect(client.isFetching()).toBe(0));
 	expect(server.articleRequests()).toHaveLength(initialRequests);
 	expect(result.current.detail.data).toBe(detail);
-	server.routes.set("GET /api/feeds", [{ ...feed(), total_count: 3 }, feed("f2")]);
-	await act(async () => {
-		await client.invalidateQueries({ queryKey: ["feeds"] });
-	});
-	await waitFor(() => expect(result.current.updatesAvailable).toBe(true));
-	expect(result.current.articles).toBe(snapshot);
 	server.routes.set("GET /api/articles?view=all&search=", {
 		articles: [article("new"), ...server.articles],
 		nextCursor: null,
 	});
+	server.routes.set("GET /api/feeds", [{ ...feed(), total_count: 3 }, feed("f2")]);
 	await act(async () => {
-		expect(await result.current.acceptUpdates()).toBe(true);
+		await client.invalidateQueries({ queryKey: ["feeds"] });
 	});
-	expect(result.current.articles[0]?.id).toBe("new");
-	expect(result.current.updatesAvailable).toBe(false);
+	await waitFor(() => expect(result.current.articles[0]?.id).toBe("new"));
+	expect(notify).toHaveBeenCalledExactlyOnceWith("已自动载入 1 篇新文章");
 	expect(result.current.selected).toBe("a1");
 	expect(result.current.detail.data).toBe(detail);
 });
@@ -189,6 +183,33 @@ test("status changes are serialized, including mark-all, to preserve the user's 
 	expect(result.current.articles).toHaveLength(3);
 });
 
+test("saved translations open by default while an explicit original choice survives refetches", async () => {
+	const server = transport();
+	const saved = {
+		...article("a1"),
+		translated_title: "已保存标题",
+		summary: "已保存摘要",
+		translated_content: "<p>已保存译文</p>",
+	};
+	server.routes.set("GET /api/articles/a1", saved);
+	history.replaceState(null, "", "/articles/a1");
+	const { result } = await readerHarness();
+	expect(result.current.detail.data).toMatchObject(saved);
+	expect(result.current.translation).toBe(true);
+	act(() => result.current.setTranslation(false));
+	await act(async () => {
+		await result.current.detail.refetch();
+	});
+	expect(result.current.translation).toBe(false);
+	act(() => result.current.open(article("a2")));
+	await waitFor(() => expect(result.current.detail.data?.id).toBe("a2"));
+	expect(result.current.translation).toBe(false);
+	act(() => result.current.open(saved));
+	await waitFor(() => expect(result.current.detail.data?.id).toBe("a1"));
+	expect(result.current.translation).toBe(true);
+	expect(server.fetch.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(0);
+});
+
 test("AI and full-text actions update only their results and preserve reading state", async () => {
 	const server = transport();
 	const { result } = await readerHarness();
@@ -232,6 +253,7 @@ test("AI and full-text actions update only their results and preserve reading st
 			content: "<p>Complete text</p>",
 		}),
 	);
+	expect(result.current.translation).toBe(false);
 	const gate = deferred<Response>();
 	server.routes.set("POST /api/articles/a1/ai", () => gate.promise);
 	let running!: Promise<ArticleDetail>;
@@ -346,7 +368,7 @@ test("list refresh errors retain cached rows and a refresh finishing after navig
 		Response.json({ error: "offline" }, { status: 503 }),
 	);
 	await act(async () => {
-		expect(await result.current.acceptUpdates()).toBe(false);
+		expect(await result.current.reloadArticles()).toBe(false);
 	});
 	expect(result.current.articles).toBe(snapshot);
 	expect(notify).toHaveBeenCalledWith("offline");
@@ -354,7 +376,7 @@ test("list refresh errors retain cached rows and a refresh finishing after navig
 	server.routes.set("GET /api/articles?view=all&search=", () => gate.promise);
 	let accepting!: Promise<boolean>;
 	act(() => {
-		accepting = result.current.acceptUpdates();
+		accepting = result.current.reloadArticles();
 	});
 	await waitFor(() => expect(result.current.pages.isFetching).toBe(true));
 	act(() => result.current.choose({ view: "all", feedId: "f2", search: "" }));
@@ -400,6 +422,27 @@ test("failed pagination and explicit actions surface errors while keeping the re
 		);
 	});
 	expect(notify).toHaveBeenCalledWith("request failed");
+	await waitFor(() =>
+		expect(result.current.actionError).toMatchObject({
+			kind: "summary",
+			message: "request failed",
+		}),
+	);
+	act(() => result.current.open(article("b1", "f2")));
+	await waitFor(() => expect(result.current.actionError).toBeUndefined());
+	act(() => result.current.open(article("a1")));
+	await waitFor(() => expect(result.current.actionError?.kind).toBe("summary"));
+	server.routes.set("POST /api/articles/a1/ai", { ...article("a1"), summary: "Recovered" });
+	await act(async () => {
+		await result.current.action.mutateAsync({ id: "a1", kind: "summary", force: true });
+	});
+	await waitFor(() => expect(result.current.actionError).toBeUndefined());
+	expect(result.current.detail.data?.summary).toBe("Recovered");
+	expect(
+		server.fetch.mock.calls.some(
+			([, init]) => init?.body === JSON.stringify({ action: "summary", force: true }),
+		),
+	).toBe(true);
 });
 
 test("settings and management changes invalidate only relevant metadata", async () => {
@@ -466,7 +509,7 @@ test("deleting the open feed clears its rows/detail and deleting the active cate
 	expect(result.current.filter).toEqual({ view: "all", search: "" });
 });
 
-test("automatic translations are staged until explicitly accepted and never edit the active prose", async () => {
+test("automatic title translations update silently without editing active prose", async () => {
 	const server = transport();
 	const untranslated = { ...article("a1"), auto_translate: 1 };
 	const translated = {
@@ -481,22 +524,13 @@ test("automatic translations are staged until explicitly accepted and never edit
 	server.routes.set("GET /api/ai/settings", { mock: true, hasApiKey: false });
 	const gate = deferred<Response>();
 	server.routes.set("POST /api/articles/a1/ai", () => gate.promise);
-	const { result } = await readerHarness();
+	const { result, notify } = await readerHarness();
 	act(() => result.current.open(untranslated));
 	await waitFor(() => expect(result.current.detail.data?.is_read).toBe(1));
 	await act(async () => gate.resolve(Response.json(translated)));
-	await waitFor(() => expect(result.current.updatesAvailable).toBe(true));
-	expect(result.current.articles[0]?.translated_title).toBeNull();
+	await waitFor(() => expect(result.current.articles[0]?.translated_title).toBe("背景译文"));
 	expect(result.current.detail.data?.translated_title).toBeNull();
-	server.routes.set("GET /api/articles?view=all&search=", {
-		articles: [translated],
-		nextCursor: null,
-	});
-	await act(async () => {
-		await result.current.acceptUpdates();
-	});
-	expect(result.current.articles[0]?.translated_title).toBe("背景译文");
-	expect(result.current.updatesAvailable).toBe(false);
+	expect(notify).not.toHaveBeenCalled();
 	expect(result.current.detail.data?.content).toBe("<p>Content a1</p>");
 });
 
@@ -525,12 +559,12 @@ test("navigation cancels queued title translations and waits for in-flight work 
 	await waitFor(() => expect(result.current.articles[0]?.id).toBe("b1"));
 	expect(server.fetch.mock.calls.some(([url]) => url === "/api/articles/b1/ai")).toBe(false);
 	await act(async () => gate.resolve(Response.json({ ...a, translated_title: "译文 A" })));
-	await waitFor(() => expect(result.current.updatesAvailable).toBe(true));
+	await waitFor(() => expect(result.current.articles[0]?.translated_title).toBe("译文 B"));
 	expect(server.fetch.mock.calls.some(([url]) => url === "/api/articles/a2/ai")).toBe(false);
 	expect(server.fetch.mock.calls.filter(([url]) => url === "/api/articles/b1/ai")).toHaveLength(1);
 });
 
-test("new translations completing during a list reload remain available for the next acceptance", async () => {
+test("translations completing during a reload survive an older list response", async () => {
 	const server = transport();
 	const a = { ...article("a1"), auto_translate: 1 };
 	server.routes.set("GET /api/articles?view=all&search=", { articles: [a], nextCursor: null });
@@ -542,13 +576,235 @@ test("new translations completing during a list reload remain available for the 
 	server.routes.set("GET /api/articles?view=all&search=", () => page.promise);
 	let accepting!: Promise<boolean>;
 	act(() => {
-		accepting = result.current.acceptUpdates();
+		accepting = result.current.reloadArticles();
 	});
 	await act(async () => translation.resolve(Response.json({ ...a, translated_title: "译文" })));
-	await waitFor(() => expect(result.current.updatesAvailable).toBe(true));
+	await waitFor(() => expect(result.current.articles[0]?.translated_title).toBe("译文"));
 	await act(async () => {
 		page.resolve(Response.json({ articles: [a], nextCursor: null } satisfies ArticlePage));
 		await accepting;
 	});
-	expect(result.current.updatesAvailable).toBe(true);
+	expect(result.current.articles[0]?.translated_title).toBe("译文");
+});
+
+test("feed full-text translation runs on opening, reuses results and respects original choice", async () => {
+	const server = transport();
+	server.routes.set("GET /api/feeds", [{ ...feed(), auto_translate_content: 1 }, feed("f2")]);
+	server.routes.set("GET /api/ai/settings", { mock: true });
+	const gate = deferred<Response>();
+	server.routes.set("POST /api/articles/a1/ai", () => gate.promise);
+	const { result, notify } = await readerHarness();
+	expect(server.fetch.mock.calls.some(([url]) => url === "/api/articles/a1/ai")).toBe(false);
+	act(() => result.current.open(article("a1")));
+	await waitFor(() => expect(result.current.actionBusy).toBe("translate"));
+	await act(async () =>
+		gate.resolve(Response.json({ ...article("a1"), translated_content: "<p>自动译文</p>" })),
+	);
+	await waitFor(() => expect(result.current.translation).toBe(true));
+	expect(result.current.detail.data?.translated_content).toBe("<p>自动译文</p>");
+	act(() => result.current.setTranslation(false));
+	await act(async () => {
+		await result.current.feeds.refetch();
+	});
+	expect(result.current.translation).toBe(false);
+	expect(server.fetch.mock.calls.filter(([url]) => url === "/api/articles/a1/ai")).toHaveLength(1);
+	expect(notify).not.toHaveBeenCalled();
+});
+
+test("automatic full translation preserves the newly selected article and cached results need no request", async () => {
+	const server = transport();
+	server.routes.set("GET /api/feeds", [{ ...feed(), auto_translate_content: 1 }, feed("f2")]);
+	server.routes.set("GET /api/ai/settings", { hasApiKey: true });
+	server.routes.set("GET /api/articles/a2", {
+		...article("a2"),
+		translated_content: "<p>缓存译文</p>",
+	});
+	const gate = deferred<Response>();
+	server.routes.set("POST /api/articles/a1/ai", () => gate.promise);
+	const { result } = await readerHarness();
+	act(() => result.current.open(article("a1")));
+	await waitFor(() => expect(result.current.actionBusy).toBe("translate"));
+	act(() => result.current.open(article("a2")));
+	await waitFor(() =>
+		expect(result.current.detail.data?.translated_content).toBe("<p>缓存译文</p>"),
+	);
+	await act(async () =>
+		gate.resolve(Response.json({ ...article("a1"), translated_content: "<p>迟到译文</p>" })),
+	);
+	expect(result.current.selected).toBe("a2");
+	expect(result.current.detail.data?.translated_content).toBe("<p>缓存译文</p>");
+	expect(server.fetch.mock.calls.some(([url]) => url === "/api/articles/a2/ai")).toBe(false);
+});
+
+test("automatic translation failures stay inline without retry loops and manual retry works", async () => {
+	const server = transport();
+	server.routes.set("GET /api/feeds", [{ ...feed(), auto_translate_content: 1 }, feed("f2")]);
+	server.routes.set("GET /api/ai/settings", { mock: true });
+	server.routes.set("POST /api/articles/a1/ai", async () =>
+		Response.json({ error: "Translation failed" }, { status: 502 }),
+	);
+	const { result, notify } = await readerHarness();
+	act(() => result.current.open(article("a1")));
+	await waitFor(() => expect(result.current.actionError?.message).toBe("Translation failed"));
+	await act(async () => {
+		await result.current.feeds.refetch();
+	});
+	expect(server.fetch.mock.calls.filter(([url]) => url === "/api/articles/a1/ai")).toHaveLength(1);
+	expect(result.current.detail.data?.content).toBe("<p>Content a1</p>");
+	expect(notify).not.toHaveBeenCalled();
+	server.routes.set("POST /api/articles/a1/ai", {
+		...article("a1"),
+		translated_content: "<p>重试成功</p>",
+	});
+	await act(async () => {
+		await result.current.action.mutateAsync({ id: "a1", kind: "translate" });
+	});
+	await waitFor(() => expect(result.current.translation).toBe(true));
+});
+
+test("automatic full translation waits for AI configuration and skips empty bodies", async () => {
+	const server = transport();
+	server.routes.set("GET /api/feeds", [{ ...feed(), auto_translate_content: 1 }, feed("f2")]);
+	const { result } = await readerHarness();
+	act(() => result.current.open(article("a1")));
+	await waitFor(() => expect(result.current.detail.data?.id).toBe("a1"));
+	expect(server.fetch.mock.calls.some(([url]) => url === "/api/articles/a1/ai")).toBe(false);
+	server.routes.set("GET /api/articles/a1", { ...article("a1"), content: " " });
+	await act(async () => {
+		await result.current.detail.refetch();
+	});
+	server.routes.set("GET /api/ai/settings", { mock: true });
+	await act(async () => {
+		await result.current.ai.refetch();
+	});
+	expect(server.fetch.mock.calls.some(([url]) => url === "/api/articles/a1/ai")).toBe(false);
+});
+
+test("automatic extraction precedes translation even with a cached summary translation", async () => {
+	const server = transport();
+	server.routes.set("GET /api/feeds", [
+		{ ...feed(), auto_fetch_content: 1, auto_translate_content: 1 },
+	]);
+	server.routes.set("GET /api/ai/settings", { mock: true });
+	server.routes.set("GET /api/articles/a1", {
+		...article("a1"),
+		translated_content: "Old partial translation",
+	});
+	const gate = deferred<Response>();
+	server.routes.set("POST /api/articles/a1/full", () => gate.promise);
+	const full = { ...article("a1"), content: "<p>Full original</p>", full_content_fetched: 1 };
+	server.routes.set("POST /api/articles/a1/ai", {
+		...full,
+		translated_content: "<p>Full translation</p>",
+	});
+	const { result, notify } = await readerHarness();
+	act(() => result.current.open(article("a1")));
+	await waitFor(() => expect(result.current.actionBusy).toBe("full"));
+	expect(server.fetch.mock.calls.some(([url]) => url === "/api/articles/a1/ai")).toBe(false);
+	await act(async () => gate.resolve(Response.json(full)));
+	await waitFor(() =>
+		expect(result.current.detail.data?.translated_content).toBe("<p>Full translation</p>"),
+	);
+	await waitFor(() => expect(result.current.translation).toBe(true));
+	const requests = server.fetch.mock.calls.filter(([url]) => /\/a1\/(full|ai)$/.test(String(url)));
+	expect(requests.map(([url]) => url)).toEqual(["/api/articles/a1/full", "/api/articles/a1/ai"]);
+	expect(JSON.parse(String(requests[0]?.[1]?.body))).toEqual({ automatic: true });
+	await act(async () => {
+		await result.current.feeds.refetch();
+	});
+	expect(server.fetch.mock.calls.filter(([url]) => url === "/api/articles/a1/full")).toHaveLength(
+		1,
+	);
+	expect(notify).not.toHaveBeenCalled();
+});
+
+test("automatic extraction works without AI and late results do not replace the selected article", async () => {
+	const server = transport();
+	server.routes.set("GET /api/feeds", [{ ...feed(), auto_fetch_content: 1 }, feed("f2")]);
+	const gate = deferred<Response>();
+	server.routes.set("POST /api/articles/a1/full", () => gate.promise);
+	const { result, notify } = await readerHarness();
+	act(() => result.current.open(article("a1")));
+	await waitFor(() => expect(result.current.actionBusy).toBe("full"));
+	act(() => result.current.open(article("b1", "f2")));
+	await waitFor(() => expect(result.current.detail.data?.id).toBe("b1"));
+	await act(async () =>
+		gate.resolve(
+			Response.json({ ...article("a1"), full_content_fetched: 1, content: "<p>Full body</p>" }),
+		),
+	);
+	expect(result.current.detail.data?.id).toBe("b1");
+	act(() => result.current.open(article("a1")));
+	await waitFor(() => expect(result.current.detail.data?.full_content_fetched).toBe(1));
+	expect(server.fetch.mock.calls.filter(([url]) => url === "/api/articles/a1/full")).toHaveLength(
+		1,
+	);
+	expect(server.fetch.mock.calls.some(([url]) => String(url).endsWith("/ai"))).toBe(false);
+	expect(notify).not.toHaveBeenCalled();
+});
+
+test("failed automatic extraction retains content, blocks translation and allows manual retry", async () => {
+	const server = transport();
+	server.routes.set("GET /api/feeds", [
+		{ ...feed(), auto_fetch_content: 1, auto_translate_content: 1 },
+	]);
+	server.routes.set("GET /api/ai/settings", { mock: true });
+	server.routes.set("POST /api/articles/a1/full", async () =>
+		Response.json({ error: "Extraction failed" }, { status: 502 }),
+	);
+	const { result, notify } = await readerHarness();
+	act(() => result.current.open(article("a1")));
+	await waitFor(() => expect(result.current.actionError?.message).toBe("Extraction failed"));
+	await act(async () => {
+		await result.current.feeds.refetch();
+	});
+	expect(result.current.detail.data?.content).toBe(article("a1").content);
+	expect(server.fetch.mock.calls.filter(([url]) => url === "/api/articles/a1/full")).toHaveLength(
+		1,
+	);
+	expect(server.fetch.mock.calls.some(([url]) => url === "/api/articles/a1/ai")).toBe(false);
+	const full = { ...article("a1"), full_content_fetched: 1, content: "<p>Recovered body</p>" };
+	server.routes.set("POST /api/articles/a1/full", full);
+	server.routes.set("POST /api/articles/a1/ai", {
+		...full,
+		translated_content: "<p>Recovered translation</p>",
+	});
+	await act(async () => {
+		await result.current.action.mutateAsync({ id: "a1", kind: "full" });
+	});
+	await waitFor(() =>
+		expect(result.current.detail.data?.translated_content).toBe("<p>Recovered translation</p>"),
+	);
+	expect(notify).not.toHaveBeenCalled();
+});
+
+test("enabling extraction after translation renews the invalidated translation even for identical bodies", async () => {
+	const server = transport();
+	server.routes.set("GET /api/feeds", [{ ...feed(), auto_translate_content: 1 }]);
+	server.routes.set("GET /api/ai/settings", { mock: true });
+	server.routes.set("POST /api/articles/a1/ai", {
+		...article("a1"),
+		translated_content: "<p>Initial translation</p>",
+	});
+	const { result } = await readerHarness();
+	act(() => result.current.open(article("a1")));
+	await waitFor(() =>
+		expect(result.current.detail.data?.translated_content).toBe("<p>Initial translation</p>"),
+	);
+	const full = { ...article("a1"), full_content_fetched: 1 };
+	server.routes.set("POST /api/articles/a1/full", full);
+	server.routes.set("POST /api/articles/a1/ai", {
+		...full,
+		translated_content: "<p>Renewed translation</p>",
+	});
+	server.routes.set("GET /api/feeds", [
+		{ ...feed(), auto_fetch_content: 1, auto_translate_content: 1 },
+	]);
+	await act(async () => {
+		await result.current.feeds.refetch();
+	});
+	await waitFor(() =>
+		expect(result.current.detail.data?.translated_content).toBe("<p>Renewed translation</p>"),
+	);
+	expect(server.fetch.mock.calls.filter(([url]) => url === "/api/articles/a1/ai")).toHaveLength(2);
 });

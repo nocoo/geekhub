@@ -1,5 +1,6 @@
 import {
 	type InfiniteData,
+	replaceEqualDeep,
 	useInfiniteQuery,
 	useIsMutating,
 	useMutation,
@@ -28,6 +29,7 @@ import {
 	articleQuery,
 	feedRevision,
 	patchArticles,
+	runningActivities,
 	translateTitles,
 	viewLabels,
 } from "./reader";
@@ -57,14 +59,16 @@ export function useReaderViewModel(notify: (message: string) => void) {
 	const [restorePages, setRestorePages] = useState(
 		() => readReadingPosition(`list:${visit}`).pages,
 	);
-	const [translation, setTranslation] = useState(false);
+	const [translationChoice, setTranslation] = useState<boolean | null>(null);
 	const [acceptedRevision, setAcceptedRevision] = useState<string | null>(null);
-	const [translatedIds, setTranslatedIds] = useState<string[]>([]);
+	const lastReload = useRef("");
 	const selectedRef = useRef(selected);
 	selectedRef.current = selected;
 	const visitRef = useRef(visit);
 	visitRef.current = visit;
 	const attempted = useRef(new Set<string>());
+	const automaticTranslations = useRef(new Map<string, string>());
+	const automaticExtractions = useRef(new Set<string>());
 	const translating = useRef(Promise.resolve());
 	const applyNavigation = useCallback((next: ReaderNavigation) => {
 		if (next.visit !== navigationRef.current.visit) {
@@ -75,7 +79,7 @@ export function useReaderViewModel(notify: (message: string) => void) {
 		selectedRef.current = next.selected;
 		visitRef.current = next.visit;
 		setNavigation(next);
-		setTranslation(false);
+		setTranslation(null);
 	}, []);
 	useEffect(() => {
 		writeReaderNavigation(navigationRef.current, true);
@@ -116,9 +120,10 @@ export function useReaderViewModel(notify: (message: string) => void) {
 	const logs = useQuery({
 		queryKey: ["logs"],
 		queryFn: ({ signal }) => api<FetchLog[]>("/logs", { signal }),
-		refetchInterval: busy ? 1500 : false,
+		refetchInterval: (query) =>
+			busy || runningActivities(query.state.data ?? []).length ? 1500 : 5000,
 	});
-	// A reading visit is a stable snapshot. Only navigation or accepting updates reloads its rows.
+	// Metadata drives list updates; the open article keeps its independent reading snapshot.
 	const pages = useInfiniteQuery({
 		queryKey: ["articles", filter, visit],
 		queryFn: ({ pageParam, signal }) =>
@@ -126,6 +131,28 @@ export function useReaderViewModel(notify: (message: string) => void) {
 		initialPageParam: undefined as string | undefined,
 		getNextPageParam: (last) => last.nextCursor ?? undefined,
 		staleTime: Infinity,
+		structuralSharing: (previous, incoming) => {
+			const cached = (previous as InfiniteData<ArticlePage> | undefined)?.pages.flatMap(
+				(page) => page.articles,
+			);
+			const translations = new Map(cached?.map((article) => [article.id, article]));
+			const data = incoming as InfiniteData<ArticlePage>;
+			return replaceEqualDeep(previous, {
+				...data,
+				pages: data.pages.map((page) => ({
+					...page,
+					articles: page.articles.map((article) => ({
+						...article,
+						translated_title:
+							article.translated_title ?? translations.get(article.id)?.translated_title ?? null,
+						translated_description:
+							article.translated_description ??
+							translations.get(article.id)?.translated_description ??
+							null,
+					})),
+				})),
+			});
+		},
 		...quietQuery,
 	});
 	const detail = useQuery({
@@ -136,6 +163,7 @@ export function useReaderViewModel(notify: (message: string) => void) {
 		staleTime: 0,
 		...quietQuery,
 	});
+	const translation = Boolean(detail.data?.translated_content) && (translationChoice ?? true);
 	const articles = useMemo(
 		() => pages.data?.pages.flatMap((page) => page.articles) ?? [],
 		[pages.data],
@@ -203,13 +231,29 @@ export function useReaderViewModel(notify: (message: string) => void) {
 		onError: (error) => notify(error.message),
 	});
 	const action = useMutation({
+		onSettled: () => invalidate("logs"),
 		mutationKey: ["article-action"],
-		mutationFn: ({ id, kind }: { id: string; kind: AiAction | "full" }) =>
+		mutationFn: ({
+			id,
+			kind,
+			force,
+			automatic,
+		}: {
+			id: string;
+			kind: AiAction | "full";
+			force?: boolean;
+			automatic?: boolean;
+		}) =>
 			api<ArticleDetail>(`/articles/${id}/${kind === "full" ? "full" : "ai"}`, {
 				method: "POST",
-				...(kind === "full" ? {} : { body: { action: kind } }),
+				...(kind === "full"
+					? automatic
+						? { body: { automatic } }
+						: {}
+					: { body: { action: kind, force, ...(automatic ? { automatic } : {}) } }),
 			}),
-		onSuccess: (article, { id, kind }) => {
+		onSuccess: async (article, { id, kind }) => {
+			await client.cancelQueries({ queryKey: ["article", id] });
 			const values =
 				kind === "translate-title"
 					? {
@@ -227,9 +271,10 @@ export function useReaderViewModel(notify: (message: string) => void) {
 									translated_content: article.translated_content,
 								};
 			patch(id, { ...values, ai_model: article.ai_model }, article);
+			if (kind === "full") automaticTranslations.current.delete(id);
 			if (kind === "translate" && selectedRef.current === id) setTranslation(true);
+			if (kind === "full" && selectedRef.current === id) setTranslation(false);
 		},
-		onError: (error) => notify(error.message),
 	});
 	const refresh = useMutation({
 		mutationFn: () =>
@@ -277,6 +322,16 @@ export function useReaderViewModel(notify: (message: string) => void) {
 		select: (mutation) => mutation.state.variables as { id: string; kind: AiAction | "full" },
 	});
 	const actionBusy = pendingActions.find((pending) => pending.id === selected)?.kind ?? null;
+	const actions = useMutationState({
+		filters: { mutationKey: ["article-action"] },
+		select: (mutation) => ({
+			...(mutation.state.variables as { id: string; kind: AiAction | "full" }),
+			status: mutation.state.status,
+			message: mutation.state.error?.message,
+		}),
+	});
+	const latestAction = actions.filter((item) => item.id === selected).at(-1);
+	const actionError = latestAction?.status === "error" ? latestAction : undefined;
 
 	function navigate(nextFilter: ReaderFilter, nextSelected: string | null, replace = false) {
 		const current = navigationRef.current;
@@ -317,18 +372,37 @@ export function useReaderViewModel(notify: (message: string) => void) {
 			if (next && navigationRef.current === navigationAtStart) open(next);
 		}
 	};
-	const acceptUpdates = async () => {
-		const acceptedTranslations = new Set(translatedIds);
+	const reloadArticles = async () => {
+		const existing = new Set(articles.map((article) => article.id));
 		const result = await pages.refetch();
+		if (visitRef.current !== visit) return false;
 		if (result.isError) {
 			notify(result.error.message);
 			return false;
 		}
-		if (visitRef.current !== visit) return false;
 		setAcceptedRevision(revision);
-		setTranslatedIds((ids) => ids.filter((id) => !acceptedTranslations.has(id)));
+		const added =
+			result.data?.pages
+				.flatMap((page) => page.articles)
+				.filter((article) => !existing.has(article.id)).length ?? 0;
+		if (added) notify(`已自动载入 ${added} 篇新文章`);
 		return true;
 	};
+	useEffect(() => {
+		if (
+			!pages.data ||
+			pages.isFetching ||
+			restoringPages ||
+			acceptedRevision === null ||
+			revision === null ||
+			acceptedRevision === revision
+		)
+			return;
+		const key = `${visit}:${revision}`;
+		if (lastReload.current === key) return;
+		lastReload.current = key;
+		void reloadArticles();
+	});
 	const changed = async ({ path, method, result }: SavedChange) => {
 		if (path === "/settings") {
 			client.setQueryData(["preferences"], result);
@@ -368,6 +442,29 @@ export function useReaderViewModel(notify: (message: string) => void) {
 		.join("|");
 	const canTranslate = Boolean(ai.data?.hasApiKey || ai.data?.mock);
 	useEffect(() => {
+		const article = detail.data;
+		if (!article || article.id !== selected || actionBusy) return;
+		const feed = feeds.data?.find((feed) => feed.id === article.feed_id);
+		// Translation must wait for extraction, including after an extraction failure.
+		if (feed?.auto_fetch_content && !article.full_content_fetched) {
+			if (!automaticExtractions.current.has(article.id)) {
+				automaticExtractions.current.add(article.id);
+				action.mutate({ id: article.id, kind: "full", automatic: true });
+			}
+			return;
+		}
+		if (
+			!canTranslate ||
+			article.translated_content ||
+			!article.content.trim() ||
+			!feed?.auto_translate_content ||
+			automaticTranslations.current.get(article.id) === article.content
+		)
+			return;
+		automaticTranslations.current.set(article.id, article.content);
+		action.mutate({ id: article.id, kind: "translate", automatic: true });
+	}, [detail.data, selected, canTranslate, actionBusy, feeds.data, action.mutate]);
+	useEffect(() => {
 		if (!canTranslate || !translationKey) return;
 		let active = true;
 		const ids = new Set(translationKey.split("|"));
@@ -384,9 +481,12 @@ export function useReaderViewModel(notify: (message: string) => void) {
 				attempted.current,
 				() => active,
 				async (article) => {
-					// Background translations become visible when the reader accepts the next snapshot.
-					setTranslatedIds((previous) =>
-						previous.includes(article.id) ? previous : [...previous, article.id],
+					// Update list copy silently, without changing the open article's header or prose.
+					client.setQueriesData<InfiniteData<ArticlePage>>({ queryKey: ["articles"] }, (data) =>
+						patchArticles(data, (item) => item.id === article.id, {
+							translated_title: article.translated_title,
+							translated_description: article.translated_description,
+						}),
 					);
 				},
 			),
@@ -407,6 +507,7 @@ export function useReaderViewModel(notify: (message: string) => void) {
 		preferences: preferences.data ?? defaultPreferences,
 		preferencesLoaded: preferences.isSuccess,
 		logs,
+		ai,
 		pages,
 		detail,
 		articles,
@@ -428,12 +529,10 @@ export function useReaderViewModel(notify: (message: string) => void) {
 		articleWrite,
 		refresh,
 		markRead,
-		acceptUpdates,
+		reloadArticles,
 		changed,
 		statusBusy,
 		actionBusy,
-		updatesAvailable:
-			(acceptedRevision !== null && revision !== null && acceptedRevision !== revision) ||
-			translatedIds.some((id) => articles.some((article) => article.id === id)),
+		actionError,
 	};
 }

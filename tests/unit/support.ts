@@ -4,6 +4,7 @@ import { expect, vi } from "vitest";
 import type { FeedJob } from "../../src/shared/contracts";
 import { enqueueFeed } from "../../src/worker/feeds";
 import { app } from "../../src/worker/index";
+import { FeedLogCache } from "../../src/worker/logs";
 
 export function deferred<T>() {
 	let resolve!: (value: T) => void;
@@ -141,6 +142,7 @@ export class TestDatabase implements D1Database {
 
 export function makeEnv(): Env & { DB: TestDatabase } {
 	const db = new TestDatabase();
+	const logs = new FeedLogCache({} as DurableObjectState, {} as Env);
 	db.sqlite.exec(`INSERT INTO categories(id,name,color) VALUES ('c1','Engineering','green');
     INSERT INTO feeds(id,category_id,title,url) VALUES ('f1','c1','Example','https://example.com/feed');
     INSERT INTO articles(id,feed_id,source_id,title,url,published_at,content,description) VALUES
@@ -148,6 +150,14 @@ export function makeEnv(): Env & { DB: TestDatabase } {
       ('a2','f1','two','Hello again','https://example.com/two','2026-09-01T12:00:00.000Z','<p>Second article.</p>','Another idea.');`);
 	return {
 		DB: db,
+		FEED_LOGS: {
+			newUniqueId: vi.fn(),
+			idFromName: vi.fn(),
+			idFromString: vi.fn(),
+			get: vi.fn(),
+			jurisdiction: vi.fn(),
+			getByName: vi.fn().mockReturnValue(logs),
+		},
 		FEED_QUEUE: {
 			send: vi
 				.fn<Queue["send"]>()
@@ -172,22 +182,14 @@ export function aiResponse(text: string, sdk: "openai" | "anthropic" = "openai")
 	const body =
 		sdk === "openai"
 			? {
-					id: "resp_local",
-					created_at: 1,
+					id: "chat_local",
+					object: "chat.completion",
+					created: 1,
 					model: "test-model",
-					status: "completed",
-					error: null,
-					incomplete_details: null,
-					output: [
-						{
-							id: "msg_local",
-							type: "message",
-							role: "assistant",
-							status: "completed",
-							content: [{ type: "output_text", text, annotations: [] }],
-						},
+					choices: [
+						{ index: 0, message: { role: "assistant", content: text }, finish_reason: "stop" },
 					],
-					usage: { input_tokens: 10, output_tokens: 10, total_tokens: 20 },
+					usage: { prompt_tokens: 10, completion_tokens: 10, total_tokens: 20 },
 				}
 			: {
 					id: "msg_local",

@@ -66,8 +66,15 @@ function Coverage({
 			)}
 			{inspection.entries !== null && inspection.entries > inspection.readableEntries && (
 				<p className="field-hint">
-					前 {Math.min(200, inspection.entries)} 条中可读取 {inspection.readableEntries}{" "}
+					前 {Math.min(200, inspection.entries)} 条中可导入 {inspection.readableEntries}{" "}
 					条；缺少标题或安全链接的条目不会入库。时间范围覆盖全部返回条目。
+				</p>
+			)}
+			{inspection.entries !== null && (
+				<p className={inspection.contentEntries === 0 ? "diagnostic-warning" : "field-hint"}>
+					{inspection.contentEntries === undefined
+						? "旧报告未检查正文，请重新检查。"
+						: `前 ${Math.min(200, inspection.entries)} 条中 ${inspection.contentEntries} 条提供有效正文或摘要；仅标题、链接或图片不计为正文。`}
 				</p>
 			)}
 			{(inspection.undatedEntries > 0 || inspection.futureEntries > 0) && (

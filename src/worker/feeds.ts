@@ -5,6 +5,7 @@ import { parseFeed } from "./lib/content";
 import { errorMessage } from "./lib/errors";
 import { fetchPublic, readBounded } from "./lib/network";
 import { demoHost, localFeedXml } from "./local";
+import { activityLog } from "./logs";
 
 interface FeedRow {
 	id: string;
@@ -18,19 +19,22 @@ interface FeedRow {
 }
 
 export async function fetchLog(
-	db: D1Database,
+	env: Env,
 	feed: Pick<FeedRow, "id" | "title">,
 	level: "info" | "success" | "error",
 	message: string,
 	count = 0,
 	duration: number | null = null,
 ) {
-	await db
-		.prepare(
-			"INSERT INTO fetch_logs (feed_id, feed_title, level, message, articles_added, duration_ms) SELECT ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM feeds WHERE id = ?)",
-		)
-		.bind(feed.id, feed.title, level, message.slice(0, 500), count, duration, feed.id)
-		.run();
+	await activityLog(env, {
+		category: "feed",
+		feed_id: feed.id,
+		feed_title: feed.title,
+		level,
+		message,
+		articles_added: count,
+		duration_ms: duration,
+	});
 }
 
 export async function enqueueFeed(env: Env, job: FeedJob): Promise<boolean> {
@@ -56,7 +60,7 @@ export async function enqueueFeed(env: Env, job: FeedJob): Promise<boolean> {
 }
 
 export async function refreshFeed(env: Env, job: FeedJob): Promise<void> {
-	// Pre-migration messages have no ownership token. Cron will reschedule them after the lease expires.
+	// Pre-migration messages have no ownership token. A manual refresh can reclaim them after the lease expires.
 	if (!job.token) return;
 	const started = Date.now();
 	const feed =
@@ -73,7 +77,7 @@ export async function refreshFeed(env: Env, job: FeedJob): Promise<void> {
 			.first<FeedRow>();
 	if (!feed) return;
 	try {
-		await fetchLog(env.DB, feed, "info", "正在读取订阅源…");
+		await fetchLog(env, feed, "info", "正在读取订阅源…");
 		const url = new URL(resolveFeedUrl(feed.url, (await preferences(env.DB)).rsshubUrl));
 		const headers: Record<string, string> = {
 			Accept: "application/rss+xml, application/atom+xml, application/xml, text/xml",
@@ -146,7 +150,7 @@ export async function refreshFeed(env: Env, job: FeedJob): Promise<void> {
 				.run();
 		if (!completed.meta.changes) return;
 		await fetchLog(
-			env.DB,
+			env,
 			feed,
 			"success",
 			added ? `发现 ${added} 篇新文章` : "已是最新内容",
@@ -170,21 +174,7 @@ export async function refreshFeed(env: Env, job: FeedJob): Promise<void> {
 			)
 			.run();
 		if (!failed.meta.changes) return;
-		await fetchLog(env.DB, feed, "error", message, 0, Date.now() - started);
+		await fetchLog(env, feed, "error", message, 0, Date.now() - started);
 		throw error;
 	}
-}
-
-export async function scheduleFeeds(env: Env): Promise<number> {
-	const now = new Date().toISOString();
-	const due = await env.DB.prepare(`SELECT id FROM feeds
-    WHERE is_active = 1 AND (next_fetch_at IS NULL OR next_fetch_at <= ?) AND (lease_until IS NULL OR lease_until < ?)
-    ORDER BY next_fetch_at LIMIT 50`)
-		.bind(now, now)
-		.all<{ id: string }>();
-	for (const feed of due.results) await enqueueFeed(env, { feedId: feed.id });
-	await env.DB.prepare("DELETE FROM fetch_logs WHERE created_at < ?")
-		.bind(new Date(Date.now() - 30 * 86400_000).toISOString())
-		.run();
-	return due.results.length;
 }

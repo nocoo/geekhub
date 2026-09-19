@@ -1,0 +1,110 @@
+$ bun run typecheck && bun run lint && bun run test:coverage && bun run build && bun run test:l2 && bun run test:l3 && bun run gate:security
+$ bun run cf-typegen && tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.worker.json && tsc --noEmit -p tsconfig.tools.json && tsc --noEmit -p tsconfig.test.json
+$ wrangler types --env local --include-runtime=false --strict-vars=false
+
+ ⛅️ wrangler 4.131.1 (update available 4.135.0)
+───────────────────────────────────────────────
+Generating project types...
+
+interface __BaseEnv_Env {
+	DB: D1Database;
+	FEED_QUEUE: Queue;
+	ENVIRONMENT: string;
+	RESOURCE_ENV: string;
+	LOCAL_USER_EMAIL: string;
+	CF_ACCESS_TEAM_DOMAIN: string;
+	CF_ACCESS_AUD: string;
+	AI_ENCRYPTION_KEY: string;
+	FEED_LOGS: DurableObjectNamespace<import("./src/worker/index").FeedLogCache>;
+}
+declare namespace Cloudflare {
+	interface GlobalProps {
+		mainModule: typeof import("./src/worker/index");
+		durableNamespaces: "FeedLogCache";
+	}
+	interface Env extends __BaseEnv_Env {}
+}
+interface Env extends __BaseEnv_Env {}
+type StringifyValues<EnvType extends Record<string, unknown>> = {
+	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
+};
+declare namespace NodeJS {
+	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "ENVIRONMENT" | "RESOURCE_ENV" | "LOCAL_USER_EMAIL" | "CF_ACCESS_TEAM_DOMAIN" | "CF_ACCESS_AUD" | "AI_ENCRYPTION_KEY">> {}
+}
+
+
+✨ Types written to worker-configuration.d.ts
+
+📣 Remember to rerun 'wrangler types' after you change your wrangler.jsonc file.
+
+$ biome check --error-on-warnings .
+Checked 104 files in 194ms. No fixes applied.
+$ vitest run --coverage
+
+ RUN  v5.0.1 /Users/nocoo/workspace/personal/geekhub
+      Coverage enabled with v8
+
+
+ Test Files  17 passed (17)
+      Tests  152 passed (152)
+   Start at  11:41:46
+   Duration  7.95s (import 31%, environment 28%, tests 22%, transform 15%, worker 3%)
+
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   99.77 |    97.93 |     100 |   99.91 |                   
+ shared            |     100 |    96.22 |     100 |     100 |                   
+  import.ts        |     100 |    94.11 |     100 |     100 | 57,82             
+ web/lib           |     100 |    98.77 |     100 |     100 |                   
+  ...view-model.ts |     100 |    96.87 |     100 |     100 | 86                
+  ...r-position.ts |     100 |       95 |     100 |     100 | 32                
+  ...view-model.ts |     100 |    97.26 |     100 |     100 | 134,348,378-389   
+ worker            |   99.49 |    96.41 |     100 |   99.81 |                   
+  ai.ts            |     100 |     97.1 |     100 |     100 | 26,123            
+  auth.ts          |     100 |    95.74 |     100 |     100 | 52,80             
+  data.ts          |   96.29 |    95.45 |     100 |     100 | 85                
+  diagnostics.ts   |     100 |    97.46 |     100 |     100 | 181,238           
+  feeds.ts         |     100 |    86.66 |     100 |     100 | 96,140            
+  index.ts         |   99.61 |    98.49 |     100 |     100 | 271,373           
+  local.ts         |      95 |       90 |     100 |   93.75 | 103               
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 99.77% ( 1329/1332 )
+Branches     : 97.93% ( 1042/1064 )
+Functions    : 100% ( 295/295 )
+Lines        : 99.91% ( 1185/1186 )
+================================================================================
+$ vite build
+vite v8.2.2 building worker environment for production...
+transforming...
+✓ 394 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/worker/.vite/manifest.json      0.15 kB │ gzip:   0.11 kB
+dist/worker/wrangler.json            2.12 kB │ gzip:   1.09 kB
+dist/worker/index.js             2,297.20 kB │ gzip: 534.09 kB │ map: 5,251.31 kB
+
+✓ built in 1.02s
+vite v8.2.2 building client environment for production...
+transforming...
+✓ 2401 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/client/.assetsignore                       0.02 kB
+dist/client/index.html                          0.77 kB │ gzip:   0.47 kB
+dist/client/assets/index-BnoXPbEc.css         109.48 kB │ gzip:  19.71 kB
+dist/client/assets/ReaderContent-BTVb1U17.js  256.24 kB │ gzip:  76.23 kB │ map: 1,470.96 kB
+dist/client/assets/index-DAvEbhVT.js          543.40 kB │ gzip: 169.08 kB │ map: 2,152.70 kB
+
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 2.65s
+$ bun scripts/run-tests.ts l2
+L2: local Worker at http://127.0.0.1:17005, isolated SQLite at /Users/nocoo/workspace/personal/geekhub/.wrangler/tests/l2-M3eCDL
+L2 passed: 95 real HTTP checks, 33/33 API endpoints, queue, pagination, missing records, AI and cleanup.

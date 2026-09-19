@@ -27,6 +27,8 @@ bun dev
 
 `setup` 创建 `.dev.vars.local` 中的随机加密密钥，权限为 0600。该文件和 SQLite 均不进 Git。执行 `setup` 不会覆盖已有订阅；空库才加入 4 个示例源和 24 篇示例文章。真实 RSS 仍可联网抓取，本地示例域名由 fixture 响应。
 
+日常本地开发与生产一样使用真实 AI：在「设置 → AI 助手」填写服务商、模型和密钥，测试连接后保存。`.dev.vars.local` 中的 `AI_ENCRYPTION_KEY` 仅用于加密保存的服务商密钥，并不是模型 API 密钥。未配置时禁用生成，API 返回 422；不会自动返回模拟内容。模拟仅用于 `RESOURCE_ENV=test` 的隔离自动化测试，且须通过本地请求和 `_test_marker` 校验。迁移 `0004` 清除旧 `local-mock` 缓存，保留文章和阅读状态。
+
 ## 常用命令
 
 | 命令 | 作用 |
@@ -69,10 +71,10 @@ bun dev
 | POST | `/api/articles/:id/ai` | `summary`、`translate`、`translate-title` |
 | GET / PATCH | `/api/settings` | 阅读偏好，局部原子更新 |
 | GET / PATCH | `/api/ai/settings` | AI 公共设置契约，读取不返回密钥 |
-| POST | `/api/ai/test` | 测试服务商连接，本地未配密钥时模拟 |
+| POST | `/api/ai/test` | 测试真实服务商连接；未配置密钥返回 422 |
 | GET | `/api/stats` | 阅读和存储统计 |
 | POST | `/api/cleanup` | 清理过期文章，保护收藏和稍后阅读 |
-| GET / DELETE | `/api/logs` | 筛选抓取日志／清空 |
+| GET / DELETE | `/api/logs` | 筛选最新 500 条内存日志／清空（重启即失效） |
 | GET | `/api/directory` | 精选博客、标签、评分 |
 | GET | `/api/images?url=...` | 有类型与大小限制的图片代理 |
 
@@ -80,13 +82,15 @@ bun dev
 
 RSSHub 支持 `rsshub://namespace/route` 跟随设置中的实例，也保留旧版的 `rsshub://rsshub.example.com/namespace/route` 自定义公开实例写法。两种写法均检查公开 URL，并在每次跳转时重新校验。
 
+不再配置 Cron；抓取由添加、换源、恢复订阅或手动刷新触发。日志 `limit` 范围为 1–500，默认 500；支持 `feedId`、`level` 和 `category` 筛选，不访问 D1。
+
 `PATCH /api/feeds/:id` 接受 `url`、`site_url`、`title`、`category_id`、`refresh_minutes`、`auto_translate`、`is_active`。`site_url: ""` 清除主站，`category_id: null` 移到未分类。换源保留文章与状态；重复或不安全的地址不会覆盖原设置。
 
 两个排序接口接收 `{ "ids": ["id-1", "id-2"] }`，必须包含当前所有项目且不能重复。订阅排序可加 `{ "feedId": "id-1", "categoryId": null }`，同时保存分类移动。数据集合已经变化时返回 409；排序和移动不会部分成功。
 
 诊断 POST 接收 `{}` 或 `{ "siteUrl": "https://example.com/blog/" }`，主站参数用于本次重新发现。GET 返回 `null` 或带有 `queued|running|success|error` 状态的对象。`report.feed` 包含请求地址、最终地址、跳转、HTTP 状态、耗时、返回数量、可读数量、时间范围和距最近发布天数；`sites` 为两个主站协议的结果，`candidates` 为已验证候选及失败原因。检查过程不写入文章。
 
-诊断 ViewModel 通过 `src/web/lib/diagnostic-score.ts` 从已保存的报告派生总分、五项分数和建议，不增加抓取请求或数据库字段。RSS 可用性／新鲜度／条目完整度／响应速度／主站可达性权重为 30／30／20／10／10。未知项从分母中移除，结果标为暂定评分；RSS 不可用、没有可读文章、内容过旧分别限制总分最高 39／49／59 分。可读比例按实际最多 200 条样本计算，日期比例覆盖全量；候选只有可解析、有可读文章、时间已知且未过时、最终地址不同，才可作为替换建议。报告时间和评分保持一致，点击“重新检查”才更新观察结果。视图使用原生 SVG 雷达图和分项文字，未知项不画成零分。
+诊断 ViewModel 通过 `src/web/lib/diagnostic-score.ts` 从已保存的报告派生总分、五项分数和建议。RSS 可用性／新鲜度／条目完整度／响应速度／主站可达性权重为 30／30／20／10／10。完整度按标题和链接 20%、正文／摘要 60%、日期 20% 计算；前 200 条的有效正文数保存在报告 JSON 的 `contentEntries`，不新增 D1 列。有效正文为清理 HTML、链接文本、重复标题和空白后至少 40 字符，不代表已提供全文。RSS 不可用／无条目或无正文／过旧／不足半数有正文／旧报告正文未知时，总分分别最高 39／49／59／69／79。未知维度不计入分母，显示暂定评分；候选至少半数样本有正文，且日期已知、新鲜、最终地址不同，才可推荐。报告时间和评分保持一致，点击“重新检查”才更新观察结果。视图使用原生 SVG 雷达图和分项文字，未知项不画成零分。
 
 ## 故障定位
 

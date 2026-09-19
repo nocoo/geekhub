@@ -9,6 +9,147 @@ import type {
 } from "../../src/shared/contracts";
 import { APP_VERSION } from "../../src/shared/version";
 
+test("list header shows scoped totals, unread filters and subscription settings", async ({
+	page,
+}) => {
+	const feeds = (await (await page.request.get("/api/feeds")).json()) as Feed[];
+	const feed = feeds.find((item) => item.total_count > 0 && item.category_id);
+	if (!feed) throw new Error("Missing populated feed fixture");
+	await page.goto(`/feeds/${feed.id}`);
+	const header = page.locator(".list-heading");
+	await expect(header.getByRole("heading", { name: feed.title, exact: true })).toBeVisible();
+	await expect(header.getByRole("button", { name: "查看范围内全部文章" })).toContainText(
+		feed.total_count.toLocaleString("zh-CN"),
+	);
+	await expect(header.getByRole("button", { name: "只看范围内未读文章" })).toContainText(
+		feed.unread_count.toLocaleString("zh-CN"),
+	);
+	await expect(header.locator(".list-stat").last()).toContainText(
+		`${Math.round(((feed.total_count - feed.unread_count) / feed.total_count) * 100)}%`,
+	);
+	await header.getByRole("button", { name: "订阅设置", exact: true }).click();
+	await expect(page.getByLabel("订阅名称")).toHaveValue(feed.title);
+	await page.getByRole("button", { name: "取消", exact: true }).click();
+	await header.getByRole("button", { name: "只看范围内未读文章" }).click();
+	await expect(page).toHaveURL(new RegExp(`/feeds/${feed.id}\\?view=unread$`));
+	await expect(header.getByRole("button", { name: "只看范围内未读文章" })).toHaveAttribute(
+		"aria-pressed",
+		"true",
+	);
+	await header.getByRole("button", { name: "查看范围内全部文章" }).click();
+	await page.getByRole("button", { name: "在当前范围搜索" }).click();
+	await expect(page.getByRole("textbox", { name: "搜索文章", exact: true })).toBeFocused();
+	await page.getByRole("textbox", { name: "搜索文章", exact: true }).fill("no-such-header-result");
+	await page.getByRole("textbox", { name: "搜索文章", exact: true }).press("Enter");
+	await expect(header.locator(".list-count")).toHaveText("0 篇");
+	await expect(header.getByRole("button", { name: "查看范围内全部文章" })).toContainText(
+		feed.total_count.toLocaleString("zh-CN"),
+	);
+	await page.getByRole("button", { name: "清除搜索" }).click();
+	await expect(header.locator(".list-meta")).toHaveCount(0);
+	await page.goto(`/categories/${feed.category_id}`);
+	const categoryTotal = feeds
+		.filter((item) => item.category_id === feed.category_id)
+		.reduce((sum, item) => sum + item.total_count, 0);
+	await expect(header.getByRole("button", { name: "查看范围内全部文章" })).toContainText(
+		categoryTotal.toLocaleString("zh-CN"),
+	);
+	await page.goto("/");
+	await expect(header.getByRole("button", { name: "查看范围内全部文章" })).toContainText(
+		feeds.reduce((sum, item) => sum + item.total_count, 0).toLocaleString("zh-CN"),
+	);
+	await header.getByRole("button", { name: "阅读器设置", exact: true }).click();
+	await expect(page.getByRole("dialog", { name: "设置", exact: true })).toBeVisible();
+});
+
+test("sidebar menu edits grouped and ungrouped feeds and confirms deletion", async ({
+	page,
+	isMobile,
+}) => {
+	const name = `Sidebar menu ${test.info().project.name}`;
+	const response = await page.request.post("/api/feeds", {
+		data: {
+			url: `https://demo.geekhub.example/rss/simon?menu=${test.info().project.name}`,
+			title: name,
+		},
+	});
+	expect(response.ok()).toBe(true);
+	const feed = (await response.json()) as Feed;
+	try {
+		await page.goto("/");
+		const sidebar = page.locator(".reader-sidebar");
+		const touch = isMobile ? await page.context().newCDPSession(page) : null;
+		let firstMenu = true;
+		const openMenu = async (title: string) => {
+			const trigger = sidebar.getByRole("button", { name: title, exact: true });
+			if (!(await trigger.isVisible()))
+				await page.getByRole("button", { name: "切换订阅导航" }).click();
+			await trigger.scrollIntoViewIfNeeded();
+			if (touch) {
+				const bounds = await trigger.boundingBox();
+				if (!bounds) throw new Error("Missing feed menu trigger");
+				// Use a real touch sequence so the overlay sees matching pointer/touch events.
+				await touch.send("Input.dispatchTouchEvent", {
+					type: "touchStart",
+					touchPoints: [{ x: bounds.x + 20, y: bounds.y + bounds.height / 2 }],
+				});
+				try {
+					await expect(page.getByRole("menu")).toBeVisible();
+				} finally {
+					await touch.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+				}
+			} else if (firstMenu) {
+				await trigger.click({ button: "right" });
+			} else {
+				await trigger.focus();
+				await trigger.press("Shift+F10");
+			}
+			firstMenu = false;
+			await expect(page.getByRole("menu")).toBeVisible();
+		};
+		await expect(page.getByTestId("article-item").first()).toBeVisible();
+		const before = page.url();
+		await openMenu(name);
+		expect(page.url()).toBe(before);
+		await page.getByRole("menuitem", { name: "编辑订阅" }).click();
+		await expect(page.getByRole("dialog", { name: "编辑订阅", exact: true })).toBeVisible();
+		const renamed = `${name} updated`;
+		await page.getByLabel("订阅名称").fill(renamed);
+		const categories = (await (await page.request.get("/api/categories")).json()) as Category[];
+		const category = categories[0];
+		if (!category) throw new Error("Missing local category fixture");
+		await page.getByLabel("分类", { exact: true }).selectOption(category.id);
+		await page.getByRole("button", { name: "保存订阅", exact: true }).click();
+		await expect(page.getByRole("dialog", { name: "编辑订阅", exact: true })).toHaveCount(0);
+		await page.reload();
+		await expect(page.getByTestId("article-item").first()).toBeVisible();
+		await openMenu(renamed);
+		await page.getByRole("menuitem", { name: "删除订阅" }).click();
+		const confirm = page.getByRole("alertdialog");
+		await expect(confirm).toContainText(renamed);
+		await expect(confirm).toContainText("文章、收藏和稍后阅读记录将一并删除");
+		await confirm.getByRole("button", { name: "保留", exact: true }).click();
+		await expect(confirm).toHaveCount(0);
+		const remaining = (await (await page.request.get("/api/feeds")).json()) as Feed[];
+		expect(remaining.some((item) => item.id === feed.id && item.category_id === category.id)).toBe(
+			true,
+		);
+		const subscription = sidebar.getByRole("button", { name: renamed, exact: true });
+		if (isMobile) await subscription.tap();
+		else await subscription.click();
+		await expect(page).toHaveURL(new RegExp(`/feeds/${feed.id}$`));
+		await openMenu(renamed);
+		await page.getByRole("menuitem", { name: "删除订阅" }).click();
+		await confirm.getByRole("button", { name: "确认删除", exact: true }).click();
+		await expect(confirm).toHaveCount(0);
+		await expect(sidebar.getByRole("button", { name: renamed, exact: true })).toHaveCount(0);
+		const after = (await (await page.request.get("/api/feeds")).json()) as Feed[];
+		expect(after.some((item) => item.id === feed.id)).toBe(false);
+	} finally {
+		await page.request.delete(`/api/feeds/${feed.id}`);
+	}
+});
+
 test("reading, persistent states, AI summary, translation and original article", async ({
 	page,
 }) => {
@@ -35,9 +176,11 @@ test("reading, persistent states, AI summary, translation and original article",
 		.getByRole("button", { name: /^(稍后阅读|移出稍后阅读)$/ });
 	await later.click();
 	await expect(later).toBeEnabled();
-	await page.getByRole("button", { name: /^(AI 摘要|查看摘要)$/ }).click();
+	const summaryAction = page.getByRole("button", { name: /^(AI 摘要|查看摘要)$/ });
+	if (await summaryAction.isVisible()) await summaryAction.click();
 	await expect(page.getByRole("complementary", { name: "AI 摘要" })).toContainText("本地模拟摘要");
-	await page.getByRole("button", { name: "翻译全文", exact: true }).click();
+	const translationAction = page.getByRole("button", { name: /^(翻译全文|阅读译文)$/ });
+	if (await translationAction.isVisible()) await translationAction.click();
 	await expect(page.locator(".prose")).toContainText("本地模拟译文");
 	await page.getByRole("button", { name: "阅读原文", exact: true }).click();
 	await expect(page.locator(".prose")).toContainText("Every good tool");
@@ -68,7 +211,8 @@ test("search, navigation and feed/category CRUD", async ({ page, isMobile }) => 
 	await expect(page.getByTestId("article-item")).toHaveCount(1);
 	await expect(page.getByTestId("article-item")).toBeVisible();
 	await page.getByRole("button", { name: "清除搜索" }).click();
-	await expect(page.locator(".list-meta")).toContainText("最近更新");
+	await expect(page.locator(".list-meta")).toHaveCount(0);
+	await expect(page.getByRole("button", { name: "查看当前同步状态" })).toBeVisible();
 	if (!isMobile) {
 		await page.getByRole("button", { name: "切换订阅导航" }).click();
 		await page.getByRole("button", { name: "搜索文章", exact: true }).click();
@@ -143,7 +287,7 @@ test("reading preferences, public next-ai settings and logs", async ({ page, isM
 	await expect(page.locator(".stats-grid")).toContainText("已保存文章");
 	await page.keyboard.press("Escape");
 	await expect(page.locator(".app-dialog")).toHaveCount(0);
-	const activity = page.getByRole("button", { name: "查看订阅加载详情" });
+	const activity = page.getByRole("button", { name: "查看后台活动详情" });
 	const refresh = page.getByRole("button", { name: "刷新订阅", exact: true });
 	const activityBox = await activity.boundingBox();
 	const refreshBox = await refresh.boundingBox();
@@ -154,7 +298,8 @@ test("reading preferences, public next-ai settings and logs", async ({ page, isM
 	expect(activityBox.height).toBeLessThanOrEqual(40);
 	expect(activityBox.x + activityBox.width).toBeLessThan(refreshBox.x);
 	await activity.click();
-	await expect(page.getByRole("log", { name: "订阅抓取日志" })).toBeVisible();
+	await expect(page.getByRole("log", { name: "后台活动日志" })).toBeVisible();
+	await expect(page.getByRole("dialog")).toContainText("最近 500 条内存记录");
 	await page.keyboard.press("Escape");
 	await expect(page.locator(".app-dialog")).toHaveCount(0);
 	await page.screenshot({ path: `test-results/l3/light-${test.info().project.name}.png` });
@@ -250,7 +395,7 @@ test("feed/category paths, browser history, search and article positions survive
 	const searched = page.url();
 	await page.reload();
 	await expect(page).toHaveURL(searched);
-	await expect(page.locator(".reader-document > h1")).toContainText("quiet craft");
+	await expect(page.locator(".article-context h1")).toContainText("quiet craft");
 	await page.getByRole("button", { name: "返回文章列表" }).click();
 	await expect(page).toHaveURL(/\/categories\/engineering\?q=quiet\+craft$/);
 	await expect(page.getByTestId("article-item")).toHaveCount(1);
@@ -317,7 +462,10 @@ test("reload and history restore a later article page and both scroll containers
 	}
 });
 
-test("Markdown reading keeps images and data while removing source layout", async ({ page }) => {
+test("Markdown reading keeps images, typography and responsive reading space", async ({
+	page,
+	isMobile,
+}) => {
 	const errors: string[] = [];
 	const remoteImages: string[] = [];
 	page.on("pageerror", (error) => errors.push(error.message));
@@ -343,6 +491,24 @@ test("Markdown reading keeps images and data while removing source layout", asyn
 	await page.goto(`/feeds/design/articles/${article.id}`);
 	const prose = page.locator(".prose");
 	await expect(prose).toBeVisible();
+	const fonts = await page.evaluate(async () => {
+		const faces = await document.fonts.load('18px "TsangerJinKai02"', "中文阅读");
+		return faces.map((face) => face.status);
+	});
+	expect(fonts.length).toBeGreaterThan(0);
+	expect(fonts.every((status) => status === "loaded")).toBe(true);
+	await expect(prose).toHaveCSS("font-family", /TsangerJinKai02/);
+	if (!isMobile) await page.setViewportSize({ width: 1920, height: 1000 });
+	const context = await page.locator(".article-context").boundingBox();
+	const body = await page.locator(".article-body").boundingBox();
+	if (!context || !body) throw new Error("Missing article layout");
+	if (isMobile) {
+		expect(body.y).toBeGreaterThanOrEqual(context.y + context.height);
+	} else {
+		expect(body.x).toBeGreaterThan(context.x + context.width);
+		expect(body.y).toBe(context.y);
+		expect(body.width).toBeGreaterThanOrEqual(600);
+	}
 	await expect(prose.getByRole("heading", { name: "让内容决定顺序" })).toBeVisible();
 	await expect(prose.getByRole("table")).toHaveCount(1);
 	await expect(prose.getByRole("cell", { name: "read | think | remember" })).toHaveText(
@@ -405,6 +571,16 @@ test("keyboard navigation, reading actions and editable/modal guards", async ({
 	await expect(page.getByRole("button", { name: "标为未读", exact: true })).toBeEnabled();
 	await page.keyboard.press("m");
 	await expect(page.getByRole("button", { name: "标为已读", exact: true })).toBeEnabled();
+	// The saved translation is shorter; use the long original to exercise native scrolling.
+	const original = page.getByRole("button", { name: "阅读原文", exact: true });
+	if (await original.isVisible()) await original.click();
+	await expect
+		.poll(() =>
+			page
+				.locator(".reader-scroll")
+				.evaluate((element) => element.scrollHeight > element.clientHeight),
+		)
+		.toBe(true);
 	await page.locator(".reader-scroll").focus();
 	await page.keyboard.press("ArrowDown");
 	await expect(page).toHaveURL(new RegExp(`/articles/${ids[0]}$`));
@@ -457,7 +633,108 @@ test("keyboard navigation, reading actions and editable/modal guards", async ({
 	).toHaveAttribute("href", "https://github.com/nocoo/geekhub");
 });
 
-test("background updates preserve unread rows, scroll and prose until accepted", async ({
+test("J/K smoothly positions selection at the golden ratio and respects motion preferences", async ({
+	page,
+	isMobile,
+}) => {
+	const categoryResponse = await page.request.post("/api/categories", {
+		data: { name: `Keyboard ${test.info().project.name}`, color: "violet" },
+	});
+	expect(categoryResponse.ok()).toBe(true);
+	const category = (await categoryResponse.json()) as Category;
+	const feeds: Feed[] = [];
+	try {
+		for (const source of ["simon", "design", "cloudflare", "fieldnotes"]) {
+			const response = await page.request.post("/api/feeds", {
+				data: {
+					title: `Keyboard ${source}`,
+					url: `https://demo.geekhub.example/rss/${source}?keyboard=${test.info().project.name}`,
+					category_id: category.id,
+				},
+			});
+			expect(response.ok()).toBe(true);
+			const feed = (await response.json()) as Feed;
+			feeds.push(feed);
+			await settledFeed(page, feed.id);
+		}
+		await page.emulateMedia({ reducedMotion: "no-preference" });
+		await page.goto(`/categories/${category.id}`);
+		const rows = page.getByTestId("article-item");
+		await expect(rows.first()).toBeVisible();
+		const list = page.locator(".article-scroll");
+		const selected = list.locator('[aria-current="true"]');
+		await page.keyboard.press("j");
+		await expect(rows.first()).toHaveAttribute("aria-current", "true");
+		if (isMobile) {
+			for (let i = 0; i < 8; i++) await page.keyboard.press("j");
+			await expect(rows.nth(8)).toHaveAttribute("aria-current", "true");
+			await expect(page.locator(".prose")).toBeVisible();
+			expect(await page.evaluate(() => window.scrollY)).toBe(0);
+			await page.keyboard.press("Escape");
+			await expect(rows.first()).toBeInViewport();
+			return;
+		}
+		await expect(rows.first()).toBeFocused();
+		expect(await list.evaluate((element) => element.scrollTop)).toBe(0);
+		await list.evaluate((element) => {
+			const positions: number[] = [];
+			element.addEventListener("scroll", () => {
+				positions.push(element.scrollTop);
+				element.setAttribute("data-scroll-samples", JSON.stringify(positions));
+			});
+		});
+		// Rapid repeats must retarget the animation, including while mark-read responses arrive.
+		for (let i = 0; i < 12; i++) await page.keyboard.press("j");
+		await expect(rows.nth(12)).toBeFocused();
+		const alignmentError = () =>
+			selected.evaluate((row) => {
+				const container = row.closest(".article-scroll");
+				if (!container) throw new Error("Missing list container");
+				const bounds = row.getBoundingClientRect();
+				return Math.abs(
+					bounds.top +
+						bounds.height / 2 -
+						container.getBoundingClientRect().top -
+						container.clientHeight * 0.382,
+				);
+			});
+		await expect.poll(alignmentError).toBeLessThan(2);
+		const top = await list.evaluate((element) => element.scrollTop);
+		const samples = JSON.parse(
+			(await list.getAttribute("data-scroll-samples")) ?? "[]",
+		) as number[];
+		expect(samples.filter((position) => position > 0 && position < top - 2).length).toBeGreaterThan(
+			2,
+		);
+		await page.keyboard.press("k");
+		await expect(rows.nth(11)).toBeFocused();
+		await expect.poll(alignmentError).toBeLessThan(2);
+		expect(await list.evaluate((element) => element.scrollTop)).toBeLessThan(top);
+		await page.screenshot({ path: "test-results/l3/keyboard-golden-position.png" });
+
+		await page.emulateMedia({ reducedMotion: "reduce" });
+		await page.keyboard.press("j");
+		await expect(rows.nth(12)).toBeFocused();
+		expect(await alignmentError()).toBeLessThan(2);
+		const count = await rows.count();
+		for (let i = 13; i < count; i++) await page.keyboard.press("j");
+		await expect(rows.last()).toBeFocused();
+		expect(
+			await list.evaluate((element) =>
+				Math.abs(element.scrollTop - (element.scrollHeight - element.clientHeight)),
+			),
+		).toBeLessThan(2);
+		for (let i = 1; i < count; i++) await page.keyboard.press("k");
+		await expect(rows.first()).toBeFocused();
+		expect(await list.evaluate((element) => element.scrollTop)).toBe(0);
+	} finally {
+		await page.goto("about:blank");
+		for (const feed of feeds) await page.request.delete(`/api/feeds/${feed.id}`);
+		await page.request.delete(`/api/categories/${category.id}`);
+	}
+});
+
+test("background updates load automatically while preserving list anchors, prose and selection", async ({
 	page,
 	isMobile,
 }) => {
@@ -469,18 +746,22 @@ test("background updates preserve unread rows, scroll and prose until accepted",
 	const originalIds = await rows.evaluateAll((elements) =>
 		elements.map((element) => element.getAttribute("data-article-id")),
 	);
+	const visiblePositions = () =>
+		page.locator(".article-scroll").evaluate((element) => {
+			const bounds = element.getBoundingClientRect();
+			return Array.from(element.querySelectorAll<HTMLElement>("[data-article-id]"))
+				.filter((row) => {
+					const rect = row.getBoundingClientRect();
+					return rect.bottom > bounds.top && rect.top < bounds.bottom;
+				})
+				.map((row) => ({
+					id: row.dataset.articleId,
+					offset: row.getBoundingClientRect().top - bounds.top,
+				}));
+		});
 	await rows.nth(3).scrollIntoViewIfNeeded();
-	await rows.nth(3).evaluate((element) => {
-		element.addEventListener(
-			"click",
-			() => {
-				element.setAttribute("data-scroll-at-open", String(element.parentElement?.scrollTop));
-			},
-			{ once: true },
-		);
-	});
+	const mobilePositions = await visiblePositions();
 	await rows.nth(3).click();
-	const beforeOpen = Number(await rows.nth(3).getAttribute("data-scroll-at-open"));
 	await expect(page.locator(".prose")).toBeVisible();
 	await expect(page.getByRole("button", { name: "标为未读", exact: true })).toBeEnabled();
 	const selectedUrl = page.url();
@@ -502,11 +783,9 @@ test("background updates preserve unread rows, scroll and prose until accepted",
 		await page.locator(".article-scroll").evaluate((element) => {
 			element.scrollTop = 430;
 		});
-	const listScroll = await page.locator(".article-scroll").evaluate((element) => element.scrollTop);
-	const lists: string[] = [];
-	page.on("request", (request) => {
-		if (new URL(request.url()).pathname === "/api/articles") lists.push(request.url());
-	});
+	const positions = isMobile ? mobilePositions : await visiblePositions();
+	const anchor = positions.find((row) => row.id !== originalIds[3]);
+	if (!anchor) throw new Error("No surviving visible article to anchor");
 	const added = (await (
 		await page.request.post("/api/feeds", {
 			data: {
@@ -516,19 +795,13 @@ test("background updates preserve unread rows, scroll and prose until accepted",
 		})
 	).json()) as Feed;
 	try {
-		// A second client adds a source; the reader's explicit sync starts metadata polling.
 		await page.keyboard.press("r");
 		await settledFeed(page, added.id);
-		await expect(page.getByRole("button", { name: "刷新订阅", exact: true })).toBeEnabled({
-			timeout: 15000,
-		});
-		await expect(page.locator(".list-update-slot button")).toHaveText("有内容更新，点击载入");
-		expect(lists).toEqual([]);
-		expect(
-			await rows.evaluateAll((elements) =>
-				elements.map((element) => element.getAttribute("data-article-id")),
-			),
-		).toEqual(originalIds);
+		await expect.poll(() => rows.count()).toBeGreaterThan(originalIds.length);
+		await expect(page.getByText(/已自动载入 \d+ 篇新文章/).first()).toBeVisible();
+		await expect(
+			page.getByRole("button", { name: "有内容更新，点击载入", exact: true }),
+		).toHaveCount(0);
 		expect(page.url()).toBe(selectedUrl);
 		await expect(page.locator('[data-reading-probe="retained"]')).toHaveCount(1);
 		expect(await page.evaluate(() => window.getSelection()?.toString())).toContain(
@@ -537,63 +810,34 @@ test("background updates preserve unread rows, scroll and prose until accepted",
 		expect(await page.locator(".reader-scroll").evaluate((element) => element.scrollTop)).toBe(
 			proseScroll,
 		);
-		if (isMobile) {
-			await page.getByRole("button", { name: "返回文章列表" }).click();
-			expect(await page.locator(".article-scroll").evaluate((element) => element.scrollTop)).toBe(
-				beforeOpen,
-			);
-		} else
-			expect(await page.locator(".article-scroll").evaluate((element) => element.scrollTop)).toBe(
-				listScroll,
-			);
-		const visiblePositions = () =>
-			page.locator(".article-scroll").evaluate((element) => {
-				const bounds = element.getBoundingClientRect();
-				return Array.from(element.querySelectorAll<HTMLElement>("[data-article-id]"))
-					.filter((row) => {
-						const rect = row.getBoundingClientRect();
-						return rect.bottom > bounds.top && rect.top < bounds.bottom;
-					})
-					.map((row) => ({
-						id: row.dataset.articleId,
-						offset: row.getBoundingClientRect().top - bounds.top,
-					}));
-			});
-		const [anchor] = await visiblePositions();
-		if (!anchor) throw new Error("No visible article to anchor");
-		await page.getByRole("button", { name: "有内容更新，点击载入", exact: true }).click();
-		await expect.poll(() => rows.count()).toBeGreaterThan(originalIds.length);
-		const offset = await page
-			.locator(`[data-article-id="${anchor.id}"]`)
-			.evaluate(
-				(element) =>
-					element.getBoundingClientRect().top -
-					(element.parentElement?.getBoundingClientRect().top ?? 0),
-			);
-		expect(Math.abs(offset - anchor.offset)).toBeLessThan(2);
-		if (!isMobile) await expect(page.locator('[data-reading-probe="retained"]')).toHaveCount(1);
-		// When the first visible unread row disappears, preserve the next surviving row's offset.
+		if (isMobile) await page.getByRole("button", { name: "返回文章列表" }).click();
+		const offsetOf = (id: string) =>
+			page
+				.locator(`[data-article-id="${id}"]`)
+				.evaluate(
+					(element) =>
+						element.getBoundingClientRect().top -
+						(element.parentElement?.getBoundingClientRect().top ?? 0),
+				);
+		await expect
+			.poll(async () => Math.abs((await offsetOf(anchor.id ?? "")) - anchor.offset))
+			.toBeLessThan(2);
+		await expect(rows.first()).not.toHaveAttribute("data-article-id", originalIds[0] ?? "");
+		// A later refresh removing the first visible unread row keeps the next row anchored.
+		await page.locator(".article-scroll").evaluate((element) => {
+			element.scrollTop = Math.max(element.scrollTop, 240);
+		});
 		const [removed, remaining] = await visiblePositions();
-		if (!removed || !remaining) throw new Error("Two visible articles are needed for this check");
+		if (!removed || !remaining) throw new Error("Two visible articles are needed");
 		await page.request.patch(`/api/articles/${removed.id}`, { data: { is_read: true } });
 		await page.request.patch(`/api/feeds/${added.id}`, {
 			data: { url: `${added.url}&after-read=1` },
 		});
 		await page.keyboard.press("r");
 		await settledFeed(page, added.id);
-		await page.getByRole("button", { name: "有内容更新，点击载入", exact: true }).click();
 		await expect(page.locator(`[data-article-id="${removed.id}"]`)).toHaveCount(0);
 		await expect
-			.poll(async () => {
-				const current = await page
-					.locator(`[data-article-id="${remaining.id}"]`)
-					.evaluate(
-						(element) =>
-							element.getBoundingClientRect().top -
-							(element.parentElement?.getBoundingClientRect().top ?? 0),
-					);
-				return Math.abs(current - remaining.offset);
-			})
+			.poll(async () => Math.abs((await offsetOf(remaining.id ?? "")) - remaining.offset))
 			.toBeLessThan(2);
 		await page.screenshot({
 			path: `test-results/l3/stable-reader-${test.info().project.name}.png`,
@@ -635,6 +879,13 @@ test("subscription and category ordering persists, including moving between grou
 		await page.goto("/");
 		await expect(page.getByTestId("article-item").first()).toBeVisible();
 		await page.getByRole("button", { name: "设置", exact: true }).click();
+		// Wait for both the dialog scale and tab entrance before capturing drag coordinates.
+		await page.getByRole("dialog").evaluate(async (element) => {
+			await Promise.allSettled(
+				element.getAnimations({ subtree: true }).map((animation) => animation.finished),
+			);
+		});
+		await expect(page.getByRole("tabpanel")).toHaveCSS("opacity", "1");
 		const group = page.locator(`[data-category-id="${category.id}"]`);
 		const orderedIds = () =>
 			group
@@ -650,6 +901,13 @@ test("subscription and category ordering persists, including moving between grou
 		await expect.poll(orderedIds).toEqual([second.id, first.id]);
 		await page.reload();
 		await page.getByRole("button", { name: "设置", exact: true }).click();
+		// Wait for both the dialog scale and tab entrance before capturing drag coordinates.
+		await page.getByRole("dialog").evaluate(async (element) => {
+			await Promise.allSettled(
+				element.getAnimations({ subtree: true }).map((animation) => animation.finished),
+			);
+		});
+		await expect(page.getByRole("tabpanel")).toHaveCSS("opacity", "1");
 		await expect.poll(orderedIds).toEqual([second.id, first.id]);
 		if (isMobile) {
 			await group.getByRole("button", { name: `编辑 ${second.title}`, exact: true }).click();

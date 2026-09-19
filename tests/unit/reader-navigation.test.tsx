@@ -78,7 +78,7 @@ async function traverse(direction: "back" | "forward") {
 	});
 }
 
-test("browser history restores filters and cached snapshots without adding entries or refetching rows", async () => {
+test("browser history restores filters and automatically refreshes outdated snapshots without adding entries", async () => {
 	const server = transport();
 	const query = queryHarness();
 	query.client.setDefaultOptions({ queries: { retry: false, gcTime: Infinity } });
@@ -100,6 +100,7 @@ test("browser history restores filters and cached snapshots without adding entri
 	await waitFor(() => expect(result.current.pages.isSuccess).toBe(true));
 	server.routes.set("GET /api/feeds", [{ ...feed(), total_count: 5 }, feed("f2")]);
 	await act(() => query.client.invalidateQueries({ queryKey: ["feeds"] }));
+	await waitFor(() => expect(query.client.isFetching()).toBe(0));
 	const requests = server.articleRequests().length;
 	const afterNavigation = history.length;
 	await traverse("back");
@@ -109,8 +110,7 @@ test("browser history restores filters and cached snapshots without adding entri
 	expect(result.current.visit).toBe(visit);
 	expect(result.current.articles).toEqual(snapshot);
 	expect(result.current.pages.data).toBe(snapshotData);
-	expect(result.current.updatesAvailable).toBe(true);
-	expect(server.articleRequests()).toHaveLength(requests);
+	await waitFor(() => expect(server.articleRequests()).toHaveLength(requests + 1));
 	expect(history.length).toBe(afterNavigation);
 	await traverse("back");
 	expect(result.current.selected).toBeNull();

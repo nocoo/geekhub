@@ -1,0 +1,38 @@
+{
+	"base": "https://geekhub.dev.hexly.ai",
+	"settings": {
+		"provider": "minimax",
+		"model": "MiniMax-M2.5",
+		"hasApiKey": false,
+		"mock": false
+	},
+	"checks": [
+		{
+			"path": "/ai/test",
+			"action": "connection",
+			"status": 422,
+			"error": "请先在设置中配置 AI 密钥"
+		},
+		{
+			"path": "/articles/9e3bc772806128d87ebcd930979b93817cc86e9beabcc0d7a80ee76c17f597c7/ai",
+			"action": "summary",
+			"status": 422,
+			"error": "请先在设置中配置 AI 密钥"
+		},
+		{
+			"path": "/articles/9e3bc772806128d87ebcd930979b93817cc86e9beabcc0d7a80ee76c17f597c7/ai",
+			"action": "translate",
+			"status": 422,
+			"error": "请先在设置中配置 AI 密钥"
+		},
+		{
+			"path": "/articles/9e3bc772806128d87ebcd930979b93817cc86e9beabcc0d7a80ee76c17f597c7/ai",
+			"action": "translate-title",
+			"status": 422,
+			"error": "请先在设置中配置 AI 密钥"
+		}
+	],
+	"missingKeyUI": "disabled with settings entry",
+	"mockArticleCount": 0,
+	"realProviderVerified": false
+}

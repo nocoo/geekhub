@@ -1,0 +1,31 @@
+{
+	"url": "https://geekhub.dev.hexly.ai",
+	"results": [
+		{
+			"viewport": "desktop",
+			"icons": ["14x14"],
+			"focus": {
+				"outline": "rgb(161, 161, 161) solid 2px",
+				"offset": "-2px"
+			},
+			"childIndent": 12,
+			"pageOverflow": false,
+			"feedCount": 42,
+			"categoryToggle": "passed",
+			"errors": []
+		},
+		{
+			"viewport": "mobile",
+			"icons": ["14x14"],
+			"focus": {
+				"outline": "rgb(161, 161, 161) solid 2px",
+				"offset": "-2px"
+			},
+			"childIndent": 12,
+			"pageOverflow": false,
+			"feedCount": 42,
+			"categoryToggle": "passed",
+			"errors": []
+		}
+	]
+}

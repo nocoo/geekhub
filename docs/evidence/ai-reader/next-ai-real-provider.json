@@ -1,0 +1,46 @@
+{
+	"base": "https://geekhub.dev.hexly.ai",
+	"settings": {
+		"provider": "custom",
+		"model": "auto",
+		"baseURL": "https://manifest.nocoo.cloud/v1",
+		"sdkType": "openai",
+		"hasApiKey": true,
+		"mock": false
+	},
+	"sdk": "@nocoo/next-ai/server:createAiModel",
+	"articleId": "7b24063c5918a2441d57af6da7fdd5a1e4b1b2de24b5911b77e02dd51bf22836",
+	"calls": [
+		{
+			"action": "summary",
+			"status": 200,
+			"elapsedMs": 2369,
+			"outputChars": 160,
+			"output": "摘要：分析师Jeff Pu在一份投资者报告中指出，尽管本周的iPhone价格上涨情况好于预期，但iPhone Duo仍将推动需求，早期消费者兴趣表现强劲。\n\n要点：\n1. 本周iPhone价格上涨情况低于市场预期。\n2. iPhone Duo预计将成为新的需求驱动力。\n3. 消费者对iPhone Duo的早期兴趣强烈。"
+		},
+		{
+			"action": "translate-title",
+			"status": 200,
+			"elapsedMs": 1351,
+			"outputChars": 37,
+			"output": "报告：iPhone 价格上涨‘好于预期’，iPhone Duo 将推动需求"
+		},
+		{
+			"action": "translate",
+			"status": 200,
+			"elapsedMs": 2304,
+			"outputChars": 536,
+			"output": "<article>\n报告：iPhone 价格上涨“比预期好”，iPhone Duo 将推动此次周期需求\n<div><img src=\"https://9to5mac.com/wp-content/uploads/sites/6/2026/09/iphone-18-pro-iphone-duo-side-by-side.jpg?quality=82&amp;strip=all&amp;w=1600\" alt=\"\" loading=\"lazy\" /></div><p>在 9to5Mac 查看的一份投资者报告中，分析师 Jeff Pu 指出，尽管本周的 iPhone 价格涨幅比预期要好，但 iPhone Duo 仍可能推动此次周期的需求，因为早期消费者的兴趣似乎很强。以下是详细信息。</p>\n\n<a href=\"https://9to5mac.com/2026/09/11/report-iphone-price-hike-better-than-feared-iphone-duo-to-drive-demand-for-the-cycle/\" target=\"_blank\" rel=\"noopener noreferrer\">更多…</a>\n</article>"
+		}
+	],
+	"persisted": true,
+	"reloaded": true,
+	"browserErrors": [],
+	"connection": {
+		"status": 200,
+		"success": true,
+		"response": "连接成功",
+		"model": "auto",
+		"provider": "custom"
+	}
+}

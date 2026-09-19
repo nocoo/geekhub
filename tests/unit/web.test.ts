@@ -1,14 +1,16 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, test, vi } from "vitest";
-import type { Article, ArticleDetail } from "../../src/shared/contracts";
+import type { Article, ArticleDetail, FetchLog } from "../../src/shared/contracts";
 import { ApiError, aiAdapter, api } from "../../src/web/lib/api";
 import {
 	adjacentArticle,
 	articleQuery,
 	dateLabel,
+	emptyReaderState,
 	feedRevision,
 	patchArticles,
 	readerShortcut,
+	runningActivities,
 	sizeLabel,
 	titleOf,
 	translateTitles,
@@ -236,4 +238,57 @@ describe("browser API adapter", () => {
 			"/api/ai/test",
 		]);
 	});
+});
+
+test("empty reader states distinguish onboarding, scope filters and feed failures", () => {
+	const all = { view: "all", search: "" } as const;
+	expect(emptyReaderState(all, []).action).toBe("add");
+	expect(emptyReaderState({ ...all, categoryId: "empty" }, []).title).toContain("分类");
+	expect(emptyReaderState({ ...all, feedId: "gone" }, []).action).toBe("home");
+	expect(emptyReaderState({ ...all, search: "missing" }, [feed()]).action).toBe("search");
+	for (const view of ["unread", "starred", "later"] as const)
+		expect(emptyReaderState({ ...all, view }, [feed()]).action).toBe("all");
+	for (const status of ["queued", "fetching"] as const)
+		expect(emptyReaderState(all, [{ ...feed(), status }]).action).toBe("syncing");
+	expect(
+		emptyReaderState(all, [{ ...feed(), status: "error", last_error: "HTTP 503" }]),
+	).toMatchObject({ action: "refresh", description: "HTTP 503" });
+	expect(
+		emptyReaderState(all, [{ ...feed(), status: "error", last_error: null }]).description,
+	).toContain("重试");
+	expect(emptyReaderState(all, [feed()]).action).toBe("refresh");
+	expect(emptyReaderState({ ...all, view: "unread" }, [{ ...feed(), total_count: 0 }]).action).toBe(
+		"refresh",
+	);
+});
+
+test("activity indicator resolves concurrent tasks and expires interrupted starts", () => {
+	const now = Date.now();
+	const log = (
+		id: number,
+		activity_id: string | undefined,
+		level: FetchLog["level"],
+		age = 0,
+	): FetchLog => ({
+		id,
+		activity_id,
+		level,
+		created_at: new Date(now - age).toISOString(),
+		feed_id: "f1",
+		feed_title: "Feed",
+		message: "Activity",
+		articles_added: 0,
+		duration_ms: null,
+	});
+	const entries = [
+		log(6, "done", "success"),
+		log(5, "failed", "error"),
+		log(4, "active", "info"),
+		log(3, "done", "info"),
+		log(2, "failed", "info"),
+		log(1, "stale", "info", 121000),
+		log(0, undefined, "info"),
+	];
+	expect(runningActivities(entries, now).map((log) => log.id)).toEqual([4]);
+	expect(runningActivities(entries).map((log) => log.id)).toEqual([4]);
 });

@@ -1,0 +1,12 @@
+1440 {
+  client: 720,
+  scroll: 720,
+}
+390 {
+  client: 326,
+  scroll: 326,
+}
+320 {
+  client: 256,
+  scroll: 256,
+}

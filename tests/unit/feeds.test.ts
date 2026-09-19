@@ -1,7 +1,8 @@
 import { describe, expect, test, vi } from "vitest";
 import type { FeedJob } from "../../src/shared/contracts";
-import { enqueueFeed, refreshFeed, scheduleFeeds } from "../../src/worker/feeds";
+import { enqueueFeed, refreshFeed } from "../../src/worker/feeds";
 import worker from "../../src/worker/index";
+import { feedLogs } from "../../src/worker/logs";
 import { client, deferred, makeEnv, queuedJob, rss } from "./support";
 
 describe("durable feed work", () => {
@@ -50,11 +51,7 @@ describe("durable feed work", () => {
 		expect(
 			await env.DB.prepare("SELECT title, status,etag FROM feeds WHERE id='f1'").first(),
 		).toEqual({ title: "Example", status: "success", etag: "version-1" });
-		expect(
-			await env.DB.prepare("SELECT message FROM fetch_logs ORDER BY id DESC LIMIT 1").first(
-				"message",
-			),
-		).toBe("已是最新内容");
+		expect((await feedLogs(env).list())[0]?.message).toBe("已是最新内容");
 		await env.DB.exec("UPDATE feeds SET title='example.com' WHERE id='f1';");
 		await refreshFeed(env, await queuedJob(env));
 		expect(await env.DB.prepare("SELECT title FROM feeds WHERE id='f1'").first("title")).toBe(
@@ -105,9 +102,7 @@ describe("durable feed work", () => {
 		expect(
 			await env.DB.prepare("SELECT status,last_error,lease_until FROM feeds WHERE id='f1'").first(),
 		).toEqual({ status: "error", last_error: "upstream timeout", lease_until: null });
-		expect(
-			await env.DB.prepare("SELECT level FROM fetch_logs ORDER BY id DESC LIMIT 1").first("level"),
-		).toBe("error");
+		expect((await feedLogs(env).list())[0]?.level).toBe("error");
 	});
 	test("uses local fixtures only in the local runtime", async () => {
 		const env = makeEnv();
@@ -121,15 +116,6 @@ describe("durable feed work", () => {
 		env.ENVIRONMENT = "production";
 		await refreshFeed(env, await queuedJob(env));
 		expect(fetch).toHaveBeenCalledOnce();
-	});
-	test("scheduler enqueues due feeds and expires old logs", async () => {
-		const env = makeEnv();
-		await env.DB.exec(
-			"INSERT INTO fetch_logs(feed_title,level,message,created_at) VALUES ('Old','info','Expired','2000-01-01');",
-		);
-		expect(await scheduleFeeds(env)).toBe(1);
-		expect(await scheduleFeeds(env)).toBe(0);
-		expect(await env.DB.prepare("SELECT COUNT(*) AS count FROM fetch_logs").first("count")).toBe(0);
 	});
 	test("worker acknowledges completed queue work and retries failed jobs", async () => {
 		const env = makeEnv();
@@ -164,10 +150,6 @@ describe("durable feed work", () => {
 		);
 		expect(success.ack).toHaveBeenCalledOnce();
 		expect(failed.retry).toHaveBeenCalledWith({ delaySeconds: 60 });
-		await worker.scheduled(
-			{ cron: "*/15 * * * *", scheduledTime: Date.now(), noRetry: vi.fn() },
-			env,
-		);
 	});
 	test("acknowledges duplicate, superseded and pre-migration messages without refetching", async () => {
 		const env = makeEnv();
@@ -214,11 +196,7 @@ describe("durable feed work", () => {
 			expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM articles").first("n")).toBe(
 				change === "delete" ? 0 : 2,
 			);
-			expect(
-				await env.DB.prepare("SELECT COUNT(*) AS n FROM fetch_logs WHERE level = 'success'").first(
-					"n",
-				),
-			).toBe(0);
+			expect((await feedLogs(env).list()).filter((log) => log.level === "success")).toHaveLength(0);
 			if (change !== "delete") {
 				const row = await env.DB.prepare(
 					"SELECT status, etag, refresh_token FROM feeds WHERE id = 'f1'",
