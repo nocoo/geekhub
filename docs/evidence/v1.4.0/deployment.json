@@ -1,0 +1,11 @@
+{
+	"version": "1.4.0",
+	"sourceCommit": "48746cc14db6e5814e747007992d7fc3359d7d4e",
+	"workerVersionId": "f506c135-e3ec-4501-b2b9-3bab47fc8392",
+	"ciRun": "https://github.com/nocoo/geekhub/actions/runs/35476985154",
+	"deploymentRun": "https://github.com/nocoo/geekhub/actions/runs/35477237416",
+	"release": "https://github.com/nocoo/geekhub/releases/tag/v1.4.0",
+	"migrationResult": "0003\u20130006 applied successfully",
+	"productionSmoke": "passed",
+	"legacyFetchLogs": 0
+}
