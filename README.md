@@ -1,26 +1,13 @@
-# GeekHub
+<p align="center"><img src="public/logo-128.png" width="128" alt="GeekHub logo" /></p>
+<h1 align="center">GeekHub</h1>
+<p align="center">一个单用户 RSS 阅读器，把订阅、稍后阅读和 AI 助手放在三栏界面中。</p>
+<p align="center"><a href="https://geekhub.hexly.ai">站点</a> · <a href="docs/README.en.md">English</a></p>
 
-一个单用户 RSS 阅读器。把订阅、稍后阅读和 AI 助手放在安静的三栏界面中，为真正感兴趣的内容留出时间。
+## 这是什么
 
-**v1.3.1** · **生产：** https://geekhub.hexly.ai · **本地：** https://geekhub.dev.hexly.ai
+GeekHub 用于集中阅读 RSS / Atom 订阅、管理阅读状态并生成 AI 摘要和翻译。一个 Cloudflare Worker 提供 Web 界面与 Hono API，D1 保存全部数据；Cloudflare Access 负责登录，所有获准身份使用同一份阅读数据。
 
-Vite 8 + React 19 + TypeScript **7.0.2** strict，Bun、Biome，`@nocoo/basalt` **2.1.8**。一个 Cloudflare Worker 同时提供 SPA 和 Hono API；D1 保存全部数据，Queues 处理 RSS 抓取，Cron 调度更新。Cloudflare Access 负责登录，所有获准访问的身份使用同一份阅读数据。
-
-## 开始开发
-
-需要 Bun 1.4.0、Node.js 26.8.1。CSV 导入使用 Python 3 标准库；完整安全检查需要 gitleaks 8.30.1 和 osv-scanner 2.5.1。
-
-```sh
-bun install --frozen-lockfile
-bun run setup
-bun dev
-```
-
-本地开发、浏览器验收与预览链接统一使用 https://geekhub.dev.hexly.ai，由本机 Caddy 代理到 `127.0.0.1:7005`。L2／L3 自动化测试分别使用独立的 `17005`／`27005` 端口和 SQLite。`setup` 创建本地 SQLite、生成本地加密密钥，并仅在没有订阅时加入示例阅读集；已有导入数据会保留。
-
-本地使用 Wrangler / Miniflare 模拟 Worker、D1 和 Queues。开发数据在 `.wrangler/state/`；L2、L3 每轮使用各自的临时 SQLite 目录。**不创建或部署远程 `-test` 资源。** 本地身份与模拟 AI 只在本地环境和回环请求下启用；真实订阅仍可抓取公开网站。
-
-## 阅读功能
+## 功能
 
 - 右上角齿轮统一管理订阅、分类、阅读、AI 和数据；支持修改 RSS／主站地址、拖动排序和跨分类移动。
 - RSS / Atom / RSSHub、精选博客发现与搜索；修改地址保留已有文章和阅读状态。
@@ -37,7 +24,11 @@ bun dev
 - 右上角提供 GitHub 项目链接。
 - 桌面和移动端适配，保留原 GeekHub 标识、绿色强调色和装饰细节。
 
-## 导入旧数据
+## 使用
+
+访问 [geekhub.hexly.ai](https://geekhub.hexly.ai)，通过 Cloudflare Access 登录，在右上角齿轮中添加订阅和配置 AI。
+
+### 导入旧数据
 
 ```sh
 bun run db:import /path/to/csvs --check
@@ -45,31 +36,59 @@ bun run db:import /path/to/csvs --local
 bun run db:import /path/to/csvs --remote
 ```
 
-目录需要包含 `blogs_rows.csv`、`categories_rows.csv`、`feeds_rows.csv`。导入按原 ID 更新，保留分类关系、颜色、图标、排序、评分和自动翻译设置，忽略旧 `user_id`；重复执行不会重建或清空文章。原始导出文件不会加入 Git。详见 [数据导入](docs/04-data-import.md)。
+目录需包含 `blogs_rows.csv`、`categories_rows.csv`、`feeds_rows.csv`。先用 `--check` 校验，`--local` 写本地，`--remote` 写生产。导入按原 ID 更新，保留分类关系、颜色、图标、排序、评分和自动翻译设置，忽略旧 `user_id`；重复执行不会重建或清空文章。原始导出不加入 Git。详见 [数据导入](docs/04-data-import.md)。
 
-## 检查与部署
+## 开发
+
+需要 Bun 1.4.0、Node.js 26.8.1；CSV 导入使用 Python 3 标准库。
 
 ```sh
-bun run quality
-bun run deploy
+bun install --frozen-lockfile
+bun run setup
+bun dev
 ```
 
-质量门覆盖 G1、L1、L2、L3、G2 和本地数据隔离。L1 四项覆盖率门槛均为 95%；L2 通过真实 HTTP 请求本地 Worker；L3 运行桌面与移动端浏览器流程。部署脚本先应用远程迁移，再构建并部署生产 Worker，拒绝本地和测试环境。
+```sh
+bun run typecheck
+bun run lint
+bun run build
+```
 
-首次部署需配置生产 D1、Queue、Access 团队／AUD 和 `AI_ENCRYPTION_KEY`。AI 服务密钥由读者在设置中填写。详见 [部署说明](docs/05-deployment.md) 和 [质量证据](docs/03-quality.md)。
+打开 https://geekhub.dev.hexly.ai，通过 Caddy 代理到 `127.0.0.1:7005`。`setup` 创建本地 SQLite 和加密密钥，仅在没有订阅时加入示例数据，保留已有导入内容。Wrangler / Miniflare 模拟 Worker、D1 和 Queues，开发数据位于 `.wrangler/state/`。本地身份与模拟 AI 仅对本地环境和回环请求启用，真实订阅仍可抓取公开网站。
 
-## 项目结构
+`src/web/` 管界面，`src/worker/` 管 API、认证、抓取与 AI，`src/shared/` 放浏览器安全契约，`migrations/` 管 D1 schema。`docs/archieve/` 是历史文档，不代表当前系统。生产配置和迁移见 [部署说明](docs/05-deployment.md)。
 
-| 目录 | 用途 |
+## 测试
+
+```sh
+bun run test:coverage
+bun run test:l2
+bunx playwright install chromium
+bun run test:l3
+```
+
+Vitest 运行单元测试；HTTP 与 Playwright 浏览器测试分别使用 17005 / 27005，每轮创建独立本地 SQLite，不使用开发数据库或生产 Access / AI 凭据。
+
+## 技术栈
+
+| 技术 | 用途 |
 | --- | --- |
-| `src/web` | 浏览器界面与 API 适配 |
-| `src/worker` | API、身份验证、抓取和 AI 服务 |
-| `src/shared` | 浏览器安全的契约、校验与导入转换 |
-| `migrations` | D1 schema |
-| `tests` | L1、真实 HTTP、浏览器测试 |
-| `scripts` | 开发数据、测试隔离、导入、部署和安全门 |
-| `docs/archieve` | 旧文档历史快照 |
+| React · Vite · Basalt | 响应式阅读界面 |
+| TypeScript · Bun · Biome | 类型、脚本与静态检查 |
+| Hono · Cloudflare Workers | API 与身份验证 |
+| D1 · Queues · Cron | 存储、RSS 抓取和更新调度 |
+| @nocoo/next-ai | AI 配置、摘要与翻译 |
+| Vitest · Playwright | 单元、HTTP 与浏览器测试 |
 
-旧 Next.js / Supabase 系统归档自 `d8d225b`，不参与新系统构建、测试或部署。当前设计见 [架构](docs/01-architecture.md)、[开发与 API](docs/02-development.md)。
+## 文档
 
-本轮改造的设计、验证记录和发布状态见 [阅读更新与订阅诊断](docs/07-reader-workflow.md)。
+- [架构](docs/01-architecture.md)
+- [开发与 API](docs/02-development.md)
+- [测试说明](docs/03-quality.md)
+- [数据导入](docs/04-data-import.md)
+- [部署](docs/05-deployment.md)
+- [阅读更新与订阅诊断](docs/07-reader-workflow.md)
+
+## 许可证
+
+仓库尚未提供独立的 LICENSE 文件；公开源码不代表已授予开源许可。
