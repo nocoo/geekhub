@@ -1,0 +1,206 @@
+/^\u8BA2\u9605\u6E90/ [
+  {
+    name: "筛选订阅源",
+    bg: "rgb(255, 255, 255)",
+    basalt: true,
+  }
+]
+/^\u5206\u7C7B/ [
+  {
+    name: "新分类名称",
+    bg: "rgb(255, 255, 255)",
+    basalt: true,
+  }, {
+    name: "新分类颜色",
+    bg: "rgb(255, 255, 255)",
+    basalt: true,
+  }, {
+    name: "分类 AI",
+    bg: "rgb(255, 255, 255)",
+    basalt: true,
+  }, {
+    name: "分类图标 AI",
+    bg: "rgb(255, 255, 255)",
+    basalt: true,
+  }, {
+    name: "分类颜色 AI",
+    bg: "rgb(255, 255, 255)",
+    basalt: true,
+  }, {
+    name: "分类 博客",
+    bg: "rgb(255, 255, 255)",
+    basalt: true,
+  }, {
+    name: "分类图标 博客",
+    bg: "rgb(255, 255, 255)",
+    basalt: true,
+  }, {
+    name: "分类颜色 博客",
+    bg: "rgb(255, 255, 255)",
+    basalt: true,
+  }, {
+    name: "分类 高质量周刊",
+    bg: "rgb(255, 255, 255)",
+    basalt: true,
+  }, {
+    name: "分类图标 高质量周刊",
+    bg: "rgb(255, 255, 255)",
+    basalt: true,
+  }, {
+    name: "分类颜色 高质量周刊",
+    bg: "rgb(255, 255, 255)",
+    basalt: true,
+  }, {
+    name: "分类 数码科技",
+    bg: "rgb(255, 255, 255)",
+    basalt: true,
+  }, {
+    name: "分类图标 数码科技",
+    bg: "rgb(255, 255, 255)",
+    basalt: true,
+  }, {
+    name: "分类颜色 数码科技",
+    bg: "rgb(255, 255, 255)",
+    basalt: true,
+  }, {
+    name: "分类 新闻快讯",
+    bg: "rgb(255, 255, 255)",
+    basalt: true,
+  }, {
+    name: "分类图标 新闻快讯",
+    bg: "rgb(255, 255, 255)",
+    basalt: true,
+  }, {
+    name: "分类颜色 新闻快讯",
+    bg: "rgb(255, 255, 255)",
+    basalt: true,
+  }, {
+    name: "分类 稀奇古怪",
+    bg: "rgb(255, 255, 255)",
+    basalt: true,
+  }, {
+    name: "分类图标 稀奇古怪",
+    bg: "rgb(255, 255, 255)",
+    basalt: true,
+  }, {
+    name: "分类颜色 稀奇古怪",
+    bg: "rgb(255, 255, 255)",
+    basalt: true,
+  }
+]
+/^\u9605\u8BFB$/ [
+  {
+    name: "主题",
+    bg: "rgb(255, 255, 255)",
+    basalt: true,
+  }, {
+    name: "正文字体",
+    bg: "rgb(255, 255, 255)",
+    basalt: true,
+  }, {
+    name: "文字大小",
+    bg: "rgb(255, 255, 255)",
+    basalt: true,
+  }, {
+    name: "settings-rsshub",
+    bg: "rgb(255, 255, 255)",
+    basalt: true,
+  }
+]
+/^AI \u52A9\u624B$/ [
+  {
+    name: "ai-provider-select",
+    bg: "rgb(255, 255, 255)",
+    basalt: true,
+  }, {
+    name: "ai-model-select",
+    bg: "rgb(255, 255, 255)",
+    basalt: true,
+  }, {
+    name: "ai-api-key-input",
+    bg: "rgb(255, 255, 255)",
+    basalt: true,
+  }, {
+    name: "ai-base-url-input",
+    bg: "rgb(255, 255, 255)",
+    basalt: true,
+  }, {
+    name: "ai-sdk-type-select",
+    bg: "rgb(255, 255, 255)",
+    basalt: true,
+  }
+]
+/^\u6570\u636E\u7BA1\u7406$/ [
+  {
+    name: "保留最近",
+    bg: "rgb(255, 255, 255)",
+    basalt: true,
+  }
+]
+feed editor [
+  {
+    name: "筛选订阅源",
+    bg: "rgb(255, 255, 255)",
+    basalt: true,
+  }, {
+    name: "feed-title-a1401399-d14d-40ee-82bd-eb39da35e03a",
+    bg: "rgb(255, 255, 255)",
+    basalt: true,
+  }, {
+    name: "feed-url-a1401399-d14d-40ee-82bd-eb39da35e03a",
+    bg: "rgb(255, 255, 255)",
+    basalt: true,
+  }, {
+    name: "feed-site-a1401399-d14d-40ee-82bd-eb39da35e03a",
+    bg: "rgb(255, 255, 255)",
+    basalt: true,
+  }, {
+    name: "分类",
+    bg: "rgb(255, 255, 255)",
+    basalt: true,
+  }
+]
+add feed [
+  {
+    name: "add-feed-url",
+    bg: "rgb(255, 255, 255)",
+    basalt: true,
+  }, {
+    name: "add-feed-title",
+    bg: "rgb(255, 255, 255)",
+    basalt: true,
+  }, {
+    name: "分类",
+    bg: "rgb(255, 255, 255)",
+    basalt: true,
+  }
+]
+activity [
+  {
+    name: "搜索活动",
+    bg: "rgb(255, 255, 255)",
+    basalt: true,
+  }, {
+    name: "按状态筛选日志",
+    bg: "rgb(255, 255, 255)",
+    basalt: true,
+  }, {
+    name: "按订阅源筛选日志",
+    bg: "rgb(255, 255, 255)",
+    basalt: true,
+  }
+]
+search [
+  {
+    name: "搜索文章",
+    bg: "rgb(255, 255, 255)",
+    basalt: true,
+  }
+]
+discover [
+  {
+    name: "搜索发现内容",
+    bg: "rgb(255, 255, 255)",
+    basalt: true,
+  }
+]

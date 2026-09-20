@@ -10,6 +10,7 @@ import {
 	DialogTitle,
 	Input,
 	LayerCard,
+	Switch,
 	Tabs,
 	TabsContent,
 	TabsList,
@@ -48,6 +49,7 @@ import {
 } from "./lib/panels-view-model";
 import { sizeLabel } from "./lib/reader";
 import type { SavedChange } from "./lib/reader-view-model";
+import { SelectField } from "./SelectField";
 import { Categories, FeedEditor, FeedOptions, Subscriptions } from "./Subscriptions";
 
 interface Props {
@@ -254,7 +256,7 @@ function AddFeed({
 					{
 						url: data.get("url"),
 						title: data.get("title") || undefined,
-						category_id: data.get("category") || null,
+						category_id: data.get("category") === "none" ? null : data.get("category"),
 						auto_translate_content: data.get("translate-content") === "on",
 						auto_fetch_content: data.get("fetch-content") === "on",
 						auto_translate: data.get("translate") === "on",
@@ -281,16 +283,18 @@ function AddFeed({
 				名称 <span>可选</span>
 				<Input id="add-feed-title" name="title" maxLength={200} placeholder="为这个订阅取个名字" />
 			</label>
-			<label className="field-label">
+			<label className="field-label" htmlFor="add-feed-category">
 				分类
-				<select name="category" className="select-control" aria-label="分类">
-					<option value="">未分类</option>
-					{categories.map((category) => (
-						<option key={category.id} value={category.id}>
-							{category.name}
-						</option>
-					))}
-				</select>
+				<SelectField
+					id="add-feed-category"
+					name="category"
+					label="分类"
+					defaultValue="none"
+					options={[
+						{ value: "none", label: "未分类" },
+						...categories.map((category) => ({ value: category.id, label: category.name })),
+					]}
+				/>
 			</label>
 			<FeedOptions disabled={pending} />
 			<div className="form-actions">
@@ -490,47 +494,54 @@ function Settings({
 						}}
 					>
 						<div className="form-grid">
-							<label className="field-label">
+							<label className="field-label" htmlFor="settings-theme">
 								主题
-								<select
+								<SelectField
+									id="settings-theme"
 									name="theme"
-									className="select-control"
-									aria-label="主题"
+									label="主题"
 									defaultValue={preferences.theme}
-								>
-									<option value="dark">深色</option>
-									<option value="light">浅色</option>
-									<option value="system">跟随系统</option>
-								</select>
+									options={[
+										{ value: "dark", label: "深色" },
+										{ value: "light", label: "浅色" },
+										{ value: "system", label: "跟随系统" },
+									]}
+								/>
 							</label>
-							<label className="field-label">
+							<label className="field-label" htmlFor="settings-font-family">
 								正文字体
-								<select
+								<SelectField
+									id="settings-font-family"
 									name="fontFamily"
-									className="select-control"
 									defaultValue={preferences.fontFamily}
-								>
-									<option value="serif">仓耳今楷 · 适合长文</option>
-									<option value="sans">无衬线 · 清晰简洁</option>
-								</select>
+									label="正文字体"
+									options={[
+										{ value: "serif", label: "仓耳今楷 · 适合长文" },
+										{ value: "sans", label: "无衬线 · 清晰简洁" },
+									]}
+								/>
 							</label>
 						</div>
-						<label className="field-label">
+						<label className="field-label" htmlFor="settings-font-size">
 							文字大小
-							<select
+							<SelectField
+								id="settings-font-size"
 								name="fontSize"
-								className="select-control"
-								defaultValue={preferences.fontSize}
-							>
-								{[14, 16, 18, 20, 22, 24].map((size) => (
-									<option value={size} key={size}>
-										{size} px
-									</option>
-								))}
-							</select>
+								defaultValue={String(preferences.fontSize)}
+								label="文字大小"
+								options={[14, 16, 18, 20, 22, 24].map((size) => ({
+									value: String(size),
+									label: `${size} px`,
+								}))}
+							/>
 						</label>
-						<label className="checkbox-label">
-							<input type="checkbox" name="showImages" defaultChecked={preferences.showImages} />
+						<label className="checkbox-label" htmlFor="settings-show-images">
+							<Switch
+								id="settings-show-images"
+								name="showImages"
+								defaultChecked={preferences.showImages}
+								aria-label="显示文章中的图片"
+							/>
 							显示文章中的图片
 						</label>
 						<label className="field-label" htmlFor="settings-rsshub">
@@ -659,14 +670,20 @@ function Settings({
 						>
 							<h3>整理旧文章</h3>
 							<p className="field-hint">清理较早的已读内容，收藏和稍后阅读会保留。</p>
-							<label className="field-label">
+							<label className="field-label" htmlFor="cleanup-days">
 								保留最近
-								<select name="days" className="select-control" defaultValue="30">
-									<option value="7">7 天</option>
-									<option value="30">30 天</option>
-									<option value="90">90 天</option>
-									<option value="365">一年</option>
-								</select>
+								<SelectField
+									id="cleanup-days"
+									name="days"
+									defaultValue="30"
+									label="保留最近"
+									options={[
+										{ value: "7", label: "7 天" },
+										{ value: "30", label: "30 天" },
+										{ value: "90", label: "90 天" },
+										{ value: "365", label: "一年" },
+									]}
+								/>
 							</label>
 							<div className="form-actions">
 								<Button type="submit" variant="outline" disabled={pending}>

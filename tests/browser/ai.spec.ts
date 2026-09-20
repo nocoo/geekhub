@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page, test } from "@playwright/test";
-import type { ArticleDetail, ArticlePage, Feed } from "../../src/shared/contracts";
+import type { AiSettings, ArticleDetail, ArticlePage, Feed } from "../../src/shared/contracts";
 
 async function fixture(page: Page) {
 	const response = await page.request.post("/api/feeds", {
@@ -364,5 +364,67 @@ test("feed switches align descriptions and automatically fetch before translatin
 		expect(calls).toHaveLength(2);
 	} finally {
 		await page.request.delete(`/api/feeds/${feed.id}`);
+	}
+});
+
+test("AI Basalt selectors support preset and custom models and persist SDK selection", async ({
+	page,
+}) => {
+	const original = (await (await page.request.get("/api/ai/settings")).json()) as AiSettings;
+	try {
+		await page.goto("/");
+		await page.getByRole("button", { name: "阅读器设置", exact: true }).click();
+		await page.getByRole("tab", { name: "AI 助手" }).click();
+		const provider = page.getByRole("combobox", { name: "Provider", exact: true });
+		await provider.click();
+		await page.getByRole("option", { name: "Anthropic", exact: true }).click();
+		const model = page.getByRole("combobox", { name: "Model", exact: true });
+		await model.click();
+		await page.getByRole("option", { name: "claude-sonnet-4-20250514", exact: true }).click();
+		await expect(model).toHaveText("claude-sonnet-4-20250514");
+		await model.click();
+		await page.getByRole("option", { name: "Custom model...", exact: true }).click();
+		await page.getByRole("textbox", { name: "Model", exact: true }).fill("custom-model");
+		await page.getByRole("button", { name: "List", exact: true }).click();
+		await expect(model).toHaveText("Select model...");
+		await provider.click();
+		await page.getByRole("option", { name: "Custom", exact: true }).click();
+		await page.getByRole("textbox", { name: "Model", exact: true }).fill("test-model");
+		await page.getByLabel("Base URL").fill("https://api.example.com/v1");
+		const sdk = page.getByRole("combobox", { name: "SDK Type", exact: true });
+		await sdk.click();
+		await page.getByRole("option", { name: "OpenAI", exact: true }).click();
+		await expect(page.locator('.next-ai-panel select:not([aria-hidden="true"])')).toHaveCount(0);
+		await page.evaluate(() => {
+			document.documentElement.classList.remove("dark");
+			document.documentElement.classList.add("light");
+			document.documentElement.dataset.mode = "light";
+		});
+		for (const control of await page
+			.locator('.next-ai-panel input, .next-ai-panel [role="combobox"]')
+			.all())
+			await expect(control).toHaveCSS("background-color", "rgb(255, 255, 255)");
+		await page.locator(".next-ai-panel").evaluate(async (element) => {
+			await Promise.allSettled(
+				element.getAnimations({ subtree: true }).map((animation) => animation.finished),
+			);
+		});
+		expect((await new AxeBuilder({ page }).include(".next-ai-panel").analyze()).violations).toEqual(
+			[],
+		);
+		await page.getByRole("button", { name: "Save Settings", exact: true }).click();
+		await expect
+			.poll(async () => (await (await page.request.get("/api/ai/settings")).json()).model)
+			.toBe("test-model");
+		await page.reload();
+		await page.getByRole("button", { name: "阅读器设置", exact: true }).click();
+		await page.getByRole("tab", { name: "AI 助手" }).click();
+		await expect(sdk).toHaveText("OpenAI");
+		await expect(page.getByRole("textbox", { name: "Model", exact: true })).toHaveValue(
+			"test-model",
+		);
+	} finally {
+		const { hasApiKey: _hasApiKey, mock: _mock, ...settings } = original;
+		expect((await page.request.patch("/api/ai/settings", { data: settings })).ok()).toBe(true);
 	}
 });

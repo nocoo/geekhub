@@ -1,9 +1,20 @@
 import { Badge, Button, Input, LayerCard, Switch } from "@nocoo/basalt";
-import { ArrowDown, ArrowUp, Bug, GripVertical, Pencil, Plus, Rss, Trash2 } from "lucide-react";
+import {
+	ArrowDown,
+	ArrowUp,
+	Bug,
+	GripVertical,
+	Pencil,
+	Plus,
+	Rss,
+	Save as SaveIcon,
+	Trash2,
+} from "lucide-react";
 import { type DragEvent, useId, useState } from "react";
 import type { Category, Feed } from "../shared/contracts";
 import { moveBefore, type Save } from "./lib/panels-view-model";
 import { dateLabel } from "./lib/reader";
+import { SelectField } from "./SelectField";
 
 interface Props {
 	feeds: Feed[];
@@ -374,7 +385,7 @@ export function FeedEditor({
 						title: data.get("title"),
 						url: data.get("url"),
 						site_url: data.get("site"),
-						category_id: data.get("category") || null,
+						category_id: data.get("category") === "none" ? null : data.get("category"),
 						auto_translate: data.get("translate") === "on",
 						auto_translate_content: data.get("translate-content") === "on",
 						auto_fetch_content: data.get("fetch-content") === "on",
@@ -421,20 +432,16 @@ export function FeedEditor({
 			<div className="form-grid">
 				<label className="field-label" htmlFor={`feed-category-${feed.id}`}>
 					分类
-					<select
+					<SelectField
 						id={`feed-category-${feed.id}`}
 						name="category"
-						aria-label="分类"
-						className="select-control"
-						defaultValue={feed.category_id ?? ""}
-					>
-						<option value="">未分类</option>
-						{categories.map((category) => (
-							<option value={category.id} key={category.id}>
-								{category.name}
-							</option>
-						))}
-					</select>
+						label="分类"
+						defaultValue={feed.category_id ?? "none"}
+						options={[
+							{ value: "none", label: "未分类" },
+							...categories.map((category) => ({ value: category.id, label: category.name })),
+						]}
+					/>
 				</label>
 			</div>
 			<FeedOptions feed={feed} disabled={pending} />
@@ -452,14 +459,16 @@ export function FeedEditor({
 
 function ColorSelect({ color, label, id }: { color: string; label: string; id?: string }) {
 	return (
-		<select id={id} className="select-control" name="color" defaultValue={color} aria-label={label}>
-			{Object.entries(colors).map(([value, name]) => (
-				<option value={value} key={value}>
-					{name}
-				</option>
-			))}
-			{color.startsWith("#") && <option value={color}>{color}</option>}
-		</select>
+		<SelectField
+			id={id}
+			name="color"
+			defaultValue={color}
+			label={label}
+			options={[
+				...Object.entries(colors).map(([value, label]) => ({ value, label })),
+				...(color.startsWith("#") ? [{ value: color, label: color }] : []),
+			]}
+		/>
 	);
 }
 
@@ -579,8 +588,15 @@ export function Categories({ categories, feeds, pending, save, remove }: Props) 
 											label={`分类颜色 ${category.name}`}
 										/>
 									</label>
-									<Button type="submit" variant="outline" size="sm" disabled={pending}>
-										保存
+									<Button
+										type="submit"
+										variant="ghost"
+										size="icon"
+										disabled={pending}
+										aria-label={`保存分类 ${category.name}`}
+										title="保存分类"
+									>
+										<SaveIcon size={14} />
 									</Button>
 									<Button
 										type="button"

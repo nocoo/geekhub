@@ -118,7 +118,8 @@ test("sidebar menu edits grouped and ungrouped feeds and confirms deletion", asy
 		const categories = (await (await page.request.get("/api/categories")).json()) as Category[];
 		const category = categories[0];
 		if (!category) throw new Error("Missing local category fixture");
-		await page.getByLabel("分类", { exact: true }).selectOption(category.id);
+		await page.getByRole("combobox", { name: "分类", exact: true }).click();
+		await page.getByRole("option", { name: category.name, exact: true }).click();
 		await page.getByRole("button", { name: "保存订阅", exact: true }).click();
 		await expect(page.getByRole("dialog", { name: "编辑订阅", exact: true })).toHaveCount(0);
 		await page.reload();
@@ -237,7 +238,8 @@ test("search, navigation and feed/category CRUD", async ({ page, isMobile }) => 
 		.getByLabel("订阅地址")
 		.fill(`https://demo.geekhub.example/rss/simon?browser=${test.info().project.name}`);
 	await page.getByLabel("名称 可选").fill(`Browser feed ${test.info().project.name}`);
-	await page.getByLabel("分类", { exact: true }).selectOption({ label: name });
+	await page.getByRole("combobox", { name: "分类", exact: true }).click();
+	await page.getByRole("option", { name, exact: true }).click();
 	await page.getByRole("dialog").getByRole("button", { name: "添加订阅", exact: true }).click();
 	await expect(page.getByRole("textbox", { name: "筛选订阅源" })).toBeVisible();
 	const feed = page
@@ -274,8 +276,10 @@ test("reading preferences, public next-ai settings and logs", async ({ page, isM
 	if (isMobile) await page.keyboard.press("Escape");
 	await page.getByRole("button", { name: "设置", exact: true }).click();
 	await page.getByRole("tab", { name: "阅读", exact: true }).click();
-	await page.getByLabel("文字大小").selectOption("20");
-	await page.getByLabel("主题", { exact: true }).selectOption("light");
+	await page.getByRole("combobox", { name: "文字大小" }).click();
+	await page.getByRole("option", { name: "20 px", exact: true }).click();
+	await page.getByRole("combobox", { name: "主题", exact: true }).click();
+	await page.getByRole("option", { name: "浅色", exact: true }).click();
 	await page.getByRole("button", { name: "保存阅读偏好" }).click();
 	await expect(page.getByText("阅读偏好已保存", { exact: true })).toBeVisible();
 	await expect(page.locator("html")).toHaveClass(/light/);
@@ -911,7 +915,8 @@ test("subscription and category ordering persists, including moving between grou
 		await expect.poll(orderedIds).toEqual([second.id, first.id]);
 		if (isMobile) {
 			await group.getByRole("button", { name: `编辑 ${second.title}`, exact: true }).click();
-			await group.getByLabel("分类", { exact: true }).selectOption("");
+			await group.getByRole("combobox", { name: "分类", exact: true }).click();
+			await page.getByRole("option", { name: "未分类", exact: true }).click();
 			await group.getByRole("button", { name: "保存订阅", exact: true }).click();
 		} else {
 			const uncategorized = page.locator('[data-category-id=""]');

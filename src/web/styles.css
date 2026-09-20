@@ -1143,15 +1143,29 @@ button.list-stat:hover {
 	justify-content: flex-end;
 	padding-top: 2px;
 }
+/* Controls are the highest luminance surface in both themes. */
+.basalt-ui:is(input, textarea, [role="combobox"]) {
+	--basalt-control-fill: hsl(var(--basalt-bright));
+}
 .select-control {
 	min-width: 0;
-	width: 100%;
-	padding: 7px 11px;
-	border: 1px solid hsl(var(--basalt-border));
-	border-radius: 6px;
-	background: hsl(var(--basalt-card));
-	color: hsl(var(--basalt-foreground));
 	font-size: 12px;
+}
+[role="combobox"] > span {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+[role="combobox"] > svg {
+	flex-shrink: 0;
+}
+.select-options {
+	max-height: min(320px, var(--radix-select-content-available-height));
+	overflow-y: auto;
+}
+.select-options [role="option"] {
+	overflow-wrap: anywhere;
 }
 .form-grid {
 	display: grid;
@@ -1205,6 +1219,9 @@ button.list-stat:hover {
 	overflow-wrap: anywhere;
 }
 .settings-dialog {
+	width: min(1000px, calc(100vw - 32px), calc(88dvh * 4 / 3));
+	max-width: none;
+	aspect-ratio: 4 / 3;
 	overflow: hidden;
 	display: flex;
 	flex-direction: column;
@@ -1214,7 +1231,7 @@ button.list-stat:hover {
 	grid-template-columns: 132px minmax(0, 1fr);
 	gap: 16px;
 	min-height: 0;
-	height: min(680px, 70dvh);
+	flex: 1;
 	margin-top: 12px;
 }
 .settings-nav {
@@ -1441,11 +1458,11 @@ button.list-stat:hover {
 }
 .category-editor-heading > input {
 	grid-area: name;
-	align-self: start;
+	align-self: end;
 }
 .category-editor-heading > span {
-	grid-area: name;
-	align-self: end;
+	grid-area: count;
+	align-self: start;
 	font-size: 10px;
 }
 .category-fields > label:first-child {
@@ -1757,10 +1774,10 @@ button.list-stat:hover {
 }
 .category-row {
 	display: grid;
-	grid-template-columns: 84px minmax(80px, 1fr) 48px 112px auto 32px;
-	grid-template-areas: "order name icon color save delete";
+	grid-template-columns: 84px minmax(80px, 1fr) 48px 132px 36px 36px;
+	grid-template-areas: "order name icon color save delete" ". count . . . .";
 	align-items: end;
-	gap: 8px;
+	gap: 4px 8px;
 	min-height: 54px;
 }
 
@@ -2149,10 +2166,8 @@ body:has(.next-ai-panel) {
 	padding: 0;
 }
 .settings-content .category-fields > button {
-	height: 32px;
-}
-.settings-content .category-fields > button:last-child {
-	width: 32px;
+	height: 36px;
+	width: 36px;
 	padding: 0;
 }
 .settings-content .stats-grid {
@@ -2561,5 +2576,13 @@ body:has(.next-ai-panel) {
 @media (prefers-reduced-motion: reduce) {
 	.activity-expand {
 		transition: none;
+	}
+}
+
+@media (max-width: 767px) {
+	.settings-dialog {
+		width: calc(100vw - 24px);
+		height: 88dvh;
+		aspect-ratio: auto;
 	}
 }

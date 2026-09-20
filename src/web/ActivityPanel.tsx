@@ -18,6 +18,7 @@ import {
 import { useState } from "react";
 import type { Feed, FetchLog } from "../shared/contracts";
 import { runningActivities } from "./lib/reader";
+import { SelectField } from "./SelectField";
 
 const kinds = {
 	feed: { label: "订阅抓取", Icon: Rss },
@@ -129,30 +130,26 @@ export function ActivityPanel({
 						onChange={(event) => setSearch(event.target.value)}
 					/>
 				</div>
-				<select
-					className="select-control"
-					aria-label="按状态筛选日志"
-					value={level}
-					onChange={(event) => setLevel(event.target.value)}
-				>
-					<option value="">全部状态</option>
-					<option value="info">开始 / 信息</option>
-					<option value="success">已完成</option>
-					<option value="error">失败</option>
-				</select>
-				<select
-					className="select-control"
-					aria-label="按订阅源筛选日志"
-					value={feedId}
-					onChange={(event) => setFeedId(event.target.value)}
-				>
-					<option value="">全部订阅源</option>
-					{[...sources].map(([id, title]) => (
-						<option value={id} key={id}>
-							{title}
-						</option>
-					))}
-				</select>
+				<SelectField
+					label="按状态筛选日志"
+					value={level || "all"}
+					onValueChange={(value) => setLevel(value === "all" ? "" : value)}
+					options={[
+						{ value: "all", label: "全部状态" },
+						{ value: "info", label: "开始 / 信息" },
+						{ value: "success", label: "已完成" },
+						{ value: "error", label: "失败" },
+					]}
+				/>
+				<SelectField
+					label="按订阅源筛选日志"
+					value={feedId || "all"}
+					onValueChange={(value) => setFeedId(value === "all" ? "" : value)}
+					options={[
+						{ value: "all", label: "全部订阅源" },
+						...[...sources].map(([value, label]) => ({ value, label })),
+					]}
+				/>
 			</div>
 			{error && (
 				<div className="activity-error" role="alert">

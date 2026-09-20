@@ -1,0 +1,7 @@
+$ bun scripts/security.ts
+Starting filesystem walk for root: /
+Scanned /Users/nocoo/workspace/personal/geekhub/bun.lock file and found 542 packages
+End status: 0 dirs visited, 1 inodes visited, 1 Extract calls, 13.808ms elapsed, 13.808ms wall time
+8:28AM INF scanned ~1454775 bytes (1.45 MB) in 158ms
+8:28AM INF no leaks found
+G2 passed: gitleaks working-tree scan and OSV lockfile scan.

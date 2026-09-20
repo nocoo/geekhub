@@ -1,0 +1,108 @@
+light 1440 categories {
+  w: 110,
+  sw: 110,
+  h: 172,
+  sh: 172,
+} {
+  client: 804,
+  scroll: 804,
+}
+light 1440 ai {
+  w: 776,
+  sw: 776,
+  h: 172,
+  sh: 172,
+} {
+  client: 804,
+  scroll: 804,
+}
+dark 1440 categories {
+  w: 110,
+  sw: 110,
+  h: 172,
+  sh: 172,
+} {
+  client: 804,
+  scroll: 804,
+}
+dark 1440 ai {
+  w: 776,
+  sw: 776,
+  h: 172,
+  sh: 172,
+} {
+  client: 804,
+  scroll: 804,
+}
+light 390 categories {
+  w: 260,
+  sw: 260,
+  h: 172,
+  sh: 172,
+} {
+  client: 266,
+  scroll: 266,
+}
+light 390 ai {
+  w: 238,
+  sw: 238,
+  h: 172,
+  sh: 172,
+} {
+  client: 266,
+  scroll: 266,
+}
+dark 390 categories {
+  w: 260,
+  sw: 260,
+  h: 172,
+  sh: 172,
+} {
+  client: 266,
+  scroll: 266,
+}
+dark 390 ai {
+  w: 238,
+  sw: 238,
+  h: 172,
+  sh: 172,
+} {
+  client: 266,
+  scroll: 266,
+}
+light 320 categories {
+  w: 190,
+  sw: 190,
+  h: 172,
+  sh: 172,
+} {
+  client: 196,
+  scroll: 196,
+}
+light 320 ai {
+  w: 168,
+  sw: 168,
+  h: 172,
+  sh: 172,
+} {
+  client: 196,
+  scroll: 196,
+}
+dark 320 categories {
+  w: 190,
+  sw: 190,
+  h: 172,
+  sh: 172,
+} {
+  client: 196,
+  scroll: 196,
+}
+dark 320 ai {
+  w: 168,
+  sw: 168,
+  h: 172,
+  sh: 172,
+} {
+  client: 196,
+  scroll: 196,
+}
