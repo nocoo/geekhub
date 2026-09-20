@@ -1,0 +1,5 @@
+security / Security (Secrets & Vulnerabilities)	UNKNOWN STEP	2026-09-20T00:36:24.3705663Z G2 passed: gitleaks working-tree scan and OSV lockfile scan.
+l3 local Worker + SQLite / Test (bun on ubuntu-latest)	UNKNOWN STEP	2026-09-20T00:42:34.5782860Z   56 passed (5.2m)
+quality / L1: Quality & Tests	UNKNOWN STEP	2026-09-20T00:36:39.7795695Z ^[[2m      Tests ^[[22m ^[[1m^[[32m191 passed^[[39m^[[22m^[[90m (191)^[[39m
+quality / L1: Quality & Tests	UNKNOWN STEP	2026-09-20T00:36:39.7864176Z All files          |   99.72 |    97.97 |     100 |   99.92 |                   
+l2 local Worker + SQLite / Test (bun on ubuntu-latest)	UNKNOWN STEP	2026-09-20T00:36:49.4603804Z L2 passed: 109 real HTTP checks, 33/33 API endpoints, queue, pagination, missing records, AI and cleanup.

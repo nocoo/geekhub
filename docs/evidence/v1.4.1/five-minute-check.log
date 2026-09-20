@@ -1,0 +1,6 @@
+2026-09-20T08:41:52.310699+08:00
+in_progress		fix: release v1.4.1 settings controls and surface hierarchy	CI	main	push	35479200452	5m43s	2026-09-20T00:36:08Z
+completed	success	Release	Release	main	workflow_run	35477643177	32s	2026-09-20T00:01:03Z
+completed	success	docs: record v1.4.0 production deployment evidence	CI	main	push	35477430132	4m53s	2026-09-19T23:56:08Z
+completed	success	Release	Release	main	workflow_run	35477237416	40s	2026-09-19T23:51:28Z
+completed	success	fix: preserve smooth scrolling and narrow settings on Linux	CI	main	push	35476985154	5m47s	2026-09-19T23:45:40Z

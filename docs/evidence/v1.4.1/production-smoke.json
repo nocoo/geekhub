@@ -1,0 +1,49 @@
+{
+	"version": "1.4.1",
+	"checkedAt": "2026-09-20T00:43:53.993Z",
+	"origin": "https://geekhub.hexly.ai",
+	"tlsVerification": true,
+	"authenticatedReaderFlow": "Not exercised in production; verified by isolated desktop/mobile browser tests.",
+	"checks": [
+		{
+			"path": "/api/live",
+			"status": 200,
+			"accessHost": null,
+			"body": {
+				"status": "ok",
+				"version": "1.4.1",
+				"storage": "d1"
+			}
+		},
+		{
+			"path": "/",
+			"status": 302,
+			"accessHost": "nocoo.cloudflareaccess.com"
+		},
+		{
+			"path": "/api/session",
+			"status": 302,
+			"accessHost": "nocoo.cloudflareaccess.com"
+		},
+		{
+			"path": "/api/feeds",
+			"status": 302,
+			"accessHost": "nocoo.cloudflareaccess.com"
+		},
+		{
+			"path": "/assets/index-BMpV4qsI.js",
+			"status": 302,
+			"accessHost": "nocoo.cloudflareaccess.com"
+		},
+		{
+			"path": "/assets/index-BoSnI8Ng.css",
+			"status": 302,
+			"accessHost": "nocoo.cloudflareaccess.com"
+		},
+		{
+			"path": "/fonts/jinkai/tsanger-jinkai-w04-subset-4.woff2",
+			"status": 302,
+			"accessHost": "nocoo.cloudflareaccess.com"
+		}
+	]
+}
