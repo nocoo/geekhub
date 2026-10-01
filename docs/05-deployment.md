@@ -20,7 +20,7 @@
 
 会话接口将已验证的 Access 邮箱规范化并做 SHA-256，再查询 `https://lizheng.blog/api/authors/profile?hash=...` 获取公开姓名和头像。查询有 2.5 秒超时与 16 KiB 响应上限，不传邮箱明文或 JWT，不跟随重定向；异常时回退到 Access 姓名和 Basalt 首字母头像。头像经过公开 URL 校验，通过同源图片代理加载。本地可在 `.dev.vars.local` 设置 `LOCAL_USER_EMAIL` 预览对应公开头像；仅回环本地请求生效，L2／L3 不调用外部头像服务。
 
-版本以根 `package.json` 为唯一来源，侧栏显示 `vX.Y.Z`，`/api/live.version` 和抓取 User-Agent 同步。当前发布为 **v1.4.1**；发布标签与 GitHub Release 使用相同版本。
+版本以根 `package.json` 为唯一来源，侧栏显示 `vX.Y.Z`，`/api/live.version` 和抓取 User-Agent 同步。当前发布为 **v1.4.2**；发布标签与 GitHub Release 使用相同版本。
 
 ## 发布
 
@@ -47,8 +47,18 @@ Wrangler Custom Domain 将域名绑定到生产 Worker。如果已有 DNS 记录
 
 2026-09-12 发布 v1.2.0 时，用户移除旧记录后已成功绑定新 Worker。公开健康路径正常，其余页面和静态资源由 `nocoo` Access 保护。若本机暂时缓存删除记录期间的 NXDOMAIN，可通过公共 DNS-over-HTTPS 对照；这不代表绑定失败，不应重复修改已正确的 DNS 记录。
 
-后续版本可用 `bun x wrangler rollback <版本 ID>` 回退 Worker。回退代码不会回退 schema；迁移应保持向后兼容。首次架构迁移如需整体回退，应恢复上述 Vercel DNS，并核对对应 Access 策略及旧站可用性。D1 和新订阅数据保留，不因切换 DNS 删除。
+Worker rollback does not restore D1 schema. After migration `0007`, do not roll back to v1.4.1 or earlier: those Workers use deleted columns. Keep maintenance active on failure and roll forward with a verified Worker; any database recovery requires a separately reviewed D1 Time Travel operation. Do not change DNS or return to the retired hosting architecture.
 
 ## 证据
 
 本地和生产实际结果记录在 [质量证据](03-quality.md) 与 `docs/evidence/`。生产 AI 需要读者在设置中提供真实服务商密钥；部署不会自动发起付费 AI 调用。
+
+
+## v1.4.2 Maintenance Window
+
+1. Temporarily disable only the automatic Release workflow before pushing; keep CI and all Git hooks enabled. Match the workflow Wrangler pin to `package.json`.
+2. Wait for successful CI on the exact release SHA. Build that revision before the maintenance window.
+3. Pause delivery of `geekhub-feed-refresh`. Deploy a temporary maintenance entry for the existing `geekhub` Worker, preserving bindings, secrets, Access, routes and the `FeedLogCache` export. Run the Worker before all assets, return HTTP 503 with `Retry-After` and `Cache-Control: no-store`, and retry rather than acknowledge any queue messages.
+4. Verify the maintenance response, allow in-flight requests and consumers to drain, and record the D1 Time Travel bookmark and read-only data counts. Never purge the queue.
+5. Re-enable Release and dispatch it with the successful CI run ID. The workflow proves the source SHA, applies migrations, builds and deploys that revision. Leave maintenance active if this fails; do not roll back the schema or deploy old code.
+6. Verify `1.4.2` health, Access protection, schema and preserved data counts before resuming queue delivery. Confirm the Release workflow is enabled and no local development server is running.

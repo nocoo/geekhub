@@ -13,3 +13,12 @@ Bun embedded temporary mirror URLs throughout the lockfile. The inspection comma
 The first browser smoke command used Node's stdin flag with Bun, which printed help without executing the check. Switching to Node then exposed a missing Playwright `baseURL` for relative API requests. Corrected both harness settings and reran the checks; neither incomplete attempt counted as passing evidence. Use the documented runtime entrypoint and set the browser context base URL explicitly in standalone probes.
 
 Record the date when known, what happened, its cause, and the follow-up. Do not invent an incident to populate this file. Keep recurring project rules brief in `AGENTS.md`; cross-project lessons belong in global rules or nmem, and deterministic checks belong in hooks or tests.
+
+
+## 2026-10-01 - Release preflight mismatch
+
+The dependency cleanup updated Wrangler but missed the reusable release workflow's exact-version input. Release preflight caught the 4.131.1 / 4.145.0 mismatch before push or deployment; the workflow rejects this mismatch. Synchronized the input and reviewed generated deployment configuration. Dependency upgrades must search CI/CD pins as well as manifests and lockfiles.
+
+A GitHub API path containing a query string was initially unquoted, so zsh rejected it before execution. Quoted the path and reran the read-only request. Quote API paths that contain shell metacharacters.
+
+The maintenance-entry probe also failed under Bun's data-URL import path before exercising a handler. Reran the isolated handler check with Node's ESM loader and a base64 data URL; HTTP 503 and queue retries passed. A failed harness is not deployment evidence.

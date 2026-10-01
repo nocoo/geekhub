@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.4.2 — 2026-10-01
+
+- Update React, React Query, Lucide, Node types, Vitest, jsdom and Cloudflare tooling; resolve all 48 dependency issues against the current architecture and remove redundant Worker types.
+- Deduplicate the AI SDK graph and remove unused Next.js patch sections and placeholder assets. Keep only active runtime and development dependencies.
+- Remove retired feed scheduling fields, backoff calculations and persistent logs. Queue ownership and bounded retries remain; feed work is triggered by reader actions only.
+- Remove obsolete diagnostic report compatibility and discard cached reports without body-coverage data. Preserve subscriptions, articles and reading state.
+- Match the release workflow's Wrangler pin to the locked 4.145.0 runtime.
+
+Operational note: the explicit patch release request is honored, but migrations
+`0007` and `0008` are not backward compatible. Pause traffic and queue delivery
+before applying them; never deploy the previous Worker against the new schema.
+The retired `refresh_minutes` API input is rejected. No authentication changes.
+
 ## v1.4.1 — 2026-09-20
 
 - 修复全站输入控件的表面层级：浅色输入框和选择器使用纯白填充，深色沿用 Basalt 语义色；修复 AI 设置误用边框色作为输入背景。
