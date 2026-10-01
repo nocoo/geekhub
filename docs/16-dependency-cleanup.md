@@ -1,5 +1,8 @@
 # Dependency Cleanup - 2026-10-01
 
+Publication follow-up: [v1.4.2 release verification](17-v1.4.2-release.md).
+The local-only scope below describes the cleanup phase before release authorization.
+
 ## Scope
 
 Reviewed all 48 open dependency issues (#31-#78) against the active manifest,

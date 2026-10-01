@@ -1,0 +1,71 @@
+{
+	"capturedAt": "2026-10-01T02:22:45.590Z",
+	"version": "1.4.2",
+	"checks": [
+		{
+			"path": "/api/live",
+			"status": 200,
+			"body": {
+				"status": "ok",
+				"version": "1.4.2",
+				"storage": "d1"
+			}
+		},
+		{
+			"path": "/",
+			"status": 302,
+			"access": {
+				"origin": "https://nocoo.cloudflareaccess.com",
+				"audienceMatches": true
+			}
+		},
+		{
+			"path": "/api/session",
+			"status": 302,
+			"access": {
+				"origin": "https://nocoo.cloudflareaccess.com",
+				"audienceMatches": true
+			}
+		},
+		{
+			"path": "/api/feeds",
+			"status": 302,
+			"access": {
+				"origin": "https://nocoo.cloudflareaccess.com",
+				"audienceMatches": true
+			}
+		},
+		{
+			"path": "/logo-64.png",
+			"status": 302,
+			"access": {
+				"origin": "https://nocoo.cloudflareaccess.com",
+				"audienceMatches": true
+			}
+		},
+		{
+			"path": "/assets/ReaderContent-BE38iPze.js",
+			"status": 302,
+			"access": {
+				"origin": "https://nocoo.cloudflareaccess.com",
+				"audienceMatches": true
+			}
+		},
+		{
+			"path": "/assets/index-CpkJ-Stn.css",
+			"status": 302,
+			"access": {
+				"origin": "https://nocoo.cloudflareaccess.com",
+				"audienceMatches": true
+			}
+		},
+		{
+			"path": "/assets/index-DoL_sFCW.js",
+			"status": 302,
+			"access": {
+				"origin": "https://nocoo.cloudflareaccess.com",
+				"audienceMatches": true
+			}
+		}
+	]
+}

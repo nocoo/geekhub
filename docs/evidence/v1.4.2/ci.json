@@ -1,0 +1,71 @@
+{
+	"databaseId": 36804558081,
+	"headSha": "7aaea03fca076f4ed46db9e92f4b50fa0cd06f08",
+	"status": "completed",
+	"conclusion": "success",
+	"url": "https://github.com/nocoo/geekhub/actions/runs/36804558081",
+	"createdAt": "2026-10-01T02:10:19Z",
+	"updatedAt": "2026-10-01T02:17:09Z",
+	"jobs": [
+		{
+			"name": "workflows / lint",
+			"status": "completed",
+			"conclusion": "success"
+		},
+		{
+			"name": "quality / L1: Quality & Tests",
+			"status": "completed",
+			"conclusion": "success"
+		},
+		{
+			"name": "security / Security (Secrets & Vulnerabilities)",
+			"status": "completed",
+			"conclusion": "success"
+		},
+		{
+			"name": "quality / Build",
+			"status": "completed",
+			"conclusion": "success"
+		},
+		{
+			"name": "l2 local Worker + SQLite / Test (bun on ubuntu-latest)",
+			"status": "completed",
+			"conclusion": "success"
+		},
+		{
+			"name": "l3 local Worker + SQLite / Test (bun on ubuntu-latest)",
+			"status": "completed",
+			"conclusion": "success"
+		},
+		{
+			"name": "quality / L2: API E2E",
+			"status": "completed",
+			"conclusion": "skipped"
+		},
+		{
+			"name": "quality / Worker Tests",
+			"status": "completed",
+			"conclusion": "skipped"
+		},
+		{
+			"name": "quality / Package Check",
+			"status": "completed",
+			"conclusion": "skipped"
+		},
+		{
+			"name": "quality / L3: Browser E2E",
+			"status": "completed",
+			"conclusion": "skipped"
+		},
+		{
+			"name": "quality / G2: Security",
+			"status": "completed",
+			"conclusion": "skipped"
+		},
+		{
+			"name": "quality / Quality Gate Aggregate",
+			"status": "completed",
+			"conclusion": "success"
+		}
+	]
+}

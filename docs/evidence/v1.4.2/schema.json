@@ -1,0 +1,36 @@
+{
+	"migrations": [
+		"0001_reader.sql",
+		"0002_reader_workflow.sql",
+		"0003_clear_fetch_logs.sql",
+		"0004_clear_mock_ai_results.sql",
+		"0005_feed_auto_translate_content.sql",
+		"0006_feed_auto_fetch_content.sql",
+		"0007_remove_retired_feed_state.sql",
+		"0008_drop_obsolete_diagnostic_reports.sql"
+	],
+	"retiredTablesAndIndexes": [],
+	"feedColumns": [
+		"id",
+		"category_id",
+		"title",
+		"url",
+		"site_url",
+		"description",
+		"auto_translate",
+		"is_active",
+		"status",
+		"last_fetched_at",
+		"last_error",
+		"lease_until",
+		"etag",
+		"last_modified",
+		"created_at",
+		"sort_order",
+		"refresh_token",
+		"fetch_revision",
+		"auto_translate_content",
+		"auto_fetch_content"
+	],
+	"obsoleteReports": 0
+}

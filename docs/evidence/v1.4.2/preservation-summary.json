@@ -1,0 +1,22 @@
+{
+	"feeds": {
+		"rows": 43,
+		"sha256": "0a1b1a2073174d079a25b4faa328fbcb4333a58a64d79d22155b7f8678601d08",
+		"unchanged": true
+	},
+	"articles": {
+		"rows": 2699,
+		"sha256": "3273d437aed51891b7d01f01c040e7188069b90a0c06628111c610e7f1da5eac",
+		"unchanged": true
+	},
+	"categories": {
+		"rows": 6,
+		"sha256": "a1dc99a9e4bc7c03dc15ce34f57a14e968f4eefe454dcafbb1e58b95378cc316",
+		"unchanged": true
+	},
+	"directory": {
+		"rows": 1,
+		"sha256": "378b46947538c056012c8ab2199175b2a128320a238b6e7fdebdc77200fb77c0",
+		"unchanged": true
+	}
+}

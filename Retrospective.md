@@ -26,3 +26,7 @@ The maintenance-entry probe also failed under Bun's data-URL import path before 
 ## 2026-10-01 - Settings keyboard test raced dialog entry
 
 The release L3 run passed 55 tests but the mobile keyboard-navigation case timed out. Its trace showed immediate programmatic focus and ArrowDown during dialog entry, followed by an unstable tab and a detached dialog while clicking. Wait for the dialog to enter the viewport and finish its own animations before testing keyboard navigation, just as the test already waits for panel animations. Keep the original assertions and rerun the complete browser suite; do not hide the failure with retries or larger timeouts.
+
+## 2026-10-01 - Remote D1 snapshot command mode
+
+The maintenance snapshot used `wrangler d1 execute --file --json`, which selected the bulk-file path: it printed upload progress and query statistics rather than SELECT rows. The JSON parser rejected that output before migration. Re-ran the same read-only SQL using `--command --json`, validated all four result sets, and proceeded only after the snapshot was complete. Use command mode for remote read-only row evidence; a successful bulk execution does not prove that rows were captured.
