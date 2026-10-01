@@ -5,7 +5,6 @@ dist/
 !.dev.vars.example
 **/.env*
 !**/.env.example
-**/.next/
 **/node_modules/
 **/*.tsbuildinfo
 coverage/

@@ -36,7 +36,7 @@
 
 参照 Gecko 的 `analyze-core.ts` 和 AI 连接接口，GeekHub 统一使用 `@nocoo/next-ai/server` 的 `resolveAiConfig`、`createAiModel`，由 `ai.generateText` 执行请求。应用删除 OpenAI / Anthropic 工厂及直接依赖，设置继续复用 `@nocoo/next-ai/react`。
 
-已发布的 next-ai 0.4.0 缺少传输注入和协议选择，因此使用 [Bun 包补丁](../patches/@nocoo%252Fnext-ai@0.4.0.patch) 给两个服务端入口补充 `AiClientOptions.fetch`、`openaiApi`。默认保持 Responses；GeekHub 显式选择 Chat Completions。补丁同时修复 Anthropic Bearer 模式仍发送 `x-api-key` 的问题。`bun install --frozen-lockfile` 已验证，补丁随安装复现；后续 SDK 正式提供这些选项时可升级并删除补丁。没有修改或发布 Gecko / next-ai 仓库。
+已发布的 next-ai 0.4.0 缺少传输注入和协议选择，因此使用 [Bun 包补丁](../patches/@nocoo%252Fnext-ai@0.4.0.patch) 给通用 `/server` 入口补充 `AiClientOptions.fetch`、`openaiApi`。默认保持 Responses；GeekHub 显式选择 Chat Completions。补丁同时修复 Anthropic Bearer 模式仍发送 `x-api-key` 的问题。`bun install --frozen-lockfile` 已验证，补丁随安装复现；后续 SDK 正式提供这些选项时可升级并删除补丁。没有修改或发布 Gecko / next-ai 仓库。
 
 自定义服务无法连接的直接原因是 Worker 不支持 `redirect: "error"`，请求在发出前抛出 TypeError。现使用 `manual` 并拒绝所有 3xx，不跟随跳转或转发凭据；回归测试覆盖 301、302、307、308。
 
@@ -60,3 +60,5 @@
 第一次完整运行中，诊断弹窗打开后遇到 Vite 开发页面重载；该时段仍在更新文档。停止文件修改后，重新执行整个 L3 的 38 项检查及安全扫描，全部通过，没有跳过或放宽断言。[首次运行](evidence/automatic-reader/initial-quality.log)、[最终 L3](evidence/automatic-reader/l3.log)、[安全扫描](evidence/automatic-reader/security.log)、[覆盖率](evidence/automatic-reader/coverage-summary.json)。
 
 正常 TLS 的本地 HTTPS 浏览器确认了新增设置入口：[订阅设置](evidence/automatic-reader/feed-setting.png)。隔离测试验证自动载入后正文 DOM、选区、滚动位置不变，列表自动锚定现有可见文章；手机从正文返回也保持锚点：[桌面](evidence/automatic-reader/stable-reader-desktop.png)、[手机](evidence/automatic-reader/stable-reader-mobile.png)。全文翻译覆盖开启／关闭、保存后刷新、已存译文不再生成、无密钥／空正文不触发、失败无自动重试循环，以及切换文章后不串结果。
+
+The package patch covers only the React UI and universal `/server` entry used by this Worker. GeekHub does not patch or import the Next.js-only `/server-next` entry.
