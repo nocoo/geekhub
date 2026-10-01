@@ -3,7 +3,7 @@
 	"compilerOptions": {
 		"lib": ["ES2022", "DOM", "DOM.Iterable"],
 		"jsx": "react-jsx",
-		"types": ["node", "@cloudflare/workers-types"]
+		"types": ["node"]
 	},
 	"include": ["tests/unit", "src/web/**/*.d.ts", "worker-configuration.d.ts"]
 }

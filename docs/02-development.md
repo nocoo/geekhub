@@ -99,3 +99,5 @@ RSSHub 支持 `rsshub://namespace/route` 跟随设置中的实例，也保留旧
 Access 返回 401／503 时检查团队名、应用 AUD、JWT 有效期及 JWKS 连通性。修改 AI 服务端加密密钥会使已有密文无法解密，应先导出并制定密钥轮换方案，不要随意重新生成生产密钥。
 
 Retired scheduling fields are not accepted by the API. Migration `0007` removes the old schedule columns and persistent log table while preserving subscriptions, articles, reading state and queue ownership.
+
+Worker types come from `wrangler types`, including runtime APIs matched to `wrangler.jsonc`. A separate `@cloudflare/workers-types` package is unnecessary. Cloudflare's Vite plugin and Wrangler share the same Miniflare/workerd versions; update them together so local tests and development use one runtime.

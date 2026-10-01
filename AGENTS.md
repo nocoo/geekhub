@@ -14,6 +14,8 @@ Single-user RSS reader: a Vite/React SPA plus a Hono API on one Cloudflare Worke
 
 Run from the repository root. TypeScript 7.0.2 strict, Bun 1.4.0 (`packageManager`; CI pins Node 26.8.1), Biome 2.5.13, `@nocoo/basalt` 2.1.8 and `@nocoo/next-ai` 0.4.0. Wrangler bindings live in `wrangler.jsonc`; secrets stay in ignored local configuration. Normal local tests need no production Access or AI keys.
 
+Wrangler generates both binding and runtime types from the configured compatibility date; do not add a separate `@cloudflare/workers-types` dependency. Retired scheduling columns and persistent fetch logs are removed by migration `0007`; feed work is action-triggered with Queue retries only.
+
 ```sh
 bun install --frozen-lockfile
 bun run setup

@@ -9,7 +9,7 @@
 		"build": "vite build",
 		"preview": "vite preview --host 127.0.0.1",
 		"deploy": "bun scripts/deploy.ts",
-		"cf-typegen": "wrangler types --env local --include-runtime=false --strict-vars=false",
+		"cf-typegen": "wrangler types --env local --strict-vars=false",
 		"typecheck": "bun run cf-typegen && tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.worker.json && tsc --noEmit -p tsconfig.tools.json && tsc --noEmit -p tsconfig.test.json",
 		"lint": "biome check --error-on-warnings .",
 		"lint:fix": "biome check --write .",
@@ -47,8 +47,7 @@
 	"devDependencies": {
 		"@axe-core/playwright": "4.13.0",
 		"@biomejs/biome": "2.5.13",
-		"@cloudflare/vite-plugin": "1.54.8",
-		"@cloudflare/workers-types": "5.20260911.1",
+		"@cloudflare/vite-plugin": "1.62.3",
 		"@playwright/test": "1.63.0",
 		"@tailwindcss/vite": "4.3.3",
 		"@testing-library/react": "16.3.3",
@@ -66,7 +65,7 @@
 		"typescript": "7.0.2",
 		"vite": "8.2.2",
 		"vitest": "5.0.3",
-		"wrangler": "4.131.1"
+		"wrangler": "4.145.0"
 	},
 	"trustedDependencies": [
 		"@biomejs/biome",
