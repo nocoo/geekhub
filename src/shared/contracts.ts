@@ -130,7 +130,7 @@ export interface AiSettings extends AiSettingsReadonly {
 export type AiAction = "summary" | "translate" | "translate-title";
 export interface FeedJob {
 	feedId: string;
-	token?: string;
+	token: string;
 }
 export interface DiagnosticJob {
 	kind: "diagnose";
@@ -152,8 +152,7 @@ export interface FeedInspection extends ConnectionCheck {
 	siteUrl: string | null;
 	entries: number | null;
 	readableEntries: number;
-	/** Entries with usable body/summary text in the first 200; absent in older reports. */
-	contentEntries?: number;
+	contentEntries: number;
 	oldestAt: string | null;
 	latestAt: string | null;
 	undatedEntries: number;

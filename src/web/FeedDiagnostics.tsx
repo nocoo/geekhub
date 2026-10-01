@@ -72,9 +72,7 @@ function Coverage({
 			)}
 			{inspection.entries !== null && (
 				<p className={inspection.contentEntries === 0 ? "diagnostic-warning" : "field-hint"}>
-					{inspection.contentEntries === undefined
-						? "旧报告未检查正文，请重新检查。"
-						: `前 ${Math.min(200, inspection.entries)} 条中 ${inspection.contentEntries} 条提供有效正文或摘要；仅标题、链接或图片不计为正文。`}
+					{`前 ${Math.min(200, inspection.entries)} 条中 ${inspection.contentEntries} 条提供有效正文或摘要；仅标题、链接或图片不计为正文。`}
 				</p>
 			)}
 			{(inspection.undatedEntries > 0 || inspection.futureEntries > 0) && (

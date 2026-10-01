@@ -226,7 +226,7 @@ describe("diagnostic assessment", () => {
 			[1, 46, 69],
 			[4, 64, 69],
 			[5, 70, 94],
-		]) {
+		] as const) {
 			const result = assessDiagnostic(report({ feed: inspection({ contentEntries }) }));
 			expect(result.total).toBe(total);
 			expect(result.dimensions.find((item) => item.id === "integrity")?.score).toBe(integrity);
@@ -236,17 +236,6 @@ describe("diagnostic assessment", () => {
 				expect(result.limit).toContain(String(total));
 			}
 		}
-	});
-
-	test("legacy reports need a new body check and are not silently treated as healthy", () => {
-		const feed = inspection();
-		delete feed.contentEntries;
-		const result = assessDiagnostic(report({ feed }));
-		expect(result).toMatchObject({ total: 79, coverage: 80, recommendation: { action: "review" } });
-		expect(result.dimensions.find((item) => item.id === "integrity")).toMatchObject({
-			score: null,
-		});
-		expect(result.limit).toContain("重新检查");
 	});
 
 	test("site scores honor the final protocol, including redirects, failures and missing sites", () => {
@@ -288,7 +277,6 @@ describe("diagnostic assessment", () => {
 				candidate("unreadable", { readableEntries: 0 }),
 				candidate("no-body", { contentEntries: 0, ageDays: 0 }),
 				candidate("sparse-body", { contentEntries: 1, ageDays: 0 }),
-				candidate("legacy", { contentEntries: undefined, ageDays: 0 }),
 				candidate("undated", { ageDays: null }),
 				candidate("old", { ageDays: 90 }),
 				candidate("rss"),

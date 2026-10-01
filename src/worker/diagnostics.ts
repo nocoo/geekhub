@@ -145,6 +145,7 @@ export async function inspectFeed(
 		siteUrl: null,
 		entries: null,
 		readableEntries: 0,
+		contentEntries: 0,
 		oldestAt: null,
 		latestAt: null,
 		undatedEntries: 0,

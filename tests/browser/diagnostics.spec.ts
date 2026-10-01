@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import type { Feed, FeedDiagnostic } from "../../src/shared/contracts";
 
-test("metadata-only RSS cannot score highly and legacy reports request a body recheck", async ({
+test("metadata-only RSS cannot score highly and current reports survive reload", async ({
 	page,
 }) => {
 	const response = await page.request.post("/api/feeds", {
@@ -46,15 +46,6 @@ test("metadata-only RSS cannot score highly and legacy reports request a body re
 		await page.screenshot({
 			path: `test-results/l3/diagnostic-content-${test.info().project.name}.png`,
 		});
-		// Older D1 reports lack body coverage; never reuse the former metadata-only full score.
-		if (!persisted.report) throw new Error("Missing persisted report");
-		delete persisted.report.feed.contentEntries;
-		await page.route(`**${path}`, (route) => route.fulfill({ json: persisted }));
-		await page.reload();
-		await page.getByRole("button", { name: `诊断 ${feed.title}`, exact: true }).click();
-		await expect(dialog.getByTestId("diagnostic-total")).toHaveText("79/ 100");
-		await expect(dialog.locator(".score-total")).toContainText("暂定评分");
-		await expect(dialog.locator(".score-dimensions")).toContainText("旧报告没有检查正文");
 	} finally {
 		await page.request.delete(`/api/feeds/${feed.id}`);
 	}

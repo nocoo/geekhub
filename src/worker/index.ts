@@ -169,7 +169,7 @@ app.post("/api/feeds", async (c) => {
 		.run();
 	// Persist first: a transient queue failure leaves a visible, retryable subscription.
 	try {
-		await enqueueFeed(c.env, { feedId: id });
+		await enqueueFeed(c.env, id);
 	} catch {
 		/* enqueueFeed persists the failure for retry in the UI. */
 	}
@@ -228,7 +228,7 @@ app.patch("/api/feeds/:id", async (c) => {
 		(input.is_active ?? Boolean(feed.is_active))
 	) {
 		try {
-			await enqueueFeed(c.env, { feedId: id });
+			await enqueueFeed(c.env, id);
 		} catch {
 			/* The saved source remains visible with a retryable queue error. */
 		}
@@ -244,7 +244,7 @@ app.delete("/api/feeds/:id", async (c) => {
 app.post("/api/feeds/:id/refresh", async (c) => {
 	const id = c.req.param("id");
 	await getFeed(c.env.DB, id);
-	return c.json({ queued: await enqueueFeed(c.env, { feedId: id }) }, 202);
+	return c.json({ queued: await enqueueFeed(c.env, id) }, 202);
 });
 app.get("/api/feeds/:id/diagnostics", async (c) => {
 	await getFeed(c.env.DB, c.req.param("id"));
@@ -265,8 +265,7 @@ app.post("/api/feeds/:id/diagnostics", async (c) => {
 app.post("/api/refresh", async (c) => {
 	const feeds = await listFeeds(c.env.DB);
 	let queued = 0;
-	for (const feed of feeds)
-		if (feed.is_active && (await enqueueFeed(c.env, { feedId: feed.id }))) queued++;
+	for (const feed of feeds) if (feed.is_active && (await enqueueFeed(c.env, feed.id))) queued++;
 	return c.json({ queued }, 202);
 });
 

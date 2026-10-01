@@ -90,7 +90,7 @@ RSSHub 支持 `rsshub://namespace/route` 跟随设置中的实例，也保留旧
 
 诊断 POST 接收 `{}` 或 `{ "siteUrl": "https://example.com/blog/" }`，主站参数用于本次重新发现。GET 返回 `null` 或带有 `queued|running|success|error` 状态的对象。`report.feed` 包含请求地址、最终地址、跳转、HTTP 状态、耗时、返回数量、可读数量、时间范围和距最近发布天数；`sites` 为两个主站协议的结果，`candidates` 为已验证候选及失败原因。检查过程不写入文章。
 
-诊断 ViewModel 通过 `src/web/lib/diagnostic-score.ts` 从已保存的报告派生总分、五项分数和建议。RSS 可用性／新鲜度／条目完整度／响应速度／主站可达性权重为 30／30／20／10／10。完整度按标题和链接 20%、正文／摘要 60%、日期 20% 计算；前 200 条的有效正文数保存在报告 JSON 的 `contentEntries`，不新增 D1 列。有效正文为清理 HTML、链接文本、重复标题和空白后至少 40 字符，不代表已提供全文。RSS 不可用／无条目或无正文／过旧／不足半数有正文／旧报告正文未知时，总分分别最高 39／49／59／69／79。未知维度不计入分母，显示暂定评分；候选至少半数样本有正文，且日期已知、新鲜、最终地址不同，才可推荐。报告时间和评分保持一致，点击“重新检查”才更新观察结果。视图使用原生 SVG 雷达图和分项文字，未知项不画成零分。
+诊断 ViewModel 通过 `src/web/lib/diagnostic-score.ts` 从已保存的报告派生总分、五项分数和建议。RSS 可用性／新鲜度／条目完整度／响应速度／主站可达性权重为 30／30／20／10／10。完整度按标题和链接 20%、正文／摘要 60%、日期 20% 计算；前 200 条的有效正文数保存在报告 JSON 的 `contentEntries`，不新增 D1 列。有效正文为清理 HTML、链接文本、重复标题和空白后至少 40 字符，不代表已提供全文。RSS 不可用／无条目或无正文／过旧／不足半数有正文时，总分分别最高 39／49／59／69。未知维度不计入分母，显示暂定评分；候选至少半数样本有正文，且日期已知、新鲜、最终地址不同，才可推荐。报告时间和评分保持一致，点击“重新检查”才更新观察结果。视图使用原生 SVG 雷达图和分项文字，未知项不画成零分。
 
 ## 故障定位
 
@@ -101,3 +101,5 @@ Access 返回 401／503 时检查团队名、应用 AUD、JWT 有效期及 JWKS 
 Retired scheduling fields are not accepted by the API. Migration `0007` removes the old schedule columns and persistent log table while preserving subscriptions, articles, reading state and queue ownership.
 
 Worker types come from `wrangler types`, including runtime APIs matched to `wrangler.jsonc`. A separate `@cloudflare/workers-types` package is unnecessary. Cloudflare's Vite plugin and Wrangler share the same Miniflare/workerd versions; update them together so local tests and development use one runtime.
+
+Migration `0008` deletes obsolete diagnostic snapshots without body-coverage data, including obsolete candidates. The next user-requested check creates a current report; articles and reading state are not affected. No legacy report format is supported.

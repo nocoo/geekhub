@@ -35,22 +35,22 @@ export async function fetchLog(
 	});
 }
 
-export async function enqueueFeed(env: Env, job: FeedJob): Promise<boolean> {
+export async function enqueueFeed(env: Env, feedId: string): Promise<boolean> {
 	const now = new Date().toISOString();
 	const token = crypto.randomUUID();
 	const claimed =
 		await env.DB.prepare(`UPDATE feeds SET status = 'queued', lease_until = ?, last_error = NULL, refresh_token = ?, fetch_revision = fetch_revision + 1
     WHERE id = ? AND (lease_until IS NULL OR lease_until < ?) RETURNING id`)
-			.bind(new Date(Date.now() + 5 * 60_000).toISOString(), token, job.feedId, now)
+			.bind(new Date(Date.now() + 5 * 60_000).toISOString(), token, feedId, now)
 			.first();
 	if (!claimed) return false;
 	try {
-		await env.FEED_QUEUE.send({ feedId: job.feedId, token });
+		await env.FEED_QUEUE.send({ feedId, token });
 	} catch (error) {
 		await env.DB.prepare(
 			"UPDATE feeds SET status = 'error', lease_until = NULL, refresh_token = NULL, last_error = ? WHERE id = ? AND refresh_token = ?",
 		)
-			.bind("抓取队列暂不可用，请重试", job.feedId, token)
+			.bind("抓取队列暂不可用，请重试", feedId, token)
 			.run();
 		throw error;
 	}
@@ -58,7 +58,6 @@ export async function enqueueFeed(env: Env, job: FeedJob): Promise<boolean> {
 }
 
 export async function refreshFeed(env: Env, job: FeedJob): Promise<void> {
-	// Pre-migration messages have no ownership token. A manual refresh can reclaim them after the lease expires.
 	if (!job.token) return;
 	const started = Date.now();
 	const feed =

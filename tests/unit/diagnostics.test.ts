@@ -16,6 +16,27 @@ import { client, deferred, makeEnv, rss } from "./support";
 const signal = () => new AbortController().signal;
 const noSite = "<rss><channel><title>No main site</title></channel></rss>";
 
+test("cleanup discards obsolete diagnostic snapshots but retains current reports and reader data", async () => {
+	const env = makeEnv();
+	for (const [report, removed] of [
+		[null, false],
+		[{ feed: {}, candidates: [] }, true],
+		[{ feed: { contentEntries: 0 }, candidates: [{ inspection: {} }] }, true],
+		[{ feed: { contentEntries: 0 }, candidates: [{ inspection: { contentEntries: 0 } }] }, false],
+	] as const) {
+		await env.DB.prepare(`INSERT OR REPLACE INTO feed_diagnostics(feed_id,run_id,feed_url,status,requested_at,report)
+			VALUES ('f1','run','https://example.com/feed','success','2026-10-01',?)`)
+			.bind(report === null ? null : JSON.stringify(report))
+			.run();
+		await env.DB.exec(readFileSync("migrations/0008_drop_obsolete_diagnostic_reports.sql", "utf8"));
+		expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM feed_diagnostics").first("n")).toBe(
+			removed ? 0 : 1,
+		);
+	}
+	expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM articles").first("n")).toBe(2);
+	expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM feeds").first("n")).toBe(1);
+});
+
 describe("feed inspection and rediscovery", () => {
 	test("Hugging Face metadata-only RSS has importable entries but no body content", async () => {
 		const xml = readFileSync(new URL("../fixtures/huggingface-feed.xml", import.meta.url), "utf8");

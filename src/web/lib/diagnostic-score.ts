@@ -67,10 +67,7 @@ function recommend(
 			title: "建议确认停更后暂停",
 			reason: `最近内容距检查 ${feed.ageDays} 天，超过 ${staleAfterDays} 天观察阈值，尚未验证到新鲜、可读的替代源。可查看主站，确认停更后暂停并保留文章；低频博客仍可继续订阅。`,
 		};
-	if (
-		feed.contentEntries !== undefined &&
-		feed.contentEntries < Math.min(200, feed.entries ?? 0) / 2
-	)
+	if (feed.contentEntries < Math.min(200, feed.entries ?? 0) / 2)
 		return {
 			action: "review",
 			title: "订阅内容不足，建议检查正文",
@@ -105,9 +102,8 @@ export function assessDiagnostic(report: DiagnosticReport) {
 	const stale = age !== null && age >= staleAfterDays;
 	const empty = feed.entries === 0 || feed.readableEntries === 0;
 	const sample = Math.min(200, feed.entries ?? 0);
-	const contentKnown = feed.contentEntries !== undefined;
 	const noContent = feed.contentEntries === 0;
-	const sparseContent = contentKnown && (feed.contentEntries ?? 0) < sample / 2;
+	const sparseContent = feed.contentEntries < sample / 2;
 	const validDates = Math.max(0, (feed.entries ?? 0) - feed.undatedEntries - feed.futureEntries);
 	const reachable = sites.filter(connected);
 	const https = reachable.some((site) => site.finalUrl.startsWith("https:"));
@@ -150,22 +146,19 @@ export function assessDiagnostic(report: DiagnosticReport) {
 			id: "integrity",
 			label: "条目完整度",
 			weight: 20,
-			score:
-				!available || !contentKnown
-					? null
-					: feed.entries
-						? Math.round(
-								(feed.readableEntries / sample) * 20 +
-									((feed.contentEntries ?? 0) / sample) * 60 +
-									(validDates / feed.entries) * 20,
-							)
-						: 0,
+			score: !available
+				? null
+				: feed.entries
+					? Math.round(
+							(feed.readableEntries / sample) * 20 +
+								(feed.contentEntries / sample) * 60 +
+								(validDates / feed.entries) * 20,
+						)
+					: 0,
 			evidence: !available
 				? "RSS 检查未成功，无法评估条目结构。"
-				: !contentKnown
-					? "旧报告没有检查正文，无法确认内容是否完整，请重新检查。"
-					: `返回 ${feed.entries} 条；前 ${sample} 条中 ${feed.readableEntries} 条有标题和安全链接，${feed.contentEntries} 条有有效正文或摘要；全量 ${validDates} 条日期有效。`,
-			rule: "标题和安全链接占 20%，有效正文或摘要占 60%（前 200 条），有效日期占 20%（全部条目）。有效文本需去除 HTML、链接、重复标题和空白后至少 40 字符；仅图片不计为正文，不代表已提供全文。空源 0 分；旧报告未检查正文则标记未知。",
+				: `返回 ${feed.entries} 条；前 ${sample} 条中 ${feed.readableEntries} 条有标题和安全链接，${feed.contentEntries} 条有有效正文或摘要；全量 ${validDates} 条日期有效。`,
+			rule: "标题和安全链接占 20%，有效正文或摘要占 60%（前 200 条），有效日期占 20%（全部条目）。有效文本需去除 HTML、链接、重复标题和空白后至少 40 字符；仅图片不计为正文，不代表已提供全文。空源 0 分。",
 		},
 		{
 			id: "speed",
@@ -208,17 +201,7 @@ export function assessDiagnostic(report: DiagnosticReport) {
 		(sum, dimension) => sum + (dimension.score ?? 0) * dimension.weight,
 		0,
 	);
-	const ceiling = !available
-		? 39
-		: empty || noContent
-			? 49
-			: stale
-				? 59
-				: sparseContent
-					? 69
-					: !contentKnown
-						? 79
-						: 100;
+	const ceiling = !available ? 39 : empty || noContent ? 49 : stale ? 59 : sparseContent ? 69 : 100;
 	const limit = !available
 		? "当前 RSS 不可用，总分上限为 39 分。"
 		: empty
@@ -229,17 +212,15 @@ export function assessDiagnostic(report: DiagnosticReport) {
 					? "内容超过停更观察阈值，总分上限为 59 分。"
 					: sparseContent
 						? "不足半数条目提供有效正文或摘要，总分上限为 69 分。"
-						: !contentKnown
-							? "正文尚未检查，暂定总分上限为 79 分，请重新检查。"
-							: null;
+						: null;
 	const total = Math.min(ceiling, Math.round(weighted / coverage));
 	const freshCandidates = report.candidates
 		.flatMap((candidate) => {
 			const inspection = candidate.inspection;
 			return usable(inspection) &&
 				inspection.readableEntries > 0 &&
-				(inspection.contentEntries ?? 0) > 0 &&
-				(inspection.contentEntries ?? 0) >= Math.min(200, inspection.entries ?? 0) / 2 &&
+				inspection.contentEntries > 0 &&
+				inspection.contentEntries >= Math.min(200, inspection.entries ?? 0) / 2 &&
 				inspection.entries !== 0 &&
 				inspection.ageDays !== null &&
 				inspection.ageDays < staleAfterDays &&

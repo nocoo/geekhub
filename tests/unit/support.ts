@@ -40,7 +40,7 @@ export function client(env: Env) {
 }
 
 export async function queuedJob(env: Env, feedId = "f1"): Promise<FeedJob> {
-	expect(await enqueueFeed(env, { feedId })).toBe(true);
+	expect(await enqueueFeed(env, feedId)).toBe(true);
 	return vi.mocked(env.FEED_QUEUE.send).mock.calls.at(-1)?.[0] as FeedJob;
 }
 

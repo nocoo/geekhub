@@ -6,16 +6,15 @@ import { feedLogs } from "../../src/worker/logs";
 import { client, deferred, makeEnv, queuedJob, rss } from "./support";
 
 describe("durable feed work", () => {
-	const job = { feedId: "f1" };
 	test("queues once under a lease and resets the lease when enqueue fails", async () => {
 		const env = makeEnv();
-		expect(await enqueueFeed(env, job)).toBe(true);
-		expect(await enqueueFeed(env, job)).toBe(false);
-		expect(await enqueueFeed(env, { feedId: "missing" })).toBe(false);
+		expect(await enqueueFeed(env, "f1")).toBe(true);
+		expect(await enqueueFeed(env, "f1")).toBe(false);
+		expect(await enqueueFeed(env, "missing")).toBe(false);
 		expect(env.FEED_QUEUE.send).toHaveBeenCalledOnce();
 		await env.DB.exec("UPDATE feeds SET lease_until = NULL WHERE id = 'f1';");
 		vi.mocked(env.FEED_QUEUE.send).mockRejectedValueOnce(new Error("queue unavailable"));
-		await expect(enqueueFeed(env, job)).rejects.toThrow("queue unavailable");
+		await expect(enqueueFeed(env, "f1")).rejects.toThrow("queue unavailable");
 		expect(
 			await env.DB.prepare("SELECT status,lease_until FROM feeds WHERE id='f1'").first(),
 		).toEqual({ status: "error", lease_until: null });
@@ -82,8 +81,8 @@ describe("durable feed work", () => {
 		const env = makeEnv();
 		const fetch = vi.fn();
 		vi.stubGlobal("fetch", fetch);
-		await refreshFeed(env, { feedId: "missing" });
-		await refreshFeed(env, { feedId: "missing" });
+		await refreshFeed(env, { feedId: "missing", token: "missing" });
+		await refreshFeed(env, { feedId: "missing", token: "missing" });
 		const claimed = await queuedJob(env);
 		await env.DB.prepare("UPDATE feeds SET status='fetching',lease_until=? WHERE id='f1'")
 			.bind(new Date(Date.now() + 60000).toISOString())
@@ -151,14 +150,14 @@ describe("durable feed work", () => {
 		expect(success.ack).toHaveBeenCalledOnce();
 		expect(failed.retry).toHaveBeenCalledWith({ delaySeconds: 60 });
 	});
-	test("acknowledges duplicate, superseded and pre-migration messages without refetching", async () => {
+	test("ignores duplicate, superseded and malformed messages without refetching", async () => {
 		const env = makeEnv();
 		const fetch = vi.fn(async () => new Response(rss()));
 		vi.stubGlobal("fetch", fetch);
 		const delivered = await queuedJob(env);
 		await refreshFeed(env, delivered);
 		await refreshFeed(env, delivered);
-		await refreshFeed(env, { feedId: "f1" });
+		await refreshFeed(env, { feedId: "f1" } as FeedJob);
 		expect(fetch).toHaveBeenCalledOnce();
 		const current = await queuedJob(env);
 		await refreshFeed(env, delivered);
