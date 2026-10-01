@@ -206,6 +206,11 @@ test("settings use accessible vertical navigation and AI configuration is requir
 			await expect(page.getByRole("button", { name, exact: true })).toBeDisabled();
 		await expect(page.getByRole("button", { name: "提取全文", exact: true })).toBeEnabled();
 		await page.getByRole("button", { name: "AI 设置", exact: true }).click();
+		const dialog = page.getByRole("dialog", { name: "设置", exact: true });
+		await expect(dialog).toBeInViewport();
+		await dialog.evaluate(async (element) => {
+			await Promise.allSettled(element.getAnimations().map((animation) => animation.finished));
+		});
 		const nav = page.getByRole("tablist", { name: "设置范围" });
 		await expect(nav).toHaveAttribute("aria-orientation", "vertical");
 		await page.getByRole("tab", { name: "阅读", exact: true }).focus();

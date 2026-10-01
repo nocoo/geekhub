@@ -22,3 +22,7 @@ The dependency cleanup updated Wrangler but missed the reusable release workflow
 A GitHub API path containing a query string was initially unquoted, so zsh rejected it before execution. Quoted the path and reran the read-only request. Quote API paths that contain shell metacharacters.
 
 The maintenance-entry probe also failed under Bun's data-URL import path before exercising a handler. Reran the isolated handler check with Node's ESM loader and a base64 data URL; HTTP 503 and queue retries passed. A failed harness is not deployment evidence.
+
+## 2026-10-01 - Settings keyboard test raced dialog entry
+
+The release L3 run passed 55 tests but the mobile keyboard-navigation case timed out. Its trace showed immediate programmatic focus and ArrowDown during dialog entry, followed by an unstable tab and a detached dialog while clicking. Wait for the dialog to enter the viewport and finish its own animations before testing keyboard navigation, just as the test already waits for panel animations. Keep the original assertions and rerun the complete browser suite; do not hide the failure with retries or larger timeouts.

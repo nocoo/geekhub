@@ -7,6 +7,7 @@
 - Remove retired feed scheduling fields, backoff calculations and persistent logs. Queue ownership and bounded retries remain; feed work is triggered by reader actions only.
 - Remove obsolete diagnostic report compatibility and discard cached reports without body-coverage data. Preserve subscriptions, articles and reading state.
 - Match the release workflow's Wrangler pin to the locked 4.145.0 runtime.
+- Wait for settings dialog entry before automated mobile keyboard navigation, preserving all accessibility assertions.
 
 Operational note: the explicit patch release request is honored, but migrations
 `0007` and `0008` are not backward compatible. Pause traffic and queue delivery
