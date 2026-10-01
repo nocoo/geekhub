@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import { HTTPException } from "hono/http-exception";
 import { expect, test, vi } from "vitest";
 import type { FetchLog } from "../../src/shared/contracts";
@@ -92,19 +91,6 @@ test("cache outages neither fail successful refreshes nor replace upstream error
 	expect(
 		await env.DB.prepare("SELECT last_error FROM feeds WHERE id = 'f1'").first("last_error"),
 	).toBe("upstream timeout");
-});
-
-test("cleanup migration deletes legacy log data while retaining reader data", async () => {
-	const env = makeEnv();
-	await env.DB.exec(
-		"INSERT INTO fetch_logs(feed_id, feed_title, level, message) VALUES ('f1', 'Feed', 'info', 'Old log');",
-	);
-	await env.DB.exec(
-		readFileSync(new URL("../../migrations/0003_clear_fetch_logs.sql", import.meta.url), "utf8"),
-	);
-	expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM fetch_logs").first("n")).toBe(0);
-	expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM feeds").first("n")).toBe(1);
-	expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM articles").first("n")).toBe(2);
 });
 
 test("activities correlate start and completion, filter by kind, and keep failures safe", async () => {

@@ -95,7 +95,7 @@ describe("durable feed work", () => {
 		await refreshFeed(env, claimed);
 		expect(fetch).toHaveBeenCalledOnce();
 	});
-	test("records errors and backoff, then allows a later retry", async () => {
+	test("records errors and releases the lease for retry", async () => {
 		const env = makeEnv();
 		vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("upstream timeout")));
 		await expect(refreshFeed(env, await queuedJob(env))).rejects.toThrow("upstream timeout");
@@ -223,31 +223,32 @@ describe("durable feed work", () => {
 		).toEqual({ status: "queued", last_error: null });
 	});
 
-	test("backoff grows to one day and successful retries clear it", async () => {
+	test("queue retries clear errors and preserve the last successful fetch time", async () => {
 		const env = makeEnv();
-		await env.DB.exec("UPDATE feeds SET failure_count = 10 WHERE id = 'f1';");
 		const fetch = vi
 			.fn()
 			.mockRejectedValueOnce(new Error("gone"))
 			.mockResolvedValueOnce(new Response(rss()));
 		vi.stubGlobal("fetch", fetch);
 		const retry = await queuedJob(env);
-		const before = Date.now();
 		await expect(refreshFeed(env, retry)).rejects.toThrow("gone");
-		const next = await env.DB.prepare(
-			"SELECT next_fetch_at FROM feeds WHERE id = 'f1'",
-		).first<string>("next_fetch_at");
-		expect(Date.parse(next ?? "") - before).toBeGreaterThanOrEqual(86400_000);
-		expect(Date.parse(next ?? "") - before).toBeLessThan(86401_000);
-		await refreshFeed(env, retry);
 		expect(
-			await env.DB.prepare("SELECT failure_count FROM feeds WHERE id = 'f1'").first(
-				"failure_count",
+			await env.DB.prepare("SELECT last_fetched_at FROM feeds WHERE id = 'f1'").first(
+				"last_fetched_at",
 			),
-		).toBe(0);
+		).toBeNull();
+		await refreshFeed(env, retry);
+		const row = await env.DB.prepare(
+			"SELECT status, last_error, last_fetched_at FROM feeds WHERE id = 'f1'",
+		).first();
+		expect(row).toMatchObject({
+			status: "success",
+			last_error: null,
+			last_fetched_at: expect.any(String),
+		});
 	});
 
-	test("completion respects a refresh interval edited during the request", async () => {
+	test("completion preserves the site URL edited during the request", async () => {
 		const env = makeEnv();
 		const response = deferred<Response>();
 		const fetch = vi.fn(() => response.promise);
@@ -255,17 +256,14 @@ describe("durable feed work", () => {
 		const running = refreshFeed(env, await queuedJob(env));
 		await vi.waitFor(() => expect(fetch).toHaveBeenCalledOnce());
 		await client(env)("PATCH", "/feeds/f1", {
-			refresh_minutes: 15,
 			site_url: "https://saved.example.com",
 		});
 		response.resolve(new Response(rss()));
 		await running;
 		const row = await env.DB.prepare(
-			"SELECT last_fetched_at, next_fetch_at, site_url FROM feeds WHERE id = 'f1'",
-		).first<{ last_fetched_at: string; next_fetch_at: string; site_url: string }>();
-		expect(Date.parse(row?.next_fetch_at ?? "") - Date.parse(row?.last_fetched_at ?? "")).toBe(
-			15 * 60_000,
-		);
+			"SELECT last_fetched_at, site_url FROM feeds WHERE id = 'f1'",
+		).first<{ last_fetched_at: string; site_url: string }>();
+		expect(row?.last_fetched_at).toEqual(expect.any(String));
 		expect(row?.site_url).toBe("https://saved.example.com/");
 	});
 });

@@ -84,7 +84,7 @@ RSSHub 支持 `rsshub://namespace/route` 跟随设置中的实例，也保留旧
 
 不再配置 Cron；抓取由添加、换源、恢复订阅或手动刷新触发。日志 `limit` 范围为 1–500，默认 500；支持 `feedId`、`level` 和 `category` 筛选，不访问 D1。
 
-`PATCH /api/feeds/:id` 接受 `url`、`site_url`、`title`、`category_id`、`refresh_minutes`、`auto_translate`、`is_active`。`site_url: ""` 清除主站，`category_id: null` 移到未分类。换源保留文章与状态；重复或不安全的地址不会覆盖原设置。
+`PATCH /api/feeds/:id` 接受 `url`、`site_url`、`title`、`category_id`、`auto_translate`、`auto_translate_content`、`auto_fetch_content`、`is_active`。`site_url: ""` 清除主站，`category_id: null` 移到未分类。换源保留文章与状态；重复或不安全的地址不会覆盖原设置。
 
 两个排序接口接收 `{ "ids": ["id-1", "id-2"] }`，必须包含当前所有项目且不能重复。订阅排序可加 `{ "feedId": "id-1", "categoryId": null }`，同时保存分类移动。数据集合已经变化时返回 409；排序和移动不会部分成功。
 
@@ -97,3 +97,5 @@ RSSHub 支持 `rsshub://namespace/route` 跟随设置中的实例，也保留旧
 源无法抓取或疑似停更时，在中栏源标题旁点击诊断，或从设置里的“检查源”进入。报告可区分连接失败、空源、缺失时间和旧内容，并允许从主站寻找新 RSS、保留历史文章换源或暂停更新。RSSHub 公共实例和部分站点可能返回 403 或超时；可以在阅读设置中更换实例。CSV 不含历史文章，首次刷新后由队列重新抓取。
 
 Access 返回 401／503 时检查团队名、应用 AUD、JWT 有效期及 JWKS 连通性。修改 AI 服务端加密密钥会使已有密文无法解密，应先导出并制定密钥轮换方案，不要随意重新生成生产密钥。
+
+Retired scheduling fields are not accepted by the API. Migration `0007` removes the old schedule columns and persistent log table while preserving subscriptions, articles, reading state and queue ownership.

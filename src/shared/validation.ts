@@ -34,7 +34,6 @@ export const feedUpdate = z
 		auto_translate_content: z.boolean().optional(),
 		auto_fetch_content: z.boolean().optional(),
 		is_active: z.boolean().optional(),
-		refresh_minutes: z.number().int().min(15).max(1440).optional(),
 	})
 	.strict()
 	.refine((v) => Object.keys(v).length > 0, "至少修改一项设置");

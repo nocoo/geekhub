@@ -10,8 +10,8 @@ export async function seedSql(): Promise<string> {
 		"INSERT OR IGNORE INTO categories(id,name,color) VALUES ('engineering','技术与工程','green'),('design','设计与体验','blue'),('inspiration','独立与创造','amber');",
 	];
 	for (const [index, source] of demoSources.entries()) {
-		statements.push(`INSERT OR IGNORE INTO feeds(id,category_id,title,url,site_url,description,status,last_fetched_at,next_fetch_at)
-      VALUES (${quote(source.id)},${quote(source.category)},${quote(source.title)},${quote(`https://${demoHost}/rss/${source.id}`)},${quote(source.site)},${quote(source.description)},'success',${quote(new Date().toISOString())},${quote(new Date(Date.now() + 3600_000).toISOString())});`);
+		statements.push(`INSERT OR IGNORE INTO feeds(id,category_id,title,url,site_url,description,status,last_fetched_at)
+      VALUES (${quote(source.id)},${quote(source.category)},${quote(source.title)},${quote(`https://${demoHost}/rss/${source.id}`)},${quote(source.site)},${quote(source.description)},'success',${quote(new Date().toISOString())});`);
 		for (const [i, title] of (demoTitles[index] ?? []).entries()) {
 			const sourceId = `${source.id}-${i}`;
 			const hash = await crypto.subtle.digest(

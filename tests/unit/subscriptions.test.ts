@@ -1,8 +1,49 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import { expect, test, vi } from "vitest";
 import type { Category, Feed } from "../../src/shared/contracts";
 import { client, makeEnv } from "./support";
+
+test("retired feed state is removed without losing subscriptions or reading state", () => {
+	const db = new DatabaseSync(":memory:");
+	try {
+		for (const file of readdirSync("migrations")
+			.filter((name) => name < "0007")
+			.sort())
+			db.exec(readFileSync(`migrations/${file}`, "utf8"));
+		db.exec(`
+			INSERT INTO categories(id,name) VALUES ('category','Kept');
+			INSERT INTO feeds(id,category_id,title,url,refresh_minutes,next_fetch_at,failure_count,refresh_token,fetch_revision)
+			VALUES ('feed','category','Kept','https://example.com/rss',30,'2100-01-01',3,'current-job',7);
+			INSERT INTO articles(id,feed_id,source_id,title,url,published_at,is_read,is_starred,is_later)
+			VALUES ('article','feed','source','Kept','https://example.com/article','2026-01-01',1,1,1);
+			INSERT INTO fetch_logs(feed_id,feed_title,level,message) VALUES ('feed','Kept','info','Retired');
+		`);
+		db.exec(readFileSync("migrations/0007_remove_retired_feed_state.sql", "utf8"));
+		expect(db.prepare("SELECT category_id,refresh_token,fetch_revision FROM feeds").get()).toEqual({
+			category_id: "category",
+			refresh_token: "current-job",
+			fetch_revision: 7,
+		});
+		expect(db.prepare("SELECT is_read,is_starred,is_later FROM articles").get()).toEqual({
+			is_read: 1,
+			is_starred: 1,
+			is_later: 1,
+		});
+		expect(
+			db.prepare("SELECT name FROM sqlite_master WHERE name IN ('fetch_logs','feeds_due')").all(),
+		).toEqual([]);
+		const columns = db
+			.prepare("PRAGMA table_info(feeds)")
+			.all()
+			.map((column) => column.name);
+		for (const name of ["refresh_minutes", "next_fetch_at", "failure_count"])
+			expect(columns).not.toContain(name);
+		expect(db.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
+	} finally {
+		db.close();
+	}
+});
 
 test("migration preserves existing articles and initializes a deterministic subscription order", () => {
 	const db = new DatabaseSync(":memory:");
@@ -79,11 +120,11 @@ test("subscription ordering is complete, atomic, persisted and can move between 
 	await request("POST", "/categories/reorder", { ids: ["c1"] }, 409);
 });
 
-test("replacing a URL resets validators and scheduling while retaining reading data", async () => {
+test("replacing a URL resets validators and queued work while retaining reading data", async () => {
 	const env = makeEnv();
 	const request = client(env);
 	await env.DB.exec(
-		"UPDATE feeds SET etag='old', last_modified='old', last_error='old', failure_count=3, last_fetched_at='2000-01-01', next_fetch_at='2100-01-01', site_url='https://old.example.com' WHERE id='f1';",
+		"UPDATE feeds SET etag='old', last_modified='old', last_error='old', last_fetched_at='2000-01-01', site_url='https://old.example.com' WHERE id='f1';",
 	);
 	await env.DB.exec("UPDATE articles SET is_read=1,is_starred=1,is_later=1 WHERE id='a1';");
 	const replaced = await request<Feed>("PATCH", "/feeds/f1", {
@@ -98,14 +139,12 @@ test("replacing a URL resets validators and scheduling while retaining reading d
 	});
 	expect(
 		await env.DB.prepare(
-			"SELECT etag,last_modified,last_fetched_at,next_fetch_at,failure_count FROM feeds WHERE id='f1'",
+			"SELECT etag,last_modified,last_fetched_at FROM feeds WHERE id='f1'",
 		).first(),
 	).toEqual({
 		etag: null,
 		last_modified: null,
 		last_fetched_at: null,
-		next_fetch_at: null,
-		failure_count: 0,
 	});
 	expect(await request("GET", "/articles/a1")).toMatchObject({
 		is_read: 1,
@@ -121,7 +160,6 @@ test("replacing a URL resets validators and scheduling while retaining reading d
 	await request("PATCH", "/feeds/f1", { is_active: false });
 	await request("PATCH", "/feeds/f1", {
 		url: "rsshub://github/issue/nocoo/geekhub",
-		refresh_minutes: 120,
 	});
 	expect(env.FEED_QUEUE.send).toHaveBeenCalledOnce();
 	vi.mocked(env.FEED_QUEUE.send).mockRejectedValueOnce(new Error("queue offline"));
@@ -131,9 +169,9 @@ test("replacing a URL resets validators and scheduling while retaining reading d
 		status: "error",
 		url: "rsshub://github/issue/nocoo/geekhub",
 	});
-	await request("PATCH", "/feeds/f1", { refresh_minutes: 30 });
-	const unchanged = await request<Feed>("PATCH", "/feeds/f1", { refresh_minutes: 30 });
-	expect(Date.parse(unchanged.next_fetch_at ?? "") - Date.now()).toBeGreaterThan(29 * 60_000);
+	await request("PATCH", "/feeds/f1", { refresh_minutes: 30 }, 400);
+	expect(resumed).not.toHaveProperty("refresh_minutes");
+	expect(resumed).not.toHaveProperty("next_fetch_at");
 });
 
 test("address editing validates both destinations and preserves the old address on conflict", async () => {

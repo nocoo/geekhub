@@ -101,7 +101,6 @@ describe("reader API with SQLite SQL", () => {
 		await request("PATCH", `/feeds/${feed.id}`, {
 			title: "Updated",
 			category_id: null,
-			refresh_minutes: 15,
 			auto_translate: false,
 		});
 		await request("PATCH", `/feeds/${feed.id}`, {}, 400);

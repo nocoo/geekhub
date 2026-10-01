@@ -29,13 +29,13 @@ flowchart LR
 | 表 | 内容 |
 | --- | --- |
 | `categories` | 分类名称、颜色、图标、排序 |
-| `feeds` | RSS／主站地址、分类、排序、自动翻译、更新间隔、启停、租约、任务令牌、抓取版本、失败次数 |
+| `feeds` | RSS／主站地址、分类、排序、自动翻译、启停、租约、任务令牌、抓取版本 |
 | `articles` | 内容、来源 ID、已读／收藏／稍后阅读、AI 结果 |
 | `settings` | 固定 `id=1`，阅读偏好、AI 配置、加密凭据 |
 | `feed_diagnostics` | 每个源最近一次诊断的运行 ID、原地址、状态、时间和 JSON 报告；删除订阅时级联清理 |
 | `directory` | 精选博客、RSS 地址、标签、评分和导出元数据 |
 
-抓取日志通过一个固定名称的 `FeedLogCache` Durable Object 共享，仅在内存保留最新 500 条，按写入顺序倒序返回；不调用 D1、DO storage 或文件系统。Queue 和 API 访问同一实例，实例回收或重新部署后历史会清空。筛选、清空和日志数量统计均使用该缓存；写日志失败不影响抓取状态或 Queue ack。旧 `fetch_logs` 通过迁移清空，空表仅用于发布期间兼容旧 Worker，不再读写，也没有按时间扫描清理。
+抓取日志通过一个固定名称的 `FeedLogCache` Durable Object 共享，仅在内存保留最新 500 条，按写入顺序倒序返回；不调用 D1、DO storage 或文件系统。Queue 和 API 访问同一实例，实例回收或重新部署后历史会清空。筛选、清空和日志数量统计均使用该缓存；写日志失败不影响抓取状态或 Queue ack。Migration `0007` drops the retired `fetch_logs` table; no persistent log table remains.
 
 没有账户数据表，也没有文件系统文章缓存。所有在线 SQL 参数均绑定，文章状态与偏好按提交字段原子更新。外键负责删除订阅后的文章级联和删除分类后的未分类状态。清理旧文章始终保留收藏与稍后阅读。
 
@@ -55,7 +55,7 @@ flowchart LR
 
 添加、换源、恢复订阅和手动刷新先获得租约，再发送 Queue 消息；已移除 Cron，空闲时不扫描或自动抓取。全部刷新只包含启用的订阅。消费者等待抓取、写入和日志完成后再 ack，失败后有限重试。网络请求有 15 秒超时，检查每次跳转的公开 HTTP(S) 地址，读取正文不超过 4 MiB。RSS 最多处理 200 篇，D1 每批 25 条。
 
-每次入队携带唯一 `refresh_token`。入队、消费、换源或暂停都会递增 `fetch_revision`；文章写入和完成状态必须匹配当前版本。旧消费者即使晚到，也不能污染新地址、覆盖新任务或在删除后重新插入文章。队列失败后仍有限重试。`refresh_minutes` 和 `next_fetch_at` 保留兼容历史数据与 API，但不再驱动自动调度，界面不再提供刷新间隔设置。
+每次入队携带唯一 `refresh_token`。入队、消费、换源或暂停都会递增 `fetch_revision`；文章写入和完成状态必须匹配当前版本。旧消费者即使晚到，也不能污染新地址、覆盖新任务或在删除后重新插入文章。队列失败后仍有限重试。Migration `0007` removes `refresh_minutes`, `next_fetch_at`, `failure_count` and the scheduling index. The API rejects retired interval settings; only Queue retry policy controls retries.
 
 诊断同样通过 Queue 执行，结果留在 D1，窗口关闭不取消检查。每个源同一时间复用活动诊断，120 秒未完成允许重新发起。检查总网络时限 55 秒、单请求 10 秒；源正文 4 MiB、主站 HTML 1 MiB；最多检查 6 个候选，每批并发 2 个。时间统计覆盖全部返回条目，缺失、无效和未来日期不参与新鲜度判断；默认 90 天提示可能停更。HTTP 成功但内容为空或不能解析，会分别报告。
 

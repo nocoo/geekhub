@@ -62,7 +62,6 @@ export function normalizeImport(input: unknown) {
 			title: required(row, "title"),
 			url: value.url.startsWith("rsshub://") ? value.url : resolved,
 			description: row.description ?? "",
-			refresh_minutes: z.coerce.number().int().min(15).max(1440).parse(row.fetch_interval_minutes),
 			auto_translate: Number(z.enum(["true", "false"]).parse(row.auto_translate) === "true"),
 			is_active: Number(z.enum(["true", "false"]).parse(row.is_active) === "true"),
 			created_at: timestamp(row.created_at) ?? new Date().toISOString(),

@@ -208,15 +208,9 @@ app.patch("/api/feeds/:id", async (c) => {
 	const changedUrl = input.url !== undefined && input.url !== feed.url;
 	if (changedUrl && input.site_url === undefined) input.site_url = "";
 	const entries = Object.entries(input);
-	const changedInterval =
-		!changedUrl &&
-		input.refresh_minutes !== undefined &&
-		input.refresh_minutes !== feed.refresh_minutes;
 	const resets = changedUrl
-		? ", etag = NULL, last_modified = NULL, last_fetched_at = NULL, last_error = NULL, next_fetch_at = NULL, failure_count = 0"
-		: changedInterval
-			? ", next_fetch_at = ?"
-			: "";
+		? ", etag = NULL, last_modified = NULL, last_fetched_at = NULL, last_error = NULL"
+		: "";
 	const cancel =
 		changedUrl || input.is_active === false
 			? ", status = 'idle', lease_until = NULL, refresh_token = NULL, fetch_revision = fetch_revision + 1"
@@ -224,13 +218,7 @@ app.patch("/api/feeds/:id", async (c) => {
 	const statements = [
 		c.env.DB.prepare(
 			`UPDATE feeds SET ${entries.map(([key]) => `${key} = ?`).join(", ")}${resets}${cancel} WHERE id = ?`,
-		).bind(
-			...entries.map(([, value]) => (typeof value === "boolean" ? Number(value) : value)),
-			...(changedInterval
-				? [new Date(Date.now() + (input.refresh_minutes as number) * 60_000).toISOString()]
-				: []),
-			id,
-		),
+		).bind(...entries.map(([, value]) => (typeof value === "boolean" ? Number(value) : value)), id),
 	];
 	if (changedUrl || input.site_url !== undefined)
 		statements.push(c.env.DB.prepare("DELETE FROM feed_diagnostics WHERE feed_id = ?").bind(id));

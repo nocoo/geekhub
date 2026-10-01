@@ -56,6 +56,7 @@ test("imports old IDs, category associations and catalogue metadata into one lib
 		is_active: 1,
 	});
 	expect(data.feeds[0]).not.toHaveProperty("user_id");
+	expect(data.feeds[0]).not.toHaveProperty("refresh_minutes");
 	const db = new TestDatabase();
 	await db.exec(importSql(data));
 	await db.exec(

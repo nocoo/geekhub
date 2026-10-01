@@ -33,7 +33,7 @@ bun run deploy
 
 脚本拒绝 `CLOUDFLARE_ENV`、测试持久化目录或测试 runtime，随后按顺序执行：远程迁移、生产构建、Wrangler 部署。迁移失败即停止，不上传依赖新 schema 的代码。
 
-日志改造迁移 `0003_clear_fetch_logs.sql` 清空旧日志并保留空表，兼容部署期间的旧 Worker。新代码不再读写该表；部署完成后再次执行 `bun x wrangler d1 execute geekhub-db --remote --command "DELETE FROM fetch_logs"`，移除切换期间旧消费者可能写入的日志。DO 使用 `new_sqlite_classes` 注册，但代码没有任何 storage 调用，不保存日志；不要回退到仍写 D1 日志或启用 Cron 的旧版本。
+Migration `0007_remove_retired_feed_state.sql` drops the retired persistent log table, scheduling index, refresh interval, next-fetch timestamp and failure counter. Do not run the previous Worker against this schema: pause consumers and requests for the migration/deployment window. Do not roll back to a Worker that uses these columns or D1 logs. FeedLogCache remains memory-only; its Durable Object registration does not imply storage writes.
 
 首次发布可以使用 `bun run deploy --secrets-file <生产密钥文件>` 一次上传加密密钥和 Worker 版本。Wrangler 后续发布保留已有 secret；密钥不写入 `wrangler.jsonc`、浏览器或 Git。不要使用本地开发密钥作为生产密钥。首次生成的本机备份在 Git 忽略的 `.wrangler/deploy/production-secrets.json`，权限 0600。
 

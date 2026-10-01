@@ -95,7 +95,6 @@ await request("PATCH", `/feeds/${added.id}`, {
 	auto_translate: true,
 	auto_translate_content: true,
 	auto_fetch_content: true,
-	refresh_minutes: 30,
 });
 await request("POST", "/feeds", { url: added.url }, 409);
 await request("PATCH", "/feeds/missing-feed", { title: "intruder" }, 404);

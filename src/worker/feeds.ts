@@ -11,11 +11,9 @@ interface FeedRow {
 	id: string;
 	title: string;
 	url: string;
-	refresh_minutes: number;
 	etag: string | null;
 	last_modified: string | null;
 	fetch_revision: number;
-	failure_count: number;
 }
 
 export async function fetchLog(
@@ -144,9 +142,9 @@ export async function refreshFeed(env: Env, job: FeedJob): Promise<void> {
 		}
 		const now = new Date().toISOString();
 		const completed =
-			await env.DB.prepare(`UPDATE feeds SET status = 'success', lease_until = NULL, refresh_token = NULL, last_error = NULL, failure_count = 0,
-		  last_fetched_at = ?, next_fetch_at = strftime('%Y-%m-%dT%H:%M:%fZ', ?, '+' || refresh_minutes || ' minutes') WHERE id = ? AND fetch_revision = ?`)
-				.bind(now, now, feed.id, feed.fetch_revision)
+			await env.DB.prepare(`UPDATE feeds SET status = 'success', lease_until = NULL, refresh_token = NULL, last_error = NULL,
+		  last_fetched_at = ? WHERE id = ? AND fetch_revision = ?`)
+				.bind(now, feed.id, feed.fetch_revision)
 				.run();
 		if (!completed.meta.changes) return;
 		await fetchLog(
@@ -159,19 +157,10 @@ export async function refreshFeed(env: Env, job: FeedJob): Promise<void> {
 		);
 	} catch (error) {
 		const message = errorMessage(error).slice(0, 500);
-		const delayMinutes = Math.min(
-			1440,
-			feed.refresh_minutes * 2 ** Math.min(feed.failure_count, 7),
-		);
 		const failed = await env.DB.prepare(
-			"UPDATE feeds SET status = 'error', lease_until = NULL, last_error = ?, next_fetch_at = ?, failure_count = failure_count + 1 WHERE id = ? AND fetch_revision = ?",
+			"UPDATE feeds SET status = 'error', lease_until = NULL, last_error = ? WHERE id = ? AND fetch_revision = ?",
 		)
-			.bind(
-				message,
-				new Date(Date.now() + delayMinutes * 60_000).toISOString(),
-				feed.id,
-				feed.fetch_revision,
-			)
+			.bind(message, feed.id, feed.fetch_revision)
 			.run();
 		if (!failed.meta.changes) return;
 		await fetchLog(env, feed, "error", message, 0, Date.now() - started);

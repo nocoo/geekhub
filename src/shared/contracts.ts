@@ -23,11 +23,9 @@ export interface Feed {
 	auto_translate_content: number;
 	auto_fetch_content: number;
 	is_active: number;
-	refresh_minutes: number;
 	sort_order: number;
 	status: "idle" | "queued" | "fetching" | "success" | "error";
 	last_fetched_at: string | null;
-	next_fetch_at: string | null;
 	last_error: string | null;
 	unread_count: number;
 	total_count: number;
