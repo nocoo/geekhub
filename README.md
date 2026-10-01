@@ -89,8 +89,10 @@ Vitest 运行单元测试；HTTP 与 Playwright 浏览器测试分别使用 1700
 - [部署](docs/05-deployment.md)
 - [阅读更新与订阅诊断](docs/07-reader-workflow.md)
 
+## Dependency Maintenance
+
+Dependency maintenance follows the current Vite/React + Hono Worker architecture. Retired scheduled-fetch settings and persistent fetch logs are removed; feed work is action-triggered and logs remain in memory. See [dependency cleanup and validation](docs/16-dependency-cleanup.md).
+
 ## 许可证
 
 仓库尚未提供独立的 LICENSE 文件；公开源码不代表已授予开源许可。
-
-Dependency maintenance follows the current Vite/React + Hono Worker architecture. Retired scheduled-fetch settings and persistent fetch logs are removed; feed work is action-triggered and logs remain in memory.
