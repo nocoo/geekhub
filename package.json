@@ -26,7 +26,7 @@
 		"prepare": "husky"
 	},
 	"dependencies": {
-		"@nocoo/basalt": "2.1.8",
+		"@nocoo/basalt": "2.2.0",
 		"@nocoo/next-ai": "0.4.0",
 		"@tanstack/react-query": "5.104.0",
 		"ai": "7.0.126",

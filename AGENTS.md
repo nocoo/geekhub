@@ -12,7 +12,7 @@ Single-user RSS reader: a Vite/React SPA plus a Hono API on one Cloudflare Worke
 
 ## Setup and commands
 
-Run from the repository root. TypeScript 7.0.2 strict, Bun 1.4.0 (`packageManager`; CI pins Node 26.8.1), Biome 2.5.13, `@nocoo/basalt` 2.1.8 and `@nocoo/next-ai` 0.4.0. Wrangler bindings live in `wrangler.jsonc`; secrets stay in ignored local configuration. Normal local tests need no production Access or AI keys.
+Run from the repository root. TypeScript 7.0.2 strict, Bun 1.4.0 (`packageManager`; CI pins Node 26.8.1), Biome 2.5.13, `@nocoo/basalt` 2.2.0 and `@nocoo/next-ai` 0.4.0. Wrangler bindings live in `wrangler.jsonc`; secrets stay in ignored local configuration. Normal local tests need no production Access or AI keys.
 
 Wrangler generates both binding and runtime types from the configured compatibility date; do not add a separate `@cloudflare/workers-types` dependency. Retired scheduling columns and persistent fetch logs are removed by migration `0007`; feed work is action-triggered with Queue retries only.
 
@@ -39,7 +39,7 @@ bun run quality
 - Verify Access JWT signature, issuer and audience; production fails closed. Local identity and mock AI are restricted to the local environment and loopback requests.
 - `src/web` is browser-only; `src/worker` is server-only; `src/shared` is browser-safe. Never import the AI server entry or secrets into the browser bundle.
 - Parameterize D1 SQL. Sanitize fetched HTML and validate outbound URLs and redirects. Feed work uses Queues triggered by reader actions; no Cron scheduling. Fetch logs live only in the shared Durable Object memory cache capped at 500 entries. No floating background promises or Worker filesystem storage.
-- Use published Basalt 2.1.8 components; read the installed Basalt integration guide before changing application chrome. Use `@nocoo/next-ai` public contracts, React configuration components and the universal `/server` entry. Keep MVVM structure and the existing green identity.
+- Use published Basalt 2.2.0 components; read the installed Basalt integration guide before changing application chrome. Use `@nocoo/next-ai` public contracts, React configuration components and the universal `/server` entry. Keep MVVM structure and the existing green identity.
 - Keep reading selection, scroll and pagination stable during background updates; updates apply explicitly. Preserve keyboard/input boundaries and responsive layouts.
 
 ## Testing and quality contract
