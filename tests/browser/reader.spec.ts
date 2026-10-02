@@ -764,8 +764,36 @@ test("background updates load automatically while preserving list anchors, prose
 				}));
 		});
 	await rows.nth(3).scrollIntoViewIfNeeded();
-	const mobilePositions = await visiblePositions();
+	// Playwright may scroll again for click actionability; capture the actual pre-navigation position.
+	await rows.nth(3).evaluate((element) => {
+		element.addEventListener(
+			"pointerdown",
+			() => {
+				const list = element.parentElement;
+				if (!list) throw new Error("Article list is missing");
+				const bounds = list.getBoundingClientRect();
+				list.dataset.anchorPositions = JSON.stringify(
+					Array.from(list.querySelectorAll<HTMLElement>("[data-article-id]"))
+						.filter((row) => {
+							const rect = row.getBoundingClientRect();
+							return rect.bottom > bounds.top && rect.top < bounds.bottom;
+						})
+						.map((row) => ({
+							id: row.dataset.articleId,
+							offset: row.getBoundingClientRect().top - bounds.top,
+						})),
+				);
+			},
+			{ once: true },
+		);
+	});
 	await rows.nth(3).click();
+	const capturedPositions = await page
+		.locator(".article-scroll")
+		.getAttribute("data-anchor-positions");
+	if (!capturedPositions) throw new Error("Article pointerdown did not capture anchor positions");
+	const mobilePositions: Awaited<ReturnType<typeof visiblePositions>> =
+		JSON.parse(capturedPositions);
 	await expect(page.locator(".prose")).toBeVisible();
 	await expect(page.getByRole("button", { name: "标为未读", exact: true })).toBeEnabled();
 	const selectedUrl = page.url();

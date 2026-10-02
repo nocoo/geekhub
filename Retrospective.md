@@ -30,3 +30,7 @@ The release L3 run passed 55 tests but the mobile keyboard-navigation case timed
 ## 2026-10-01 - Remote D1 snapshot command mode
 
 The maintenance snapshot used `wrangler d1 execute --file --json`, which selected the bulk-file path: it printed upload progress and query statistics rather than SELECT rows. The JSON parser rejected that output before migration. Re-ran the same read-only SQL using `--command --json`, validated all four result sets, and proceeded only after the snapshot was complete. Use command mode for remote read-only row evidence; a successful bulk execution does not prove that rows were captured.
+
+## 2026-10-03 - Mobile anchor measurement preceded click scrolling
+
+The retained browser gate repeatedly reported a 108.75px anchor shift. Instrumentation showed that the list was at scrollTop 0 during the test's measurement, but Playwright's click actionability moved it to 109 before pointerdown. The application correctly preserved that actual reading position. Capture the visible rows at pointerdown, after actionability scrolling and before navigation hides the list, rather than changing application scrolling or weakening the original two-pixel assertion. Remove diagnostic listeners after identifying the cause and rerun both browser projects.
