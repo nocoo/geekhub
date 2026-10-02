@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { mkdirSync, mkdtempSync, openSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { resolve } from "node:path";
 import { assertMarker, executeLocalSql, seedSql } from "./seed";
@@ -24,6 +25,7 @@ const env: Record<string, string | undefined> = {
 	GEEKHUB_TEST_STATE: state,
 	GEEKHUB_TEST_URL: base,
 	RESOURCE_ENV: "test",
+	AI_ENCRYPTION_KEY: randomUUID() + randomUUID(),
 };
 delete env.CLOUDFLARE_API_TOKEN;
 delete env.CLOUDFLARE_API_KEY;

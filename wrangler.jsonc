@@ -43,6 +43,7 @@
 		]
 	},
 	"triggers": { "crons": [] },
+	"secrets": { "required": ["AI_ENCRYPTION_KEY"] },
 	"env": {
 		"local": {
 			"name": "geekhub-local",
@@ -77,7 +78,8 @@
 					}
 				]
 			},
-			"triggers": { "crons": [] }
+			"triggers": { "crons": [] },
+			"secrets": { "required": ["AI_ENCRYPTION_KEY"] }
 		}
 	}
 }
