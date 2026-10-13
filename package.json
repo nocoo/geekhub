@@ -76,6 +76,7 @@
 		"@nocoo/next-ai@0.4.0": "patches/@nocoo%2Fnext-ai@0.4.0.patch"
 	},
 	"overrides": {
-		"playwright-core": "1.64.0"
+		"playwright-core": "1.64.0",
+		"sharp": "^0.35.5"
 	}
 }
