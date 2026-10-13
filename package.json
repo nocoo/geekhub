@@ -48,7 +48,7 @@
 		"@axe-core/playwright": "4.13.0",
 		"@biomejs/biome": "2.5.15",
 		"@cloudflare/vite-plugin": "1.63.1",
-		"@playwright/test": "1.63.0",
+		"@playwright/test": "1.64.0",
 		"@tailwindcss/vite": "4.3.3",
 		"@testing-library/react": "16.3.3",
 		"@types/bun": "1.4.0",
@@ -74,5 +74,8 @@
 	],
 	"patchedDependencies": {
 		"@nocoo/next-ai@0.4.0": "patches/@nocoo%2Fnext-ai@0.4.0.patch"
+	},
+	"overrides": {
+		"playwright-core": "1.64.0"
 	}
 }
