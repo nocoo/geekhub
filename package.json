@@ -34,7 +34,7 @@
 		"fast-xml-parser": "5.11.2",
 		"hono": "4.13.13",
 		"jose": "6.2.12",
-		"lucide-react": "1.49.0",
+		"lucide-react": "1.55.0",
 		"react": "19.3.0",
 		"react-dom": "19.3.0",
 		"react-markdown": "10.1.0",
