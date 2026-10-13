@@ -29,7 +29,7 @@
 		"@nocoo/basalt": "2.2.0",
 		"@nocoo/next-ai": "0.4.0",
 		"@tanstack/react-query": "5.104.2",
-		"ai": "7.0.126",
+		"ai": "7.0.138",
 		"cheerio": "1.2.0",
 		"fast-xml-parser": "5.11.1",
 		"hono": "4.13.7",
