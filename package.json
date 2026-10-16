@@ -28,7 +28,7 @@
 	"dependencies": {
 		"@nocoo/basalt": "2.2.0",
 		"@nocoo/next-ai": "0.4.0",
-		"@tanstack/react-query": "5.104.2",
+		"@tanstack/react-query": "5.104.3",
 		"ai": "7.0.142",
 		"cheerio": "1.2.0",
 		"fast-xml-parser": "5.11.2",
