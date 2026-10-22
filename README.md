@@ -40,7 +40,7 @@ bun run db:import /path/to/csvs --remote
 
 ## 开发
 
-需要 Bun 1.4.0、Node.js 26.8.1；CSV 导入使用 Python 3 标准库。
+需要 Bun 1.4.0、Node.js 26.12.1；CSV 导入使用 Python 3 标准库。
 
 ```sh
 bun install --frozen-lockfile

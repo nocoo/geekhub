@@ -40,7 +40,7 @@ The directory must contain `blogs_rows.csv`, `categories_rows.csv` and `feeds_ro
 
 ## Development
 
-Requires Bun 1.4.0 and Node.js 26.8.1; CSV imports use the Python 3 standard library.
+Requires Bun 1.4.0 and Node.js 26.12.1; CSV imports use the Python 3 standard library.
 
 ```sh
 bun install --frozen-lockfile
