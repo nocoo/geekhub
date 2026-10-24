@@ -74,7 +74,10 @@ test("category controls keep full colors and single-line actions on a narrow set
 		.poll(async () => (await color.boundingBox())?.width ?? 0)
 		.toBeGreaterThanOrEqual(112);
 	const save = card.getByRole("button", { name: `保存分类 ${first.name}`, exact: true });
-	expect(await save.evaluate((el) => el.scrollHeight <= el.clientHeight)).toBe(true);
+	// Layout height includes the action border the content box excludes.
+	expect(await save.evaluate((el) => el.scrollHeight <= (el as HTMLElement).offsetHeight)).toBe(
+		true,
+	);
 	for (const button of await card.locator(".order-controls button").all())
 		await expect(button).toHaveAttribute("type", "button");
 	await page.screenshot({

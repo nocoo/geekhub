@@ -365,10 +365,8 @@ function ReaderApp({ session }: { session: Session }) {
 			<AppShell className="geekhub-shell">
 				<AppSkipLink>跳到阅读内容</AppSkipLink>
 				<Sidebar aria-label="订阅导航" className="reader-sidebar">
-					<SidebarHeader
-						className={`reader-sidebar-header ${collapsed ? "justify-center px-0" : ""}`}
-					>
-						<div className="brand">
+					<SidebarHeader className="reader-sidebar-header">
+						<div className={collapsed ? "brand is-collapsed" : "brand"}>
 							<img src="/logo-64.png" width="36" height="36" alt="" />
 							{!collapsed && (
 								<>
@@ -378,12 +376,11 @@ function ReaderApp({ session }: { session: Session }) {
 							)}
 						</div>
 					</SidebarHeader>
-					<div className="px-3 pb-1">
+					<div className="px-basalt-nav-inset pb-1">
 						{collapsed ? (
 							<Tooltip>
 								<TooltipTrigger asChild>
 									<SidebarIconItem
-										className="mx-auto"
 										aria-label="搜索文章"
 										aria-keyshortcuts="/"
 										aria-haspopup="dialog"
@@ -408,60 +405,59 @@ function ReaderApp({ session }: { session: Session }) {
 					</div>
 					<SidebarNav className="pt-1">
 						{!collapsed && <SidebarPartition>你的阅读空间</SidebarPartition>}
-						<div className="flex flex-col gap-0.5 px-3">
-							{(
-								[
-									{
-										view: "all",
-										label: "全部文章",
-										icon: Inbox,
-										tone: "info",
-										count: stats.data?.articles,
-									},
-									{
-										view: "unread",
-										label: "未读文章",
-										icon: BookOpen,
-										tone: "reading",
-										count: stats.data?.unread,
-									},
-									{
-										view: "starred",
-										label: "我的收藏",
-										icon: Star,
-										tone: "save",
-										count: stats.data?.starred,
-									},
-									{
-										view: "later",
-										label: "稍后阅读",
-										icon: Bookmark,
-										tone: "later",
-										count: stats.data?.later,
-									},
-								] as const
-							).map((item) => (
-								<Tooltip key={item.view}>
-									<TooltipTrigger asChild>
-										<SidebarViewItem
-											className={`sidebar-view-link ${collapsed ? "self-center" : ""}`}
-											aria-label={item.label}
-											active={filter.view === item.view && !filter.feedId && !filter.categoryId}
-											onClick={() => choose({ view: item.view, search: "" })}
-										>
-											<item.icon size={17} className={`icon-${item.tone}`} aria-hidden="true" />
-											{!collapsed && (
-												<>
-													<span>{item.label}</span>
-													<span className="nav-count">{item.count ?? "—"}</span>
-												</>
-											)}
-										</SidebarViewItem>
-									</TooltipTrigger>
-									{collapsed && <TooltipContent side="right">{item.label}</TooltipContent>}
-								</Tooltip>
-							))}
-						</div>
+						{(
+							[
+								{
+									view: "all",
+									label: "全部文章",
+									icon: Inbox,
+									tone: "info",
+									count: stats.data?.articles,
+								},
+								{
+									view: "unread",
+									label: "未读文章",
+									icon: BookOpen,
+									tone: "reading",
+									count: stats.data?.unread,
+								},
+								{
+									view: "starred",
+									label: "我的收藏",
+									icon: Star,
+									tone: "save",
+									count: stats.data?.starred,
+								},
+								{
+									view: "later",
+									label: "稍后阅读",
+									icon: Bookmark,
+									tone: "later",
+									count: stats.data?.later,
+								},
+							] as const
+						).map((item) => (
+							<Tooltip key={item.view}>
+								<TooltipTrigger asChild>
+									<SidebarViewItem
+										className={`sidebar-view-link ${collapsed ? "self-center" : ""}`}
+										aria-label={item.label}
+										active={filter.view === item.view && !filter.feedId && !filter.categoryId}
+										onClick={() => choose({ view: item.view, search: "" })}
+									>
+										<item.icon size={17} className={`icon-${item.tone}`} aria-hidden="true" />
+										{!collapsed && (
+											<>
+												<span>{item.label}</span>
+												<span className="nav-count">{item.count ?? "—"}</span>
+											</>
+										)}
+									</SidebarViewItem>
+								</TooltipTrigger>
+								{collapsed && <TooltipContent side="right">{item.label}</TooltipContent>}
+							</Tooltip>
+						))}
+
 						{!collapsed && (
 							<>
 								<div className="rail-section">
@@ -485,19 +481,18 @@ function ReaderApp({ session }: { session: Session }) {
 										onManage={manageFeed}
 									/>
 								))}
-								<div className="flex flex-col gap-0.5 px-3">
-									{feeds.data
-										?.filter((feed) => !feed.category_id)
-										.map((feed) => (
-											<FeedItem
-												key={feed.id}
-												feed={feed}
-												active={filter.feedId === feed.id}
-												onClick={() => choose({ view: "all", feedId: feed.id, search: "" })}
-												onManage={manageFeed}
-											/>
-										))}
-								</div>
+								{feeds.data
+									?.filter((feed) => !feed.category_id)
+									.map((feed) => (
+										<FeedItem
+											key={feed.id}
+											feed={feed}
+											active={filter.feedId === feed.id}
+											onClick={() => choose({ view: "all", feedId: feed.id, search: "" })}
+											onManage={manageFeed}
+										/>
+									))}
+
 								{feeds.isError && <p className="inline-error">{feeds.error.message}</p>}
 							</>
 						)}
@@ -545,7 +540,16 @@ function ReaderApp({ session }: { session: Session }) {
 					</SidebarFooter>
 				</Sidebar>
 				<Dialog open={searchOpen} onOpenChange={setSearchOpen}>
-					<DialogContent size="base" className="search-dialog grid gap-3">
+					<DialogContent
+						size="base"
+						className="search-dialog grid gap-3"
+						onEscapeKeyDown={(event) => {
+							// The mobile drawer is a modal Sheet; keep Escape scoped to the
+							// search dialog instead of letting the outer layer consume it.
+							event.stopPropagation();
+							setSearchOpen(false);
+						}}
+					>
 						<DialogHeader className="gap-1 space-y-0">
 							<DialogTitle className="leading-7">搜索文章</DialogTitle>
 							<DialogDescription className="leading-5">

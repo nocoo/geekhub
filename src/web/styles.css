@@ -104,7 +104,10 @@
 	align-items: center;
 	gap: 9px;
 	white-space: nowrap;
-	padding: 4px 2px;
+}
+.brand.is-collapsed {
+	width: 100%;
+	justify-content: center;
 }
 .reader-sidebar {
 	transition-property: width, transform;
@@ -112,14 +115,8 @@
 .reader-sidebar :focus-visible {
 	outline-offset: -2px;
 }
-.reader-header,
-.reader-sidebar-header {
+.reader-header {
 	height: 48px;
-}
-.sidebar-view-link,
-.sidebar-feed-link {
-	padding-block: 6px;
-	line-height: 20px;
 }
 .sidebar-feed-link {
 	gap: 8px;
@@ -155,7 +152,7 @@
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding: 10px 12px 2px 24px;
+	padding: 10px 0 2px;
 	font-size: 11px;
 	color: hsl(var(--basalt-muted-foreground));
 }
@@ -1453,6 +1450,13 @@ button.list-stat:hover {
 .category-fields {
 	display: contents;
 }
+
+/* The composite category row shares one control height: the library's icon
+   actions are 36px, so the fields match them instead of the 34px input size. */
+.category-row :is(input, [role="combobox"]) {
+	block-size: calc(var(--basalt-size-control) + 2px);
+	min-block-size: calc(var(--basalt-size-control) + 2px);
+}
 .category-row > .category-editor-heading > .order-controls {
 	grid-area: order;
 }
@@ -1985,11 +1989,6 @@ body:has(.next-ai-panel) {
 	}
 }
 @media (max-width: 900px) {
-	.sidebar-view-link,
-	.sidebar-feed-link,
-	.sidebar-category-link {
-		padding-block: 8px;
-	}
 	.sidebar-category-toggle {
 		height: 36px;
 	}
