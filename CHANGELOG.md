@@ -1,5 +1,13 @@
 # Changelog
 
+
+## v1.5.0 — 2026-10-24
+
+- Rebuild the sidebar on the Basalt template: shared header inset, collapsible groups, 38px rows, nav-inset search and library-centred collapsed rail replace the local wrapper padding, partition labels and caller offsets.
+- Share one control height across the composite category row so fields and actions align.
+- Scope Escape to the search dialog inside the mobile drawer.
+- Upgrade `@nocoo/basalt` to 3.2.1, Biome to 2.6.2, Wrangler to 4.152.0 with `@cloudflare/vite-plugin` 1.65.0, Vite to 8.3.5, React Query to 5.104.5, the AI SDK to 7.0.152, jose to 6.2.13, lucide-react to 1.61.0 and `@types/bun` to 1.4.4.
+- Override `undici` to the patched lines so the dependency scan stops reporting the published advisories.
 ## v1.4.2 — 2026-10-01
 
 - Update React, React Query, Lucide, Node types, Vitest, jsdom and Cloudflare tooling; resolve all 48 dependency issues against the current architecture and remove redundant Worker types.
