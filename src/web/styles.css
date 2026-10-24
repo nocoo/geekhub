@@ -1775,6 +1775,7 @@ button.list-stat:hover {
 .category-row {
 	display: grid;
 	grid-template-columns: 84px minmax(80px, 1fr) 48px 132px 36px 36px;
+	/* biome-ignore lint/correctness/noInvalidGridAreas: row 2 is six cells; the rule miscounts consecutive null cells. */
 	grid-template-areas: "order name icon color save delete" ". count . . . .";
 	align-items: end;
 	gap: 4px 8px;
@@ -2217,6 +2218,7 @@ body:has(.next-ai-panel) {
 	}
 	.category-row {
 		grid-template-columns: 56px minmax(0, 1fr) auto 32px;
+		/* biome-ignore lint/correctness/noInvalidGridAreas: four columns per row; the rule miscounts repeated names. */
 		grid-template-areas: "name name name name" "icon color color color" "order count save delete";
 	}
 	.category-editor-heading > span {
@@ -2231,6 +2233,7 @@ body:has(.next-ai-panel) {
 	.category-row {
 		grid-template-columns: 40px minmax(0, 1fr) auto 32px;
 		gap: 6px;
+		/* biome-ignore lint/correctness/noInvalidGridAreas: four columns per row; the rule miscounts consecutive null cells. */
 		grid-template-areas: "name name name name" "icon color color color" "order order count count" ". . save delete";
 	}
 	.category-editor-heading > span {
