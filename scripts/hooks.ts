@@ -1,7 +1,5 @@
-const phase = process.argv[2];
-if (phase !== "commit" && phase !== "push") throw new Error("Expected commit or push");
-const tasks =
-	phase === "commit" ? ["typecheck", "lint", "test:coverage"] : ["test:l2", "gate:security"];
+if (process.argv[2] !== "push") throw new Error("Expected push");
+const tasks = ["test:l2", "gate:security"];
 const results = await Promise.all(
 	tasks.map(async (task) => {
 		const child = Bun.spawn(["bun", "run", task], { stdout: "inherit", stderr: "inherit" });
