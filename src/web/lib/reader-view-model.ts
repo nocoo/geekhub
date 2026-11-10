@@ -364,8 +364,9 @@ export function useReaderViewModel(notify: (message: string) => void) {
 		if (article) open(article);
 		else if (direction === 1 && pages.hasNextPage && !pages.isFetchingNextPage) {
 			const result = await pages.fetchNextPage();
-			if (result.isError) {
-				notify(result.error.message);
+			const pageError = result.isError ? result.error : result.failureReason;
+			if (pageError) {
+				notify(pageError.message);
 				return;
 			}
 			const next = result.data?.pages.flatMap((page) => page.articles)[articles.length];
