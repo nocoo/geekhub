@@ -81,9 +81,13 @@ test("sidebar menu edits grouped and ungrouped feeds and confirms deletion", asy
 		const touch = isMobile ? await page.context().newCDPSession(page) : null;
 		let firstMenu = true;
 		const openMenu = async (title: string) => {
-			const trigger = sidebar.getByRole("button", { name: title, exact: true });
-			if (!(await trigger.isVisible()))
+			let trigger = sidebar.getByRole("button", { name: title, exact: true });
+			if (!(await trigger.isVisible())) {
 				await page.getByRole("button", { name: "切换订阅导航" }).click();
+				await expect(sidebar).toBeVisible();
+				trigger = sidebar.getByRole("button", { name: title, exact: true });
+			}
+			await expect(trigger).toBeVisible();
 			await trigger.scrollIntoViewIfNeeded();
 			if (touch) {
 				const bounds = await trigger.boundingBox();
@@ -271,7 +275,7 @@ test("reading preferences, public next-ai settings and logs", async ({ page, isM
 	await page.goto("/");
 	await expect(page.getByTestId("article-item").first()).toBeVisible();
 	if (isMobile) await page.getByRole("button", { name: "切换订阅导航" }).click();
-	await expect(page.locator(".brand .version")).toHaveText(`v${APP_VERSION}`);
+	await expect(page.locator('[data-slot="sidebar-brand-version"]')).toHaveText(`v${APP_VERSION}`);
 	await expect(page.getByText("本地读者", { exact: true })).toBeVisible();
 	if (isMobile) await page.keyboard.press("Escape");
 	await page.getByRole("button", { name: "设置", exact: true }).click();
@@ -632,9 +636,10 @@ test("keyboard navigation, reading actions and editable/modal guards", async ({
 	await page.keyboard.press("ArrowUp");
 	await expect(rows.first()).toHaveAttribute("aria-current", "true");
 	if (!isMobile) await expect(rows.first()).toBeFocused();
-	await expect(
-		page.getByRole("link", { name: "GeekHub GitHub 项目", exact: true }),
-	).toHaveAttribute("href", "https://github.com/nocoo/geekhub");
+	await expect(page.getByRole("link", { name: /GeekHub GitHub 项目/ })).toHaveAttribute(
+		"href",
+		"https://github.com/nocoo/geekhub",
+	);
 });
 
 test("J/K smoothly positions selection at the golden ratio and respects motion preferences", async ({

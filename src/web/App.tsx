@@ -16,6 +16,8 @@ import {
 	DialogTitle,
 	Input,
 	Sidebar,
+	SidebarBrand,
+	SidebarDrawer,
 	SidebarFooter,
 	SidebarHeader,
 	SidebarIconItem,
@@ -24,13 +26,14 @@ import {
 	SidebarPartition,
 	SidebarProvider,
 	SidebarSearch,
+	SidebarToggle,
 	SidebarUser,
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
 	toast,
 } from "@nocoo/basalt";
-import { AppHeader } from "@nocoo/basalt/components/app-header";
+import { AppHeader, AppHeaderMenuButton } from "@nocoo/basalt/components/app-header";
 import { AppMain, AppShell, AppSkipLink } from "@nocoo/basalt/components/app-shell";
 import {
 	ContextMenu,
@@ -55,7 +58,6 @@ import {
 	Inbox,
 	Info,
 	LoaderCircle,
-	LogOut,
 	Menu,
 	Pencil,
 	Plus,
@@ -72,6 +74,7 @@ import {
 	useCallback,
 	useEffect,
 	useEffectEvent,
+	useId,
 	useLayoutEffect,
 	useRef,
 	useState,
@@ -79,7 +82,7 @@ import {
 } from "react";
 import type { Category, Feed, ReaderFilter, Session } from "../shared/contracts";
 import { APP_VERSION } from "../shared/version";
-import { HeaderTooltip, HexlyLink } from "./header-links";
+import { GeekHubLinks, HeaderTooltip } from "./header-links";
 import { ApiError, api } from "./lib/api";
 import type { Panel } from "./lib/panels-view-model";
 import {
@@ -140,7 +143,10 @@ export function App() {
 
 function ReaderApp({ session }: { session: Session }) {
 	const mobile = useSyncExternalStore(subscribeMobile, isMobile);
-	const [collapsed, setCollapsed] = useState(isMobile);
+	const [collapsed, setCollapsed] = useState(false);
+	const [mobileOpen, setMobileOpen] = useState(false);
+	const mobileTriggerRef = useRef<HTMLButtonElement>(null);
+	const drawerId = useId();
 	const [search, setSearch] = useState("");
 	const [searchOpen, setSearchOpen] = useState(false);
 	const [panel, setPanel] = useState<Panel>(null);
@@ -222,7 +228,10 @@ function ReaderApp({ session }: { session: Session }) {
 		anchor.current = null;
 		vm.choose(next);
 		setSearch(next.search);
-		if (mobile) setCollapsed(true);
+		if (mobile) {
+			setMobileOpen(false);
+			requestAnimationFrame(() => mobileTriggerRef.current?.focus());
+		}
 	}
 	function diagnose(feed: Feed) {
 		setSelectedFeedId(feed.id);
@@ -303,7 +312,8 @@ function ReaderApp({ session }: { session: Session }) {
 		keyboardNavigation.current = false;
 	}, [selected]);
 	useEffect(() => {
-		setCollapsed(mobile);
+		setMobileOpen(false);
+		if (mobile) setCollapsed(false);
 	}, [mobile]);
 	useEffect(() => {
 		if (vm.preferencesLoaded) setTheme(pref.theme);
@@ -312,7 +322,7 @@ function ReaderApp({ session }: { session: Session }) {
 		document.title = `${detail.data ? `${titleOf(detail.data)} · ` : ""}${heading} · GeekHub`;
 	}, [detail.data, heading]);
 	const onKey = useEffectEvent((event: KeyboardEvent) => {
-		const command = readerShortcut(event, Boolean(panel) || searchOpen || (mobile && !collapsed));
+		const command = readerShortcut(event, Boolean(panel) || searchOpen || (mobile && mobileOpen));
 		if (!command) return;
 		event.preventDefault();
 		if (command === "search") {
@@ -355,197 +365,187 @@ function ReaderApp({ session }: { session: Session }) {
 		</Avatar>
 	);
 
-	return (
-		<SidebarProvider
-			collapsed={collapsed}
-			onCollapsedChange={setCollapsed}
-			overlay={mobile}
-			defaultWidth={224}
-		>
-			<AppShell className="geekhub-shell">
-				<AppSkipLink>跳到阅读内容</AppSkipLink>
-				<Sidebar aria-label="订阅导航" className="reader-sidebar">
-					<SidebarHeader className="reader-sidebar-header">
-						<div className={collapsed ? "brand is-collapsed" : "brand"}>
-							<img src="/logo-64.png" width="36" height="36" alt="" />
+	const navigationSidebar = (
+		<Sidebar aria-label="订阅导航" className="reader-sidebar" resizable={!mobile}>
+			<SidebarHeader>
+				<SidebarBrand
+					logo={<img src="/logo-64.png" alt="" />}
+					name="GeekHub"
+					version={`v${APP_VERSION}`}
+					action={
+						mobile ? (
+							<SidebarToggle
+								mode="dismiss"
+								onDismiss={() => setMobileOpen(false)}
+								dismissLabel="关闭订阅导航"
+							/>
+						) : undefined
+					}
+				/>
+			</SidebarHeader>
+			<SidebarSearch
+				shortcut="/"
+				aria-label="搜索文章"
+				aria-keyshortcuts="/"
+				aria-haspopup="dialog"
+				onClick={() => setSearchOpen(true)}
+			>
+				搜索文章
+			</SidebarSearch>
+			<SidebarNav className="pt-1">
+				{!collapsed && <SidebarPartition>你的阅读空间</SidebarPartition>}
+				{(
+					[
+						{
+							view: "all",
+							label: "全部文章",
+							icon: Inbox,
+							tone: "info",
+							count: stats.data?.articles,
+						},
+						{
+							view: "unread",
+							label: "未读文章",
+							icon: BookOpen,
+							tone: "reading",
+							count: stats.data?.unread,
+						},
+						{
+							view: "starred",
+							label: "我的收藏",
+							icon: Star,
+							tone: "save",
+							count: stats.data?.starred,
+						},
+						{
+							view: "later",
+							label: "稍后阅读",
+							icon: Bookmark,
+							tone: "later",
+							count: stats.data?.later,
+						},
+					] as const
+				).map((item) => (
+					<Tooltip key={item.view}>
+						<TooltipTrigger asChild>
+							<SidebarViewItem
+								className={`sidebar-view-link ${collapsed ? "self-center" : ""}`}
+								aria-label={item.label}
+								active={filter.view === item.view && !filter.feedId && !filter.categoryId}
+								onClick={() => choose({ view: item.view, search: "" })}
+							>
+								<item.icon size={17} className={`icon-${item.tone}`} aria-hidden="true" />
+								{!collapsed && (
+									<>
+										<span>{item.label}</span>
+										<span className="nav-count">{item.count ?? "—"}</span>
+									</>
+								)}
+							</SidebarViewItem>
+						</TooltipTrigger>
+						{collapsed && <TooltipContent side="right">{item.label}</TooltipContent>}
+					</Tooltip>
+				))}
+
+				{!collapsed && (
+					<>
+						<div className="rail-section">
+							<span>订阅源</span>
+							<Button
+								variant="ghost"
+								size="icon"
+								aria-label="添加订阅"
+								onClick={() => setPanel("add")}
+							>
+								<Plus size={15} />
+							</Button>
+						</div>
+						{categories.data?.map((category) => (
+							<CategoryGroup
+								key={category.id}
+								category={category}
+								feeds={feeds.data?.filter((feed) => feed.category_id === category.id) ?? []}
+								filter={filter}
+								onChoose={choose}
+								onManage={manageFeed}
+							/>
+						))}
+						{feeds.data
+							?.filter((feed) => !feed.category_id)
+							.map((feed) => (
+								<FeedItem
+									key={feed.id}
+									feed={feed}
+									active={filter.feedId === feed.id}
+									onClick={() => choose({ view: "all", feedId: feed.id, search: "" })}
+									onManage={manageFeed}
+								/>
+							))}
+
+						{feeds.isError && <p className="inline-error">{feeds.error.message}</p>}
+					</>
+				)}
+				<Tooltip>
+					<TooltipTrigger asChild>
+						<SidebarViewItem
+							className={`sidebar-view-link discover-nav ${collapsed ? "self-center" : "mx-3 w-auto"}`}
+							aria-label="发现好内容"
+							onClick={() => setPanel("discover")}
+						>
+							<Compass size={17} className="icon-discover" aria-hidden="true" />
 							{!collapsed && (
 								<>
-									<span>GeekHub</span>
-									<Badge className="version">v{APP_VERSION}</Badge>
+									<span>发现好内容</span>
+									<ChevronRight size={14} className="ml-auto" />
 								</>
 							)}
-						</div>
-					</SidebarHeader>
-					<div className="px-basalt-nav-inset pb-1">
-						{collapsed ? (
-							<Tooltip>
-								<TooltipTrigger asChild>
-									<SidebarIconItem
-										aria-label="搜索文章"
-										aria-keyshortcuts="/"
-										aria-haspopup="dialog"
-										onClick={() => setSearchOpen(true)}
-									>
-										<Search size={16} aria-hidden="true" />
-									</SidebarIconItem>
-								</TooltipTrigger>
-								<TooltipContent side="right">搜索文章 /</TooltipContent>
-							</Tooltip>
-						) : (
-							<SidebarSearch
-								shortcut="/"
-								aria-label="搜索文章"
-								aria-keyshortcuts="/"
-								aria-haspopup="dialog"
-								onClick={() => setSearchOpen(true)}
-							>
-								搜索文章
-							</SidebarSearch>
-						)}
-					</div>
-					<SidebarNav className="pt-1">
-						{!collapsed && <SidebarPartition>你的阅读空间</SidebarPartition>}
-						{(
-							[
-								{
-									view: "all",
-									label: "全部文章",
-									icon: Inbox,
-									tone: "info",
-									count: stats.data?.articles,
-								},
-								{
-									view: "unread",
-									label: "未读文章",
-									icon: BookOpen,
-									tone: "reading",
-									count: stats.data?.unread,
-								},
-								{
-									view: "starred",
-									label: "我的收藏",
-									icon: Star,
-									tone: "save",
-									count: stats.data?.starred,
-								},
-								{
-									view: "later",
-									label: "稍后阅读",
-									icon: Bookmark,
-									tone: "later",
-									count: stats.data?.later,
-								},
-							] as const
-						).map((item) => (
-							<Tooltip key={item.view}>
-								<TooltipTrigger asChild>
-									<SidebarViewItem
-										className={`sidebar-view-link ${collapsed ? "self-center" : ""}`}
-										aria-label={item.label}
-										active={filter.view === item.view && !filter.feedId && !filter.categoryId}
-										onClick={() => choose({ view: item.view, search: "" })}
-									>
-										<item.icon size={17} className={`icon-${item.tone}`} aria-hidden="true" />
-										{!collapsed && (
-											<>
-												<span>{item.label}</span>
-												<span className="nav-count">{item.count ?? "—"}</span>
-											</>
-										)}
-									</SidebarViewItem>
-								</TooltipTrigger>
-								{collapsed && <TooltipContent side="right">{item.label}</TooltipContent>}
-							</Tooltip>
-						))}
+						</SidebarViewItem>
+					</TooltipTrigger>
+					{collapsed && <TooltipContent side="right">发现好内容</TooltipContent>}
+				</Tooltip>
+			</SidebarNav>
+			<SidebarFooter>
+				<SidebarUser
+					name={session.user.name}
+					email={session.local ? "本地阅读空间" : session.user.email}
+					avatar={avatar}
+					signOutHref={session.local ? undefined : "/cdn-cgi/access/logout"}
+					signOutLabel="退出登录"
+				/>
+			</SidebarFooter>
+		</Sidebar>
+	);
 
-						{!collapsed && (
-							<>
-								<div className="rail-section">
-									<span>订阅源</span>
-									<Button
-										variant="ghost"
-										size="icon"
-										aria-label="添加订阅"
-										onClick={() => setPanel("add")}
-									>
-										<Plus size={15} />
-									</Button>
-								</div>
-								{categories.data?.map((category) => (
-									<CategoryGroup
-										key={category.id}
-										category={category}
-										feeds={feeds.data?.filter((feed) => feed.category_id === category.id) ?? []}
-										filter={filter}
-										onChoose={choose}
-										onManage={manageFeed}
-									/>
-								))}
-								{feeds.data
-									?.filter((feed) => !feed.category_id)
-									.map((feed) => (
-										<FeedItem
-											key={feed.id}
-											feed={feed}
-											active={filter.feedId === feed.id}
-											onClick={() => choose({ view: "all", feedId: feed.id, search: "" })}
-											onManage={manageFeed}
-										/>
-									))}
+	return (
+		<SidebarProvider collapsed={collapsed} onCollapsedChange={setCollapsed} defaultWidth={224}>
+			<AppShell className="geekhub-shell">
+				<AppSkipLink>跳到阅读内容</AppSkipLink>
+				{!mobile ? (
+					navigationSidebar
+				) : (
+					<SidebarDrawer
+						modal={false}
+						id={drawerId}
+						open={mobileOpen}
+						onOpenChange={setMobileOpen}
+						returnFocusRef={mobileTriggerRef}
+						title="订阅导航"
+						description="浏览订阅、分类和阅读范围"
+					>
+						{navigationSidebar}
+					</SidebarDrawer>
+				)}
 
-								{feeds.isError && <p className="inline-error">{feeds.error.message}</p>}
-							</>
-						)}
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<SidebarViewItem
-									className={`sidebar-view-link discover-nav ${collapsed ? "self-center" : "mx-3 w-auto"}`}
-									aria-label="发现好内容"
-									onClick={() => setPanel("discover")}
-								>
-									<Compass size={17} className="icon-discover" aria-hidden="true" />
-									{!collapsed && (
-										<>
-											<span>发现好内容</span>
-											<ChevronRight size={14} className="ml-auto" />
-										</>
-									)}
-								</SidebarViewItem>
-							</TooltipTrigger>
-							{collapsed && <TooltipContent side="right">发现好内容</TooltipContent>}
-						</Tooltip>
-					</SidebarNav>
-					<SidebarFooter className={collapsed ? "flex flex-col items-center px-0" : undefined}>
-						{collapsed ? (
-							<Tooltip>
-								<TooltipTrigger asChild>
-									<span>{avatar}</span>
-								</TooltipTrigger>
-								<TooltipContent side="right">{session.user.name}</TooltipContent>
-							</Tooltip>
-						) : (
-							<SidebarUser
-								name={session.user.name}
-								email={session.local ? "本地阅读空间" : session.user.email}
-								avatar={avatar}
-								action={
-									!session.local ? (
-										<a href="/cdn-cgi/access/logout" aria-label="退出登录">
-											<LogOut size={15} />
-										</a>
-									) : undefined
-								}
-							/>
-						)}
-					</SidebarFooter>
-				</Sidebar>
 				<Dialog open={searchOpen} onOpenChange={setSearchOpen}>
 					<DialogContent
 						size="base"
 						className="search-dialog grid gap-3"
+						onKeyDown={(event) => {
+							if (event.key !== "Escape") return;
+							event.stopPropagation();
+							setSearchOpen(false);
+						}}
 						onEscapeKeyDown={(event) => {
-							// The mobile drawer is a modal Sheet; keep Escape scoped to the
-							// search dialog instead of letting the outer layer consume it.
 							event.stopPropagation();
 							setSearchOpen(false);
 						}}
@@ -591,16 +591,26 @@ function ReaderApp({ session }: { session: Session }) {
 					<AppHeader
 						className="reader-header"
 						leading={
-							<HeaderTooltip label="切换订阅导航">
-								<Button
-									variant="ghost"
-									size="icon"
-									aria-label="切换订阅导航"
-									onClick={() => setCollapsed(!collapsed)}
-								>
-									<Menu size={18} />
-								</Button>
-							</HeaderTooltip>
+							mobile ? (
+								<AppHeaderMenuButton
+									ref={mobileTriggerRef}
+									label="切换订阅导航"
+									aria-controls={drawerId}
+									aria-expanded={mobileOpen}
+									onClick={() => setMobileOpen(true)}
+								/>
+							) : (
+								<HeaderTooltip label="切换订阅导航">
+									<Button
+										variant="ghost"
+										size="icon"
+										aria-label="切换订阅导航"
+										onClick={() => setCollapsed(!collapsed)}
+									>
+										<Menu size={18} />
+									</Button>
+								</HeaderTooltip>
+							)
 						}
 						breadcrumbs={mobile ? undefined : [{ label: "阅读" }]}
 						title={heading}
@@ -642,28 +652,7 @@ function ReaderApp({ session }: { session: Session }) {
 										</Button>
 									</span>
 								</HeaderTooltip>
-								<HeaderTooltip label="GitHub 项目">
-									<Button variant="ghost" size="icon" asChild>
-										<a
-											href="https://github.com/nocoo/geekhub"
-											target="_blank"
-											rel="noopener noreferrer"
-											aria-label="GeekHub GitHub 项目"
-										>
-											<svg
-												width="17"
-												height="17"
-												viewBox="0 0 24 24"
-												fill="currentColor"
-												aria-hidden="true"
-											>
-												<path d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.5-1.4-1.3-1.7-1.3-1.7-1.1-.8.1-.8.1-.8 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-6a4.7 4.7 0 0 1 1.2-3.2 4.3 4.3 0 0 1 .1-3.2s1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2a4.3 4.3 0 0 1 .1 3.2 4.7 4.7 0 0 1 1.2 3.2c0 4.7-2.8 5.7-5.5 6 .4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .3Z" />
-											</svg>
-											<span className="sr-only">GeekHub GitHub 项目</span>
-										</a>
-									</Button>
-								</HeaderTooltip>
-								<HexlyLink />
+								<GeekHubLinks />
 								<ThemeToggle aria-label="切换主题" />
 								<HeaderTooltip label="设置">
 									<Button

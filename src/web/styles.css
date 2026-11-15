@@ -99,16 +99,6 @@
 	color: hsl(var(--basalt-muted-foreground));
 	max-width: 440px;
 }
-.brand {
-	display: flex;
-	align-items: center;
-	gap: 9px;
-	white-space: nowrap;
-}
-.brand.is-collapsed {
-	width: 100%;
-	justify-content: center;
-}
 .reader-sidebar {
 	transition-property: width, transform;
 }
@@ -127,18 +117,6 @@
 .feed-context-menu [role="menuitem"] {
 	gap: 8px;
 	min-height: 36px;
-}
-.brand > span:first-of-type {
-	font-size: 20px;
-	font-weight: 730;
-	letter-spacing: -0.6px;
-}
-.brand .version {
-	margin-left: auto;
-	font:
-		10px ui-monospace,
-		monospace;
-	padding: 2px 5px;
 }
 .nav-count {
 	margin-left: auto;
