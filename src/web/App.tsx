@@ -41,6 +41,12 @@ import {
 	ContextMenuPanel,
 	ContextMenuTrigger,
 } from "@nocoo/basalt/components/context-menu";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@nocoo/basalt/components/dropdown-menu";
 import { useTheme } from "@nocoo/basalt/providers/theme";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -55,6 +61,7 @@ import {
 	CircleAlert,
 	Clock3,
 	Compass,
+	Ellipsis,
 	Inbox,
 	Info,
 	LoaderCircle,
@@ -594,6 +601,7 @@ function ReaderApp({ session }: { session: Session }) {
 								<AppHeaderMenuButton
 									ref={mobileTriggerRef}
 									label="切换订阅导航"
+									className="h-11 w-11"
 									aria-controls={drawerId}
 									aria-expanded={mobileOpen}
 									onClick={() => setMobileOpen(true)}
@@ -615,26 +623,47 @@ function ReaderApp({ session }: { session: Session }) {
 						title={heading}
 						actions={
 							<>
-								<HeaderTooltip label={`后台活动 · ${activityMessage}`}>
-									<Button
-										variant="ghost"
-										size="sm"
-										className="feed-activity"
-										aria-label="查看后台活动详情"
-										aria-haspopup="dialog"
-										aria-expanded={panel === "logs"}
-										data-level={activityBusy ? "info" : latestActivity?.level}
-										onClick={() => setPanel("logs")}
-									>
-										<Activity size={14} className="icon-reading" aria-hidden="true" />
-										<span className="activity-label">ACTIVITY</span>
-										<span className={`status-led ${activityBusy ? "pulsing" : ""}`} />
-										<span className="activity-message">
-											{activityBusy ? `进行中 · ${activityMessage}` : activityMessage}
-										</span>
-										<ChevronRight size={12} aria-hidden="true" />
-									</Button>
-								</HeaderTooltip>
+								{mobile ? (
+									<DropdownMenu modal={false}>
+										<DropdownMenuTrigger asChild>
+											<Button
+												variant="ghost"
+												size="icon"
+												className="h-11 w-11"
+												aria-label="更多操作"
+											>
+												<Ellipsis size={18} aria-hidden="true" />
+											</Button>
+										</DropdownMenuTrigger>
+										<DropdownMenuContent align="end">
+											<DropdownMenuItem onSelect={() => setPanel("logs")}>
+												<Activity size={15} className="icon-reading" aria-hidden="true" />
+												<span>查看后台活动详情</span>
+											</DropdownMenuItem>
+										</DropdownMenuContent>
+									</DropdownMenu>
+								) : (
+									<HeaderTooltip label={`后台活动 · ${activityMessage}`}>
+										<Button
+											variant="ghost"
+											size="sm"
+											className="feed-activity"
+											aria-label="查看后台活动详情"
+											aria-haspopup="dialog"
+											aria-expanded={panel === "logs"}
+											data-level={activityBusy ? "info" : latestActivity?.level}
+											onClick={() => setPanel("logs")}
+										>
+											<Activity size={14} className="icon-reading" aria-hidden="true" />
+											<span className="activity-label">ACTIVITY</span>
+											<span className={`status-led ${activityBusy ? "pulsing" : ""}`} />
+											<span className="activity-message">
+												{activityBusy ? `进行中 · ${activityMessage}` : activityMessage}
+											</span>
+											<ChevronRight size={12} aria-hidden="true" />
+										</Button>
+									</HeaderTooltip>
+								)}
 								<HeaderTooltip
 									label={vm.refresh.isPending || busy ? "正在同步订阅" : "刷新订阅 (R)"}
 								>
@@ -645,19 +674,21 @@ function ReaderApp({ session }: { session: Session }) {
 											aria-label="刷新订阅"
 											disabled={vm.refresh.isPending || busy}
 											onClick={() => vm.refresh.mutate()}
+											className="h-11 w-11"
 											aria-keyshortcuts="r"
 										>
 											<RefreshCw size={16} className={`icon-reading ${busy ? "spinning" : ""}`} />
 										</Button>
 									</span>
 								</HeaderTooltip>
-								<GeekHubLinks />
+								{!mobile && <GeekHubLinks />}
 								<ThemeToggle aria-label="切换主题" />
 								<HeaderTooltip label="设置">
 									<Button
 										variant="ghost"
 										size="icon"
 										aria-label="设置"
+										className="h-11 w-11"
 										aria-haspopup="dialog"
 										onClick={() => setPanel("settings")}
 									>

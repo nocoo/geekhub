@@ -2,6 +2,15 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page, test } from "@playwright/test";
 import type { AiSettings, ArticleDetail, ArticlePage, Feed } from "../../src/shared/contracts";
 
+async function openActivity(page: Page, isMobile: boolean) {
+	if (isMobile) {
+		await page.getByRole("button", { name: "更多操作", exact: true }).click();
+		await page.getByRole("menuitem", { name: "查看后台活动详情", exact: true }).click();
+	} else {
+		await page.getByRole("button", { name: "查看后台活动详情", exact: true }).click();
+	}
+}
+
 async function fixture(page: Page) {
 	const response = await page.request.post("/api/feeds", {
 		data: {
@@ -297,6 +306,7 @@ test("per-feed full translation persists, starts on opening and silently reuses 
 
 test("feed switches align descriptions and automatically fetch before translating with cached reuse", async ({
 	page,
+	isMobile,
 }) => {
 	const { feed, first, second } = await fixture(page);
 	try {
@@ -354,7 +364,7 @@ test("feed switches align descriptions and automatically fetch before translatin
 		await page.reload();
 		await expect(page.locator(".prose")).toContainText("本地模拟译文");
 		expect(calls).toHaveLength(2);
-		await page.getByRole("button", { name: "查看后台活动详情", exact: true }).click();
+		await openActivity(page, isMobile);
 		await expect(page.getByRole("log")).toContainText("自动提取全文 · 已完成");
 		await expect(page.getByRole("log")).toContainText("自动翻译全文 · 已完成");
 		await page.keyboard.press("Escape");

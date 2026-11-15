@@ -271,7 +271,19 @@ test("search, navigation and feed/category CRUD", async ({ page, isMobile }) => 
 test("reading preferences, public next-ai settings and logs", async ({ page, isMobile }) => {
 	await page.goto("/");
 	await expect(page.getByTestId("article-item").first()).toBeVisible();
-	if (isMobile) await page.getByRole("button", { name: "切换订阅导航" }).click();
+	if (isMobile) {
+		await page.setViewportSize({ width: 390, height: 844 });
+		const nav = page.getByRole("button", { name: "切换订阅导航", exact: true });
+		const navBox = await nav.boundingBox();
+		const actionsBox = await page.locator("[data-basalt-header-actions]").boundingBox();
+		if (!navBox || !actionsBox) throw new Error("Header hit targets are missing");
+		expect(navBox.width).toBeGreaterThanOrEqual(44);
+		expect(navBox.height).toBeGreaterThanOrEqual(44);
+		expect(navBox.x + navBox.width).toBeLessThanOrEqual(actionsBox.x);
+		await nav.click();
+		await expect(page.locator('[data-slot="sidebar-drawer"]')).toBeVisible();
+		await page.keyboard.press("Escape");
+	}
 	await expect(page.locator('[data-slot="sidebar-brand-version"]')).toHaveText(`v${APP_VERSION}`);
 	await expect(page.getByText("本地读者", { exact: true })).toBeVisible();
 	if (isMobile) await page.keyboard.press("Escape");
@@ -292,17 +304,20 @@ test("reading preferences, public next-ai settings and logs", async ({ page, isM
 	await expect(page.locator(".stats-grid")).toContainText("已保存文章");
 	await page.keyboard.press("Escape");
 	await expect(page.locator(".app-dialog")).toHaveCount(0);
-	const activity = page.getByRole("button", { name: "查看后台活动详情" });
-	const refresh = page.getByRole("button", { name: "刷新订阅", exact: true });
-	const activityBox = await activity.boundingBox();
-	const refreshBox = await refresh.boundingBox();
-	expect(activityBox).not.toBeNull();
-	expect(refreshBox).not.toBeNull();
-	if (!activityBox || !refreshBox) throw new Error("Header controls are missing");
-	expect(activityBox.y).toBeLessThan(56);
-	expect(activityBox.height).toBeLessThanOrEqual(44);
-	expect(activityBox.x + activityBox.width).toBeLessThan(refreshBox.x);
-	await activity.click();
+	if (isMobile) {
+		await page.getByRole("button", { name: "更多操作", exact: true }).click();
+		await page.getByRole("menuitem", { name: "查看后台活动详情", exact: true }).click();
+	} else {
+		const activity = page.getByRole("button", { name: "查看后台活动详情", exact: true });
+		const refresh = page.getByRole("button", { name: "刷新订阅", exact: true });
+		const activityBox = await activity.boundingBox();
+		const refreshBox = await refresh.boundingBox();
+		if (!activityBox || !refreshBox) throw new Error("Header controls are missing");
+		expect(activityBox.y).toBeLessThan(56);
+		expect(activityBox.height).toBeLessThanOrEqual(44);
+		expect(activityBox.x + activityBox.width).toBeLessThan(refreshBox.x);
+		await activity.click();
+	}
 	await expect(page.getByRole("log", { name: "后台活动日志" })).toBeVisible();
 	await expect(page.getByRole("dialog")).toContainText("最近 500 条内存记录");
 	await page.keyboard.press("Escape");
@@ -633,10 +648,11 @@ test("keyboard navigation, reading actions and editable/modal guards", async ({
 	await page.keyboard.press("ArrowUp");
 	await expect(rows.first()).toHaveAttribute("aria-current", "true");
 	if (!isMobile) await expect(rows.first()).toBeFocused();
-	await expect(page.getByRole("link", { name: /GeekHub GitHub 项目/ })).toHaveAttribute(
-		"href",
-		"https://github.com/nocoo/geekhub",
-	);
+	if (!isMobile)
+		await expect(page.getByRole("link", { name: /GeekHub GitHub 项目/ })).toHaveAttribute(
+			"href",
+			"https://github.com/nocoo/geekhub",
+		);
 });
 
 test("J/K smoothly positions selection at the golden ratio and respects motion preferences", async ({

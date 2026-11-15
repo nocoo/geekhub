@@ -2,6 +2,15 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import type { ArticlePage, Category, Feed, FetchLog } from "../../src/shared/contracts";
 
+async function openActivity(page: import("@playwright/test").Page, isMobile: boolean) {
+	if (isMobile) {
+		await page.getByRole("button", { name: "更多操作", exact: true }).click();
+		await page.getByRole("menuitem", { name: "查看后台活动详情", exact: true }).click();
+	} else {
+		await page.getByRole("button", { name: "查看后台活动详情", exact: true }).click();
+	}
+}
+
 test("empty lists are centered and offer actions for the actual feed state", async ({ page }) => {
 	const feeds = (await (await page.request.get("/api/feeds")).json()) as Feed[];
 	const original = feeds[0];
@@ -87,6 +96,7 @@ test("category controls keep full colors and single-line actions on a narrow set
 
 test("automatic full translation appears in the activity center without a toast", async ({
 	page,
+	isMobile,
 }) => {
 	const response = await page.request.post("/api/feeds", {
 		data: {
@@ -115,7 +125,7 @@ test("automatic full translation appears in the activity center without a toast"
 		await page.goto(`/feeds/${feed.id}/articles/${article.id}`);
 		await expect(page.locator(".prose")).toContainText("本地模拟译文");
 		await expect(page.locator("[data-sonner-toast]")).toHaveCount(0);
-		await page.getByRole("button", { name: "查看后台活动详情" }).click();
+		await openActivity(page, isMobile);
 		await page.getByRole("button", { name: /自动与手动翻译/ }).click();
 		await page.getByRole("combobox", { name: "按订阅源筛选日志" }).click();
 		await page.getByRole("option", { name: feed.title, exact: true }).click();
@@ -143,7 +153,10 @@ test("automatic full translation appears in the activity center without a toast"
 	}
 });
 
-test("activity categories, errors and search keep separate task details", async ({ page }) => {
+test("activity categories, errors and search keep separate task details", async ({
+	page,
+	isMobile,
+}) => {
 	const base = {
 		feed_id: null,
 		feed_title: "Reading activity",
@@ -165,7 +178,7 @@ test("activity categories, errors and search keep separate task details", async 
 	];
 	await page.route("**/api/logs", (route) => route.fulfill({ json: logs }));
 	await page.goto("/");
-	await page.getByRole("button", { name: "查看后台活动详情" }).click();
+	await openActivity(page, isMobile);
 	await expect(page.locator(".activity-entry")).toHaveCount(3);
 	await page.getByRole("button", { name: /自动与手动翻译/ }).click();
 	await expect(page.locator(".activity-entry")).toHaveCount(1);
