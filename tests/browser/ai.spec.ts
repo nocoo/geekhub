@@ -408,7 +408,7 @@ test("AI Basalt selectors support preset and custom models and persist SDK selec
 		for (const control of await page
 			.locator('.next-ai-panel input, .next-ai-panel [role="combobox"]')
 			.all())
-			await expect(control).toHaveCSS("background-color", "rgb(255, 255, 255)");
+			await expect(control).toHaveCSS("background-color", "rgb(252, 252, 253)");
 		await page.locator(".next-ai-panel").evaluate(async (element) => {
 			await Promise.allSettled(
 				element.getAnimations({ subtree: true }).map((animation) => animation.finished),

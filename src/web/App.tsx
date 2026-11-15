@@ -383,16 +383,16 @@ function ReaderApp({ session }: { session: Session }) {
 					}
 				/>
 			</SidebarHeader>
-			<SidebarSearch
-				shortcut="/"
-				aria-label="搜索文章"
-				aria-keyshortcuts="/"
-				aria-haspopup="dialog"
-				onClick={() => setSearchOpen(true)}
-			>
-				搜索文章
-			</SidebarSearch>
 			<SidebarNav className="pt-1">
+				<SidebarSearch
+					shortcut="/"
+					aria-label="搜索文章"
+					aria-keyshortcuts="/"
+					aria-haspopup="dialog"
+					onClick={() => setSearchOpen(true)}
+				>
+					搜索文章
+				</SidebarSearch>
 				{!collapsed && <SidebarPartition>你的阅读空间</SidebarPartition>}
 				{(
 					[
@@ -524,7 +524,6 @@ function ReaderApp({ session }: { session: Session }) {
 					navigationSidebar
 				) : (
 					<SidebarDrawer
-						modal={false}
 						id={drawerId}
 						open={mobileOpen}
 						onOpenChange={setMobileOpen}
@@ -589,7 +588,7 @@ function ReaderApp({ session }: { session: Session }) {
 				</Dialog>
 				<AppMain>
 					<AppHeader
-						className="reader-header"
+						density="compact"
 						leading={
 							mobile ? (
 								<AppHeaderMenuButton
@@ -1140,12 +1139,41 @@ function FeedItem({
 	onManage: (feed: Feed, action: "edit-feed" | "delete-feed") => void;
 }) {
 	const openingDialog = useRef(false);
+	const contextMenuTouchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const clearContextMenuTouchTimer = () => {
+		if (contextMenuTouchTimer.current) {
+			clearTimeout(contextMenuTouchTimer.current);
+			contextMenuTouchTimer.current = null;
+		}
+	};
+	useEffect(
+		() => () => {
+			if (contextMenuTouchTimer.current) clearTimeout(contextMenuTouchTimer.current);
+		},
+		[],
+	);
 	return (
 		<ContextMenu modal={false}>
 			<ContextMenuTrigger asChild>
 				<SidebarItem
 					data-feed-id={feed.id}
 					className="sidebar-feed-link"
+					onTouchStart={(event) => {
+						clearContextMenuTouchTimer();
+						const target = event.currentTarget;
+						const bounds = target.getBoundingClientRect();
+						contextMenuTouchTimer.current = setTimeout(() => {
+							target.dispatchEvent(
+								new MouseEvent("contextmenu", {
+									bubbles: true,
+									clientX: bounds.left + bounds.width / 2,
+									clientY: bounds.top + bounds.height / 2,
+								}),
+							);
+						}, 350);
+					}}
+					onTouchEnd={clearContextMenuTouchTimer}
+					onTouchCancel={clearContextMenuTouchTimer}
 					aria-label={feed.title}
 					aria-haspopup="menu"
 					aria-keyshortcuts="Shift+F10"

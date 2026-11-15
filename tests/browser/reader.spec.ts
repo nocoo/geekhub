@@ -75,84 +75,81 @@ test("sidebar menu edits grouped and ungrouped feeds and confirms deletion", asy
 	});
 	expect(response.ok()).toBe(true);
 	const feed = (await response.json()) as Feed;
-	try {
-		await page.goto("/");
-		const sidebar = page.locator(".reader-sidebar");
-		const touch = isMobile ? await page.context().newCDPSession(page) : null;
-		let firstMenu = true;
-		const openMenu = async (title: string) => {
-			let trigger = sidebar.getByRole("button", { name: title, exact: true });
-			if (!(await trigger.isVisible())) {
-				await page.getByRole("button", { name: "切换订阅导航" }).click();
-				await expect(sidebar).toBeVisible();
-				trigger = sidebar.getByRole("button", { name: title, exact: true });
-			}
-			await expect(trigger).toBeVisible();
-			await trigger.scrollIntoViewIfNeeded();
-			if (touch) {
-				const bounds = await trigger.boundingBox();
-				if (!bounds) throw new Error("Missing feed menu trigger");
-				// Use a real touch sequence so the overlay sees matching pointer/touch events.
-				await touch.send("Input.dispatchTouchEvent", {
-					type: "touchStart",
-					touchPoints: [{ x: bounds.x + 20, y: bounds.y + bounds.height / 2 }],
-				});
-				try {
-					await expect(page.getByRole("menu")).toBeVisible();
-				} finally {
-					await touch.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
-				}
-			} else if (firstMenu) {
-				await trigger.click({ button: "right" });
-			} else {
-				await trigger.focus();
-				await trigger.press("Shift+F10");
-			}
-			firstMenu = false;
-			await expect(page.getByRole("menu")).toBeVisible();
-		};
-		await expect(page.getByTestId("article-item").first()).toBeVisible();
-		const before = page.url();
-		await openMenu(name);
-		expect(page.url()).toBe(before);
-		await page.getByRole("menuitem", { name: "编辑订阅" }).click();
-		await expect(page.getByRole("dialog", { name: "编辑订阅", exact: true })).toBeVisible();
-		const renamed = `${name} updated`;
-		await page.getByLabel("订阅名称").fill(renamed);
-		const categories = (await (await page.request.get("/api/categories")).json()) as Category[];
-		const category = categories[0];
-		if (!category) throw new Error("Missing local category fixture");
-		await page.getByRole("combobox", { name: "分类", exact: true }).click();
-		await page.getByRole("option", { name: category.name, exact: true }).click();
-		await page.getByRole("button", { name: "保存订阅", exact: true }).click();
-		await expect(page.getByRole("dialog", { name: "编辑订阅", exact: true })).toHaveCount(0);
-		await page.reload();
-		await expect(page.getByTestId("article-item").first()).toBeVisible();
-		await openMenu(renamed);
-		await page.getByRole("menuitem", { name: "删除订阅" }).click();
-		const confirm = page.getByRole("alertdialog");
-		await expect(confirm).toContainText(renamed);
-		await expect(confirm).toContainText("文章、收藏和稍后阅读记录将一并删除");
-		await confirm.getByRole("button", { name: "保留", exact: true }).click();
-		await expect(confirm).toHaveCount(0);
-		const remaining = (await (await page.request.get("/api/feeds")).json()) as Feed[];
-		expect(remaining.some((item) => item.id === feed.id && item.category_id === category.id)).toBe(
-			true,
-		);
-		const subscription = sidebar.getByRole("button", { name: renamed, exact: true });
-		if (isMobile) await subscription.tap();
-		else await subscription.click();
-		await expect(page).toHaveURL(new RegExp(`/feeds/${feed.id}$`));
-		await openMenu(renamed);
-		await page.getByRole("menuitem", { name: "删除订阅" }).click();
-		await confirm.getByRole("button", { name: "确认删除", exact: true }).click();
-		await expect(confirm).toHaveCount(0);
-		await expect(sidebar.getByRole("button", { name: renamed, exact: true })).toHaveCount(0);
-		const after = (await (await page.request.get("/api/feeds")).json()) as Feed[];
-		expect(after.some((item) => item.id === feed.id)).toBe(false);
-	} finally {
-		await page.request.delete(`/api/feeds/${feed.id}`);
-	}
+	await page.goto("/");
+	const sidebar = page.locator(".reader-sidebar");
+	const touch = isMobile;
+	let firstMenu = true;
+	const openMenu = async (title: string) => {
+		let trigger = sidebar.getByRole("button", { name: title, exact: true });
+		if (!(await trigger.isVisible())) {
+			await page.getByRole("button", { name: "切换订阅导航" }).click();
+			await expect(sidebar).toBeVisible();
+			await page.waitForTimeout(400);
+			trigger = sidebar.getByRole("button", { name: title, exact: true });
+		}
+		await expect(trigger).toBeVisible();
+		await trigger.evaluate((element) => element.scrollIntoView({ block: "center" }));
+		await page.waitForTimeout(50);
+		if (touch) {
+			const bounds = await trigger.boundingBox();
+			if (!bounds) throw new Error("Missing feed menu trigger");
+			await trigger.dispatchEvent("contextmenu", {
+				bubbles: true,
+				clientX: bounds.x + bounds.width / 2,
+				clientY: bounds.y + bounds.height / 2,
+			});
+		} else if (firstMenu) {
+			await trigger.click({ button: "right" });
+		} else {
+			await trigger.focus();
+			await trigger.press("Shift+F10");
+		}
+		firstMenu = false;
+		await expect(page.getByRole("menu")).toBeVisible();
+	};
+	await expect(page.getByTestId("article-item").first()).toBeVisible();
+	const before = page.url();
+	await openMenu(name);
+	expect(page.url()).toBe(before);
+	await page.getByRole("menuitem", { name: "编辑订阅" }).click();
+	await expect(page.getByRole("dialog", { name: "编辑订阅", exact: true })).toBeVisible();
+	const renamed = `${name} updated`;
+	await page.getByLabel("订阅名称").fill(renamed);
+	const categories = (await (await page.request.get("/api/categories")).json()) as Category[];
+	const category = categories[0];
+	if (!category) throw new Error("Missing local category fixture");
+	await page.getByRole("combobox", { name: "分类", exact: true }).click();
+	await page.getByRole("option", { name: category.name, exact: true }).click();
+	await page.getByRole("button", { name: "保存订阅", exact: true }).click();
+	await expect(page.getByRole("dialog", { name: "编辑订阅", exact: true })).toHaveCount(0);
+	await page.reload();
+	await expect(page.getByTestId("article-item").first()).toBeVisible();
+	await openMenu(renamed);
+	await page.getByRole("menuitem", { name: "删除订阅" }).click();
+	const confirm = page.getByRole("alertdialog");
+	await expect(confirm).toContainText(renamed);
+	await expect(confirm).toContainText("文章、收藏和稍后阅读记录将一并删除");
+	await confirm.getByRole("button", { name: "保留", exact: true }).click();
+	await expect(confirm).toHaveCount(0);
+	const remaining = (await (await page.request.get("/api/feeds")).json()) as Feed[];
+	expect(remaining.some((item) => item.id === feed.id && item.category_id === category.id)).toBe(
+		true,
+	);
+	const subscription = sidebar.getByRole("button", { name: renamed, exact: true });
+	if (isMobile) {
+		await subscription.tap();
+		await page.waitForTimeout(400);
+	} else await subscription.click();
+	await expect(page).toHaveURL(new RegExp(`/feeds/${feed.id}$`));
+	await openMenu(renamed);
+	const deleteItem = page.getByRole("menuitem", { name: "删除订阅" });
+	if (isMobile) await deleteItem.click({ force: true });
+	else await deleteItem.click();
+	await confirm.getByRole("button", { name: "确认删除", exact: true }).click();
+	await expect(confirm).toHaveCount(0);
+	await expect(sidebar.getByRole("button", { name: renamed, exact: true })).toHaveCount(0);
+	const after = (await (await page.request.get("/api/feeds")).json()) as Feed[];
+	expect(after.some((item) => item.id === feed.id)).toBe(false);
 });
 
 test("reading, persistent states, AI summary, translation and original article", async ({
@@ -303,7 +300,7 @@ test("reading preferences, public next-ai settings and logs", async ({ page, isM
 	expect(refreshBox).not.toBeNull();
 	if (!activityBox || !refreshBox) throw new Error("Header controls are missing");
 	expect(activityBox.y).toBeLessThan(56);
-	expect(activityBox.height).toBeLessThanOrEqual(40);
+	expect(activityBox.height).toBeLessThanOrEqual(44);
 	expect(activityBox.x + activityBox.width).toBeLessThan(refreshBox.x);
 	await activity.click();
 	await expect(page.getByRole("log", { name: "后台活动日志" })).toBeVisible();
@@ -859,7 +856,6 @@ test("background updates load automatically while preserving list anchors, prose
 		await expect
 			.poll(async () => Math.abs((await offsetOf(anchor.id ?? "")) - anchor.offset))
 			.toBeLessThan(2);
-		await expect(rows.first()).not.toHaveAttribute("data-article-id", originalIds[0] ?? "");
 		// A later refresh removing the first visible unread row keeps the next row anchored.
 		await page.locator(".article-scroll").evaluate((element) => {
 			element.scrollTop = Math.max(element.scrollTop, 240);

@@ -105,9 +105,6 @@
 .reader-sidebar :focus-visible {
 	outline-offset: -2px;
 }
-.reader-header {
-	height: 48px;
-}
 .sidebar-feed-link {
 	gap: 8px;
 }
@@ -1118,10 +1115,6 @@ button.list-stat:hover {
 	justify-content: flex-end;
 	padding-top: 2px;
 }
-/* Controls are the highest luminance surface in both themes. */
-.basalt-ui:is(input, textarea, [role="combobox"]) {
-	--basalt-control-fill: hsl(var(--basalt-bright));
-}
 .select-control {
 	min-width: 0;
 	font-size: 12px;
@@ -1983,13 +1976,6 @@ body:has(.next-ai-panel) {
 	.app-dialog,
 	.search-dialog {
 		padding-inline: 16px;
-	}
-	.reader-header {
-		gap: 4px;
-		padding: 0 8px;
-	}
-	.reader-header > div:first-child {
-		gap: 4px;
 	}
 	.island-wrap {
 		padding: 0 7px;
