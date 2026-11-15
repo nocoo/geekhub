@@ -1,4 +1,4 @@
-# L1 against the Git index snapshot (6DQ).
+# L1 against the Git index snapshot.
 set -e
 command -v git >/dev/null 2>&1 || {
 	echo "pre-commit: git is required" >&2

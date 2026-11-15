@@ -56,7 +56,7 @@ Run the checks relevant to the changed scope; hook and CI requirements still app
 
 Current hooks: pre-commit gates a `checkout-index` snapshot for unified L1 (typecheck, lint, coverage) with failure blocking and temp-dir cleanup. Pre-push runs `bun scripts/hooks.ts push` (L2 and G2 in parallel) against the working tree. Target for pre-push: stdin pushed-ref scope and under 3 minutes; not implemented yet.
 
-The owner merged former G1 into L1 on 2026-09-21; the framework keeps the 6DQ name: L1, L2, L3, G2 and D1. Use `system0-6dq-l1` for the L1 contract and its S/A/B/F rubric. Do not lower coverage, skip tests, use `.skip`/`.only`, suppress security failures or bypass hooks to pass a gate.
+The owner merged former G1 into L1 on 2026-09-21; quality slots are enforced via `.github/workflows/quality-slots.yml` (`quality / Z1: Gate`, System1 v1.3.0 / `nocoo/base-ci v2026.15`). Do not lower coverage, skip tests, use `.skip`/`.only`, suppress security failures or bypass hooks to pass a gate.
 
 ## Resources and operational safety
 
