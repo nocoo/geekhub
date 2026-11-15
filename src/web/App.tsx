@@ -640,6 +640,26 @@ function ReaderApp({ session }: { session: Session }) {
 												<Activity size={15} className="icon-reading" aria-hidden="true" />
 												<span>查看后台活动详情</span>
 											</DropdownMenuItem>
+											<DropdownMenuItem asChild>
+												<a
+													href="https://github.com/nocoo/geekhub"
+													target="_blank"
+													rel="noopener noreferrer"
+												>
+													<ArrowUpRight size={15} className="icon-reading" aria-hidden="true" />
+													<span>GeekHub GitHub 项目</span>
+												</a>
+											</DropdownMenuItem>
+											<DropdownMenuItem asChild>
+												<a
+													href="https://hexly.ai/projects/geekhub"
+													target="_blank"
+													rel="noopener noreferrer"
+												>
+													<ArrowUpRight size={15} className="icon-reading" aria-hidden="true" />
+													<span>GeekHub on hexly.ai</span>
+												</a>
+											</DropdownMenuItem>
 										</DropdownMenuContent>
 									</DropdownMenu>
 								) : (
