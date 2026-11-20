@@ -1,75 +1,59 @@
 # GeekHub
 
-Single-user RSS reader: a Vite/React SPA plus a Hono API on one Cloudflare Worker, with D1 as the source of truth. Brand: GeekHub, production domain `geekhub.hexly.ai`. Human overview: [README.md](README.md). Architecture: [docs/01-architecture.md](docs/01-architecture.md). Reader workflow: [docs/07-reader-workflow.md](docs/07-reader-workflow.md). Profile: ts-worker-web.
+Single-user RSS reader: Vite/React SPA and Hono API on one Cloudflare Worker (`geekhub.hexly.ai`), with D1 as source of truth.
+Docs: [README.md](README.md) · [Architecture](docs/01-architecture.md) · [Development](docs/02-development.md) · [Quality](docs/03-quality.md) · [Data Import](docs/04-data-import.md) · [Deployment](docs/05-deployment.md) · [Reader Workflow](docs/07-reader-workflow.md) · [Retrospective](Retrospective.md)
 
-## Scope and instruction sources
+## Commands
 
-- This file applies throughout the repository.
-- `docs/archieve/` is a historical documentation snapshot outside active build/test/lint; it is not current product documentation.
-- Preserve these project instructions when scaffolding or updating frameworks; frameworks must not replace this handbook.
-- Maintain this file as the only root handbook; do not recreate `CLAUDE.md`, a symlink, an import or a compatibility alias.
-- Source of truth: root `package.json`, the four `tsconfig.*.json` projects, `biome.json`, `wrangler.jsonc`, `vitest.config.ts`, `migrations/`, `.husky/`, `scripts/` and `.github/workflows/ci.yml`. Record drift rather than lowering the contract.
-
-## Setup and commands
-
-Run from the repository root. TypeScript 7.0.2 strict, Bun 1.4.0 (`packageManager`; CI pins Node 26.12.1), Biome 2.5.13, `@nocoo/basalt` 2.2.0 and `@nocoo/next-ai` 0.4.0. Wrangler bindings live in `wrangler.jsonc`; secrets stay in ignored local configuration. Normal local tests need no production Access or AI keys.
-
-Wrangler generates both binding and runtime types from the configured compatibility date; do not add a separate `@cloudflare/workers-types` dependency. Retired scheduling columns and persistent fetch logs are removed by migration `0007`; feed work is action-triggered with Queue retries only.
+Run from root with Bun 1.4.0 (`packageManager`; CI pins Node 26.12.1), TypeScript 7.0.2 strict, and Biome. Bindings live in `wrangler.jsonc`; local secret names in `.dev.vars.example` (`.dev.vars.local` stays ignored). Local tests need no production Access or AI keys.
 
 ```sh
 bun install --frozen-lockfile
-bun run setup
-bun dev
-bun run typecheck
-bun run lint
-bun run build
-bun run test:coverage
-bun run test:l2
-bun x playwright install chromium
-bun run test:l3
-bun run gate:security
-bun run quality
+bun run setup          # Local D1 migrations + .dev.vars.local + empty-DB seed
+bun dev                # https://geekhub.dev.hexly.ai -> 127.0.0.1:7005
+bun run typecheck      # S1: cf-typegen + 4 strict tsconfig.*.json projects
+bun run lint           # S2: Biome check-only, 0 warnings
+bun run test:coverage  # L1: Vitest >= 95% on shared/worker/web/lib
+bun run build          # B1: Vite production bundle
+bun run test:l2        # L3 (CI): isolated local Worker HTTP + SQLite (:17005)
+bun x playwright install chromium && bun run test:l3  # L4 (CI): Playwright E2E (:27005)
+bun run gate:security  # G1/G2: gitleaks + osv-scanner on PATH (fails if missing)
+bun run quality        # Full local gate sequence
 ```
 
-`bun run setup` applies local D1 migrations and seeds sample feeds only when none exist; it preserves imported data. G2 needs gitleaks 8.30.1 and osv-scanner 2.5.1 on PATH; CSV import ([docs/04-data-import.md](docs/04-data-import.md)) additionally uses Python 3, with explicit `db:import --check/--local/--remote` targets where remote imports are operational writes. `quality` chains every gate for a full local run.
+`bun run setup` preserves imported data. CSV import (`bun run db:import <dir> --check|--local|--remote`) uses Python 3; `--remote` requires authorization ([Data Import](docs/04-data-import.md)).
 
-## Project boundaries
+## Invariants
 
-- D1 holds one shared dataset; `migrations/` owns its schema. The published version in root `package.json` must match the UI and `/api/live`. Access authenticates entry; never partition subscriptions, reading state or settings by Access subject, email or legacy `user_id`. Preserve source IDs and shared ownership during imports; changing a feed URL must preserve articles and reading state.
-- Verify Access JWT signature, issuer and audience; production fails closed. Local identity and mock AI are restricted to the local environment and loopback requests.
-- `src/web` is browser-only; `src/worker` is server-only; `src/shared` is browser-safe. Never import the AI server entry or secrets into the browser bundle.
-- Parameterize D1 SQL. Sanitize fetched HTML and validate outbound URLs and redirects. Feed work uses Queues triggered by reader actions; no Cron scheduling. Fetch logs live only in the shared Durable Object memory cache capped at 500 entries. No floating background promises or Worker filesystem storage.
-- Use published Basalt 2.2.0 components; read the installed Basalt integration guide before changing application chrome. Use `@nocoo/next-ai` public contracts, React configuration components and the universal `/server` entry. Keep MVVM structure and the existing green identity.
-- Keep reading selection, scroll and pagination stable during background updates; updates apply explicitly. Preserve keyboard/input boundaries and responsive layouts.
+- **Shared D1 dataset**: `migrations/` owns schema; `package.json` version matches UI and `/api/live`. Never partition subscriptions, reading state, or settings by Access subject, email, or legacy `user_id`.
+- **Import & URL edits**: Preserve source IDs and shared ownership on CSV import; changing a feed URL must preserve articles and reading state.
+- **Auth & fail-closed**: Verify Access JWT signature, issuer, and audience; production fails closed. Local identity and mock AI are restricted to local/test loopback requests.
+- **Module boundaries**: `src/web` is browser-only, `src/worker` is server-only, `src/shared` is browser-safe; never import AI `/server` entries or secrets into browser code.
+- **SQL, HTML & Queues**: Parameterize D1 SQL; sanitize HTML and validate outbound URLs/redirects. Feed work uses action-triggered Queues only (no Cron, floating promises, or Worker FS).
+- **Memory logs & types**: Fetch logs live only in `FeedLogCache` DO memory (500-entry cap; migration `0007` dropped retired scheduling/logs). Never add `@cloudflare/workers-types`; `cf-typegen` owns them.
+- **UI & AI contracts**: Use published `@nocoo/basalt` components (read `system1-design-basalt` before changing chrome) and `@nocoo/next-ai` public contracts + `/server` entry; keep MVVM and green identity.
+- **Reader stability**: Keep selection, scroll anchor, and pagination stable during background updates (apply explicitly); preserve keyboard/input boundaries and responsive layouts.
+- **Historical archive**: `docs/archieve/` is a historical snapshot outside active build, lint, and test scope, not current product documentation.
+- **Production writes**: `bun run deploy` (remote migrations -> build -> deploy; rejects local/test), remote migrations, and `db:import --remote` require authorization ([Deployment](docs/05-deployment.md)).
 
-## Testing and quality contract
+## Quality & Local Gates
 
-Run the checks relevant to the changed scope; hook and CI requirements still apply. Unit tests run in-package Vitest against `tests/unit/`; L2/L3 run isolated local Workers. Statuses: `enforced`, `planned`, `manual`, `N/A`. A partial check does not certify the full requirement.
+Follows `system1-quality`; CI slots and pinned `base-ci` revision live in `.github/workflows/quality-slots.yml` (`quality / Z1: Gate` required on `main` and `.github/workflows/release.yml`). Status vocabulary: `enforced`, `planned`, `manual`, `N/A`. Never lower coverage, use `.skip`/`.only`, suppress security failures, or bypass hooks.
 
-| Dimension | Required contract | Current status and evidence |
+- **Coverage & scripts**: `L1` (`enforced`) gates v8 >= 95% on `src/shared/**`, `src/worker/**`, `src/web/lib/**`. `test:l2` runs CI `L3: Integration` (all `src/worker/index.ts` routes); `test:l3` runs CI `L4: E2E`.
+- **Slot exceptions**: `L2 Runtime` is `N/A` (Worker/D1/Queue covered by `L3`/`L4`); `P1 Package` is `N/A` (private Worker, not published to npm).
+- **Security scan**: `gate:security` (`G1`/`G2`) requires `gitleaks` + `osv-scanner` on PATH (fails if missing), disables inline allow comments, and scans tracked + unignored files including `docs/archieve/`.
+- **Pre-commit (`.husky/`)**: Installed via `bun run prepare`; checks lockfile match, runs `S1`/`S2`/`L1` in parallel in a `git checkout-index` snapshot, then cleans up (`G1` staged scan is `planned`).
+- **Pre-push (`.husky/`)**: Runs `bun scripts/hooks.ts push` (`test:l2` + `gate:security` in parallel) on the working tree; stdin pushed-ref scoping and `B1`/`L4` gating are `planned`.
+
+## Resources & Isolation
+
+| Lane | Endpoint / State | Boundary |
 | --- | --- | --- |
-| L1 — pre-commit quality | UT with statements, branches, functions and lines each ≥95%; strict types and check-only lint with zero errors/warnings; installed hook on the index snapshot; failure rejection; under 30s. No skipped or focused tests. | enforced. `vitest.config.ts` sets v8 thresholds 95/95/95/95 over `src/shared/**`, `src/worker/**` and `src/web/lib/**`. `typecheck` runs `cf-typegen` plus four strict `tsc` projects; `lint` is `biome check --error-on-warnings .`. `.husky/pre-commit` exports the index with `git checkout-index`, symlinks `node_modules`, runs typecheck, lint and `test:coverage` in parallel inside the snapshot, and always removes the temp tree. The CI quality job runs the same three lanes on the checkout. |
-| L2 — integration | Real local HTTP plus SQLite for every owned endpoint/method | planned. Pre-push and the CI matrix run `bun run test:l2` (`scripts/run-tests.ts l2`) against a local Wrangler/Miniflare Worker on `127.0.0.1:17005` with fresh `.wrangler/tests/l2-*` SQLite. A complete endpoint/method inventory is not established. |
-| L3 — system | Critical browser user journeys | enforced. The CI integration matrix runs `bun run test:l3` (Playwright chromium) for desktop/mobile reading and auth journeys on every push and PR. |
-| G2 — security | Dependency and secret scans; a missing required scanner fails | enforced. `gate:security` (`scripts/security.ts`) snapshots tracked and unignored files including the archive, scans with pinned gitleaks (inline allow comments disabled) and osv-scanner over `bun.lock`, and fails on missing tools or nonzero exits. It runs in pre-push and the dedicated CI security job. |
-| D1 — isolation | Test state separate from production and daily development; guards before fixture writes/cleanup | enforced. `run-tests.ts`, `verify-test-bindings.ts` and `seed.ts` allocate per-run SQLite directories, remove production Cloudflare credentials, verify local bindings, initialize `_test_marker(env=test)` and check it before seed/reset/cleanup. No remote `-test` resources exist. |
+| Dev | `https://geekhub.dev.hexly.ai` -> Caddy -> `127.0.0.1:7005`; `.wrangler/state/` | Single Vite + Cloudflare plugin; daily local data; never deploy local env |
+| Tests | L3 `127.0.0.1:17005`, L4 `127.0.0.1:27005`; `.wrangler/tests/l2-*` & `l3-*` | Per-run SQLite, stripped CF creds, `verifyLocalBindings` + `_test_marker(env=test)` before seed/cleanup; align ports in `vite.config.ts`, `scripts/run-tests.ts`, `wrangler.jsonc`, and Caddy |
+| Prod | `https://geekhub.hexly.ai`; prod D1, Queue, Access team/AUD, `AI_ENCRYPTION_KEY` | Reader AI keys stay encrypted; read-only checks unless deploy, remote migration, or `db:import --remote` is authorized |
 
-Current hooks: pre-commit gates a `checkout-index` snapshot for unified L1 (typecheck, lint, coverage) with failure blocking and temp-dir cleanup. Pre-push runs `bun scripts/hooks.ts push` (L2 and G2 in parallel) against the working tree. Target for pre-push: stdin pushed-ref scope and under 3 minutes; not implemented yet.
+## Retrospective
 
-The owner merged former G1 into L1 on 2026-09-21; quality slots are enforced via `.github/workflows/quality-slots.yml` (`quality / Z1: Gate`, System1 v1.3.0 / `nocoo/base-ci v2026.15`). Do not lower coverage, skip tests, use `.skip`/`.only`, suppress security failures or bypass hooks to pass a gate.
-
-## Resources and operational safety
-
-| Purpose | Target / state | Boundary |
-| --- | --- | --- |
-| Development | `https://geekhub.dev.hexly.ai` → Caddy → `127.0.0.1:7005`; `.wrangler/state/` | One Vite process runs UI and Worker via the Cloudflare plugin; manual preview uses Caddy with normal TLS verification. Never deploy the local environment. |
-| Tests | L2 `http://127.0.0.1:17005`, L3 `http://127.0.0.1:27005`; fresh `.wrangler/tests/l2-*`/`l3-*` | Per-run SQLite; verify local bindings, runtime context and `_test_marker` before seed/reset/cleanup. Keep ports aligned across `vite.config.ts`, `scripts/run-tests.ts`, Wrangler, the Caddyfile and the workflow mirror. |
-| Production | `https://geekhub.hexly.ai`; production bindings only | Deployment, remote migration and import are authorized operations, not agent defaults. |
-
-Deployment uses `bun run deploy`, which applies production migrations before build/deploy and rejects local or test targets. Configure production D1, Queue, Access team/AUD and `AI_ENCRYPTION_KEY` first; reader-provided AI keys stay encrypted. Verify the deployed version, health and Access behavior. Runbooks: [docs/05-deployment.md](docs/05-deployment.md), quality evidence: [docs/03-quality.md](docs/03-quality.md).
-
-## Completion and documentation
-
-- Keep one logical change per commit; update README and numbered docs when behavior changes.
-- Report commands actually run. Inspected configuration is not a passing test run.
-- Accident narratives stay in [Retrospective.md](Retrospective.md). Keep only concise recurring project rules here; cross-project lessons go to global rules/nmem; deterministic checks belong in hooks/tests.
+Record incident narratives in [Retrospective.md](Retrospective.md); promote recurring project constraints to `Invariants` above and deterministic checks to tests or hooks.
