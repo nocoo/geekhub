@@ -19,7 +19,7 @@ import {
 	Sparkles,
 	Star,
 	UserRound,
-} from "lucide-react";
+} from "@nocoo/basalt/icons";
 import { lazy, Suspense, useRef, useState } from "react";
 import type { AiAction, AiSettings, ArticleDetail, Preferences } from "../shared/contracts";
 import { useReadingPosition } from "./lib/reader-position";

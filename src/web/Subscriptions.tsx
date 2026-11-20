@@ -9,7 +9,7 @@ import {
 	Rss,
 	Save as SaveIcon,
 	Trash2,
-} from "lucide-react";
+} from "@nocoo/basalt/icons";
 import { type DragEvent, useId, useState } from "react";
 import type { Category, Feed } from "../shared/contracts";
 import { moveBefore, type Save } from "./lib/panels-view-model";

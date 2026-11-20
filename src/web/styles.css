@@ -1,7 +1,4 @@
-@source "../../node_modules/@nocoo/basalt/dist/**/*.{js,jsx,ts,tsx}";
-/* biome-ignore lint/correctness/noInvalidPositionAtImportRule: Basalt's Tailwind integration requires @source before these build-time imports. */
-@import "@nocoo/basalt/styles/tailwind";
-/* biome-ignore lint/correctness/noInvalidPositionAtImportRule: Basalt's Tailwind integration requires @source before these build-time imports. */
+@import "@nocoo/basalt/styles";
 @import "tailwindcss";
 @source "../../node_modules/@nocoo/next-ai/dist/**/*.{js,jsx}";
 

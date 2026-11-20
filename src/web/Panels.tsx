@@ -17,7 +17,6 @@ import {
 	TabsTrigger,
 	useConfirm,
 } from "@nocoo/basalt";
-import { AiConfigProvider, AiSettingsPanel } from "@nocoo/next-ai/react";
 import {
 	ArrowUpRight,
 	BookOpen,
@@ -35,7 +34,8 @@ import {
 	Terminal,
 	Trash2,
 	X,
-} from "lucide-react";
+} from "@nocoo/basalt/icons";
+import { AiConfigProvider, AiSettingsPanel } from "@nocoo/next-ai/react";
 import { useState } from "react";
 import type { Category, Feed, FetchLog, Preferences, Stats } from "../shared/contracts";
 import { ActivityPanel } from "./ActivityPanel";

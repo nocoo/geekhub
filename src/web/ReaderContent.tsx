@@ -1,4 +1,4 @@
-import { ImageOff } from "lucide-react";
+import { ImageOff } from "@nocoo/basalt/icons";
 import { memo, useMemo, useState } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";

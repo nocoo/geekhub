@@ -14,7 +14,7 @@ import {
 	Search,
 	Sparkles,
 	Trash2,
-} from "lucide-react";
+} from "@nocoo/basalt/icons";
 import { useState } from "react";
 import type { Feed, FetchLog } from "../shared/contracts";
 import { runningActivities } from "./lib/reader";
