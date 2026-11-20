@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.5.4 — 2026-11-20
+
+- Upgrade `@nocoo/basalt` to `^3.5.1` and remove direct `lucide-react` dependency (rewrite icon imports to `@nocoo/basalt/icons`).
+- Switch `src/web/styles.css` to `@import "@nocoo/basalt/styles"; @import "tailwindcss";` and remove manual Basalt `@source` scan.
+- Remove `pt-1` override on `<SidebarNav>` in `src/web/App.tsx` to preserve Basalt's collapsed rail top spacing.
+- Update light-mode `--basalt-control` assertion in `tests/browser/ai.spec.ts` to match Basalt `3.5.1` (`rgb(252, 252, 252)`).
+
 
 ## v1.5.0 — 2026-10-24
 

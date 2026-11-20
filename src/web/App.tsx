@@ -47,8 +47,6 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@nocoo/basalt/components/dropdown-menu";
-import { useTheme } from "@nocoo/basalt/providers/theme";
-import { useQuery } from "@tanstack/react-query";
 import {
 	Activity,
 	ArrowDown,
@@ -76,7 +74,9 @@ import {
 	Star,
 	Trash2,
 	X,
-} from "lucide-react";
+} from "@nocoo/basalt/icons";
+import { useTheme } from "@nocoo/basalt/providers/theme";
+import { useQuery } from "@tanstack/react-query";
 import {
 	useCallback,
 	useEffect,
@@ -390,7 +390,7 @@ function ReaderApp({ session }: { session: Session }) {
 					}
 				/>
 			</SidebarHeader>
-			<SidebarNav className="pt-1">
+			<SidebarNav>
 				<SidebarSearch
 					shortcut="/"
 					aria-label="搜索文章"

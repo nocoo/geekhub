@@ -1,5 +1,12 @@
 import { Badge, Button, Input, LayerCard } from "@nocoo/basalt";
-import { ArrowRight, ExternalLink, LoaderCircle, Pause, RefreshCw, Trash2 } from "lucide-react";
+import {
+	ArrowRight,
+	ExternalLink,
+	LoaderCircle,
+	Pause,
+	RefreshCw,
+	Trash2,
+} from "@nocoo/basalt/icons";
 import type { ConnectionCheck, Feed, FeedInspection } from "../shared/contracts";
 import { DiagnosticScore } from "./DiagnosticScore";
 import { type Save, useDiagnosticViewModel } from "./lib/panels-view-model";

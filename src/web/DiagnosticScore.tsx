@@ -1,5 +1,5 @@
 import { Button, LayerCard } from "@nocoo/basalt";
-import { ArrowDown } from "lucide-react";
+import { ArrowDown } from "@nocoo/basalt/icons";
 import { useId } from "react";
 import type { DiagnosticAssessment, DiagnosticDimension } from "./lib/diagnostic-score";
 
