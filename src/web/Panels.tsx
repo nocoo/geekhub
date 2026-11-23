@@ -3,7 +3,6 @@ import {
 	Button,
 	ConfirmDialog,
 	Dialog,
-	DialogClose,
 	DialogContent,
 	DialogDescription,
 	DialogHeader,
@@ -33,7 +32,6 @@ import {
 	Sparkles,
 	Terminal,
 	Trash2,
-	X,
 } from "@nocoo/basalt/icons";
 import { AiConfigProvider, AiSettingsPanel } from "@nocoo/next-ai/react";
 import { useState } from "react";
@@ -122,6 +120,7 @@ export function Panels(props: Props) {
 				<DialogContent
 					key={props.panel}
 					size={props.panel === "add" || props.panel === "edit-feed" ? "lg" : "xl"}
+					closeLabel="关闭窗口"
 					className={`app-dialog ${props.panel === "settings" ? "settings-dialog" : props.panel === "logs" ? "activity-dialog" : ""}`}
 				>
 					<DialogHeader className="gap-1 space-y-0">
@@ -205,11 +204,6 @@ export function Panels(props: Props) {
 							onDone={props.onClose}
 						/>
 					)}
-					<DialogClose asChild>
-						<Button variant="ghost" size="icon" className="panel-close" aria-label="关闭窗口">
-							<X size={16} />
-						</Button>
-					</DialogClose>
 				</DialogContent>
 			</Dialog>
 			<ConfirmDialog {...dialogProps} />

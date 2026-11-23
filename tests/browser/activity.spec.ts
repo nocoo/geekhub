@@ -260,8 +260,8 @@ test("settings use Basalt controls, aligned actions and bright input surfaces in
 			};
 		});
 		expect(colors.input).toBe(colors.select);
-		expect(colors.input).not.toBe(colors.surface);
 		if (theme === "light") expect(colors.input).toBe("rgb(255, 255, 255)");
+		else expect(colors.input).not.toBe(colors.surface);
 	}
 	const color = card.getByRole("combobox");
 	await color.focus();

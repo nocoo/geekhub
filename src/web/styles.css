@@ -47,13 +47,13 @@
 	color: hsl(var(--basalt-muted-foreground));
 }
 .accent {
-	color: hsl(var(--basalt-primary));
+	color: hsl(var(--basalt-link));
 }
 .icon-info {
 	color: color-mix(in srgb, hsl(var(--basalt-accent-2)) 65%, hsl(var(--basalt-foreground)));
 }
 .icon-reading {
-	color: hsl(var(--basalt-primary));
+	color: hsl(var(--basalt-link));
 }
 .icon-save {
 	color: color-mix(in srgb, hsl(var(--basalt-accent-6)) 65%, hsl(var(--basalt-foreground)));
@@ -70,7 +70,7 @@
 }
 .error-color,
 .inline-error {
-	color: hsl(var(--basalt-destructive));
+	color: hsl(var(--basalt-danger));
 }
 .inline-error {
 	font-size: 12px;
@@ -140,7 +140,7 @@
 	width: 6px;
 	height: 6px;
 	border-radius: 2px;
-	background: hsl(var(--basalt-primary));
+	background: hsl(var(--basalt-link));
 }
 .category-dot.blue {
 	background: hsl(var(--basalt-accent-2));
@@ -191,7 +191,7 @@
 }
 .discover-nav {
 	margin-top: 12px;
-	color: hsl(var(--basalt-primary));
+	color: hsl(var(--basalt-link));
 }
 .feed-activity {
 	max-width: min(380px, 34vw);
@@ -208,7 +208,7 @@
 }
 .activity-label {
 	letter-spacing: 0.06em;
-	color: hsl(var(--basalt-primary));
+	color: hsl(var(--basalt-link));
 }
 .activity-message {
 	min-width: 0;
@@ -221,11 +221,11 @@
 	width: 5px;
 	height: 5px;
 	border-radius: 50%;
-	background: hsl(var(--basalt-primary));
+	background: hsl(var(--basalt-link));
 	flex-shrink: 0;
 }
 :where(.feed-activity[data-level="error"]) .status-led {
-	background: hsl(var(--basalt-destructive));
+	background: hsl(var(--basalt-danger));
 }
 .island-wrap {
 	padding: 0 12px 0 0;
@@ -293,7 +293,7 @@ button.list-stat:hover {
 	background: hsl(var(--basalt-muted) / 0.55);
 }
 .list-stat:where([aria-pressed="true"]) strong {
-	color: hsl(var(--basalt-primary));
+	color: hsl(var(--basalt-link));
 }
 .list-stat:focus-visible {
 	outline: 2px solid hsl(var(--basalt-ring));
@@ -377,7 +377,7 @@ button.list-stat:hover {
 	gap: 4px;
 	padding: 0 4px;
 	overflow: hidden;
-	color: hsl(var(--basalt-primary));
+	color: hsl(var(--basalt-link));
 	font-size: 10px;
 }
 .list-update-slot .list-sync {
@@ -386,7 +386,7 @@ button.list-stat:hover {
 	color: hsl(var(--basalt-muted-foreground));
 }
 .list-sync:where([data-error]) > svg {
-	color: hsl(var(--basalt-destructive));
+	color: hsl(var(--basalt-danger));
 }
 .list-sync span {
 	overflow: hidden;
@@ -655,12 +655,12 @@ button.list-stat:hover {
 	gap: 6px;
 	margin-top: 8px;
 	padding: 8px;
-	border: 1px solid hsl(var(--basalt-destructive) / 0.3);
+	border: 1px solid hsl(var(--basalt-danger) / 0.3);
 	border-radius: 6px;
 	font-size: 11px;
 }
 .assistant-error > svg {
-	color: hsl(var(--basalt-destructive));
+	color: hsl(var(--basalt-danger));
 	flex-shrink: 0;
 }
 .assistant-error p {
@@ -684,7 +684,7 @@ button.list-stat:hover {
 	align-items: center;
 	gap: 7px;
 	font-size: 11px;
-	color: hsl(var(--basalt-primary));
+	color: hsl(var(--basalt-link));
 }
 .ai-summary > div > :last-child {
 	margin-left: auto;
@@ -715,7 +715,7 @@ button.list-stat:hover {
 	align-items: center;
 	gap: 7px;
 	font-size: 11px;
-	color: hsl(var(--basalt-primary));
+	color: hsl(var(--basalt-link));
 	margin-bottom: 10px;
 }
 .prose {
@@ -792,7 +792,7 @@ button.list-stat:hover {
 	font-size: 1.2em;
 }
 .prose a {
-	color: hsl(var(--basalt-primary));
+	color: hsl(var(--basalt-link));
 	text-decoration: underline;
 	text-underline-offset: 3px;
 }
@@ -1061,7 +1061,7 @@ button.list-stat:hover {
 	letter-spacing: 0;
 }
 .footer-spark {
-	color: hsl(var(--basalt-primary));
+	color: hsl(var(--basalt-link));
 	margin-left: 10px;
 }
 
@@ -1077,14 +1077,6 @@ button.list-stat:hover {
 	display: flex;
 	align-items: center;
 	gap: 8px;
-}
-.panel-close {
-	position: absolute;
-	top: 12px;
-	right: 12px;
-}
-.app-dialog > div:first-child {
-	padding-right: 24px;
 }
 .form-stack {
 	display: flex;
@@ -1292,7 +1284,7 @@ button.list-stat:hover {
 	height: 34px;
 	border: 1px solid hsl(var(--basalt-border));
 	border-radius: 8px;
-	color: hsl(var(--basalt-primary));
+	color: hsl(var(--basalt-link));
 	flex-shrink: 0;
 	font:
 		20px Georgia,
@@ -1477,7 +1469,7 @@ button.list-stat:hover {
 }
 .diagnostic-progress svg {
 	flex-shrink: 0;
-	color: hsl(var(--basalt-primary));
+	color: hsl(var(--basalt-link));
 }
 .diagnostic-progress p {
 	margin-top: 4px;
@@ -1627,11 +1619,11 @@ button.list-stat:hover {
 }
 .score-radar-area {
 	fill: hsl(var(--basalt-primary) / 0.18);
-	stroke: hsl(var(--basalt-primary));
+	stroke: hsl(var(--basalt-link));
 	stroke-width: 2px;
 }
 .score-radar-point {
-	fill: hsl(var(--basalt-primary));
+	fill: hsl(var(--basalt-link));
 }
 .score-radar text {
 	font-size: 10px;
@@ -1687,7 +1679,7 @@ button.list-stat:hover {
 .score-track > span {
 	display: block;
 	height: 100%;
-	background: hsl(var(--basalt-primary));
+	background: hsl(var(--basalt-link));
 }
 .score-rules {
 	margin-top: 12px;
@@ -1758,7 +1750,7 @@ button.list-stat:hover {
 	align-items: center;
 	gap: 12px;
 	padding: 8px 0;
-	color: hsl(var(--basalt-primary));
+	color: hsl(var(--basalt-link));
 }
 .discovery-intro h3 {
 	font-size: 18px;
@@ -1884,7 +1876,7 @@ body:has(.next-ai-panel) {
 	--muted-foreground: var(--basalt-muted-foreground);
 	--accent: var(--basalt-accent);
 	--accent-foreground: var(--basalt-accent-foreground);
-	--destructive: var(--basalt-destructive);
+	--destructive: var(--basalt-danger);
 	--border: var(--basalt-border);
 	--input: var(--basalt-input);
 	--ring: var(--basalt-ring);
@@ -2230,7 +2222,7 @@ body:has(.next-ai-panel) {
 	gap: 12px;
 }
 .reader-toasts [data-icon] {
-	color: hsl(var(--basalt-primary));
+	color: hsl(var(--basalt-link));
 	flex-shrink: 0;
 }
 .reader-toasts [data-title] {
@@ -2270,7 +2262,7 @@ body:has(.next-ai-panel) {
 	display: flex;
 	align-items: center;
 	gap: 10px;
-	color: hsl(var(--basalt-primary));
+	color: hsl(var(--basalt-link));
 	font:
 		11px ui-monospace,
 		monospace;
@@ -2325,7 +2317,7 @@ body:has(.next-ai-panel) {
 }
 .activity-categories button[aria-pressed="true"] {
 	background: hsl(var(--basalt-primary) / 0.12);
-	color: hsl(var(--basalt-primary));
+	color: hsl(var(--basalt-link));
 }
 .activity-categories :where(button) > :where(span) {
 	font:
@@ -2395,7 +2387,7 @@ body:has(.next-ai-panel) {
 	height: 30px;
 	border: 1px solid hsl(var(--basalt-primary) / 0.2);
 	border-radius: 8px;
-	color: hsl(var(--basalt-primary));
+	color: hsl(var(--basalt-link));
 	background: hsl(var(--basalt-primary) / 0.06);
 }
 .activity-entry-copy {
@@ -2442,8 +2434,8 @@ body:has(.next-ai-panel) {
 	border-left: 1px solid hsl(var(--basalt-border));
 }
 .activity-entry[data-level="error"] .activity-kind-icon {
-	color: hsl(var(--basalt-destructive));
-	border-color: hsl(var(--basalt-destructive) / 0.3);
+	color: hsl(var(--basalt-danger));
+	border-color: hsl(var(--basalt-danger) / 0.3);
 }
 .activity-entry-detail {
 	padding: 0 14px 14px 56px;
@@ -2480,7 +2472,7 @@ body:has(.next-ai-panel) {
 	color: hsl(var(--basalt-muted-foreground));
 }
 .activity-error {
-	color: hsl(var(--basalt-destructive));
+	color: hsl(var(--basalt-danger));
 }
 .activity-console-footer :where(button) {
 	white-space: nowrap;

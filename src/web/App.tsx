@@ -9,7 +9,6 @@ import {
 	CollapsibleTrigger,
 	ContentIsland,
 	Dialog,
-	DialogClose,
 	DialogContent,
 	DialogDescription,
 	DialogHeader,
@@ -545,6 +544,7 @@ function ReaderApp({ session }: { session: Session }) {
 				<Dialog open={searchOpen} onOpenChange={setSearchOpen}>
 					<DialogContent
 						size="md"
+						closeLabel="关闭搜索"
 						className="search-dialog grid gap-3"
 						onKeyDown={(event) => {
 							if (event.key !== "Escape") return;
@@ -581,16 +581,6 @@ function ReaderApp({ session }: { session: Session }) {
 								<Search size={16} aria-hidden="true" />
 							</Button>
 						</form>
-						<DialogClose asChild>
-							<Button
-								variant="ghost"
-								size="icon"
-								className="absolute right-2 top-2 h-8 w-8"
-								aria-label="关闭搜索"
-							>
-								<X size={14} aria-hidden="true" />
-							</Button>
-						</DialogClose>
 					</DialogContent>
 				</Dialog>
 				<AppMain>
