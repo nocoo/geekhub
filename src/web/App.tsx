@@ -37,8 +37,8 @@ import { AppHeader, AppHeaderMenuButton } from "@nocoo/basalt/components/app-hea
 import { AppMain, AppShell, AppSkipLink } from "@nocoo/basalt/components/app-shell";
 import {
 	ContextMenu,
+	ContextMenuContent,
 	ContextMenuItem,
-	ContextMenuPanel,
 	ContextMenuTrigger,
 } from "@nocoo/basalt/components/context-menu";
 import {
@@ -544,7 +544,7 @@ function ReaderApp({ session }: { session: Session }) {
 
 				<Dialog open={searchOpen} onOpenChange={setSearchOpen}>
 					<DialogContent
-						size="base"
+						size="md"
 						className="search-dialog grid gap-3"
 						onKeyDown={(event) => {
 							if (event.key !== "Escape") return;
@@ -1261,7 +1261,7 @@ function FeedItem({
 					</span>
 				</SidebarItem>
 			</ContextMenuTrigger>
-			<ContextMenuPanel
+			<ContextMenuContent
 				className="feed-context-menu"
 				aria-label={`${feed.title} 的订阅菜单`}
 				onFocusOutside={(event) => {
@@ -1294,7 +1294,7 @@ function FeedItem({
 					<Trash2 size={15} className="error-color" aria-hidden="true" />
 					删除订阅
 				</ContextMenuItem>
-			</ContextMenuPanel>
+			</ContextMenuContent>
 		</ContextMenu>
 	);
 }

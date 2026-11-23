@@ -30,7 +30,7 @@ createRoot(root).render(
 					if (preferences && theme !== preferences.theme)
 						void api<Preferences>("/settings", { method: "PATCH", body: { theme } })
 							.then((saved) => client.setQueryData(["preferences"], saved))
-							.catch(() => toast.error("主题同步失败，请重试"));
+							.catch(() => toast.danger("主题同步失败，请重试"));
 				}}
 			>
 				<AccentProvider accent="green" persist={false}>
