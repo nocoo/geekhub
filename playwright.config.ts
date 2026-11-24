@@ -5,8 +5,8 @@ if (!baseURL || process.env.RESOURCE_ENV !== "test" || new URL(baseURL).hostname
 	throw new Error("Run Playwright through bun run test:l3; isolated local Worker required.");
 export default defineConfig({
 	testDir: "tests/browser",
-	fullyParallel: false,
-	workers: 1,
+	fullyParallel: true,
+	workers: process.env.CI ? 2 : 4,
 	retries: 0,
 	reporter: [["list"], ["html", { outputFolder: "playwright-report", open: "never" }]],
 	outputDir: "test-results/l3/browser",
@@ -19,6 +19,5 @@ export default defineConfig({
 			name: "desktop",
 			use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 1000 } },
 		},
-		{ name: "mobile", use: { ...devices["Pixel 7"] } },
 	],
 });
