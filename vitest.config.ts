@@ -7,6 +7,8 @@ export default defineConfig({
 		},
 	},
 	test: {
+		allowOnly: false,
+		passWithNoTests: false,
 		include: ["tests/unit/**/*.test.{ts,tsx}"],
 		environment: "node",
 		restoreMocks: true,
