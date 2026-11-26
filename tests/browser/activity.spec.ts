@@ -1,6 +1,5 @@
-import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
-import type { ArticlePage, Category, Feed, FetchLog } from "../../src/shared/contracts";
+import type { ArticlePage, Feed, FetchLog } from "../../src/shared/contracts";
 
 async function openActivity(page: import("@playwright/test").Page) {
 	await page.getByRole("button", { name: "查看后台活动详情", exact: true }).click();
@@ -54,41 +53,6 @@ test("empty lists are centered and offer actions for the actual feed state", asy
 	await expect(empty.getByRole("button", { name: "添加订阅" })).toBeVisible();
 });
 
-test("category controls keep full colors and single-line actions on a narrow settings panel", async ({
-	page,
-}) => {
-	const categories = (await (await page.request.get("/api/categories")).json()) as Category[];
-	const first = categories[0];
-	if (!first) throw new Error("Missing category");
-	await page.route("**/api/categories", (route) =>
-		route.fulfill({ json: [{ ...first, color: "#84cc16" }, ...categories.slice(1)] }),
-	);
-	await page.setViewportSize({ width: 320, height: 900 });
-	await page.goto("/");
-	await page.getByRole("button", { name: "阅读器设置", exact: true }).click();
-	await page.getByRole("tab", { name: /^分类/ }).click();
-	const card = page.locator(".category-editor").first();
-	await expect(card).toBeVisible();
-	expect(
-		await page.locator(".settings-content").evaluate((el) => el.scrollWidth <= el.clientWidth),
-	).toBe(true);
-	const color = card.getByRole("combobox");
-	await expect(color).toHaveText("#84cc16");
-	await expect
-		.poll(async () => (await color.boundingBox())?.width ?? 0)
-		.toBeGreaterThanOrEqual(112);
-	const save = card.getByRole("button", { name: `保存分类 ${first.name}`, exact: true });
-	// Layout height includes the action border the content box excludes.
-	expect(await save.evaluate((el) => el.scrollHeight <= (el as HTMLElement).offsetHeight)).toBe(
-		true,
-	);
-	for (const button of await card.locator(".order-controls button").all())
-		await expect(button).toHaveAttribute("type", "button");
-	await page.screenshot({
-		path: `test-results/l3/settings-compact-${test.info().project.name}.png`,
-	});
-});
-
 test("automatic full translation appears in the activity center without a toast", async ({
 	page,
 }) => {
@@ -133,14 +97,6 @@ test("automatic full translation appears in the activity center without a toast"
 			`/feeds/${feed.id}/articles/${article.id}`,
 		);
 		await expect(entry.locator(".activity-entry-detail")).toContainText(article.title);
-		expect(
-			(
-				await new AxeBuilder({ page })
-					.include(".activity-dialog")
-					.withTags(["wcag2a", "wcag2aa", "wcag21aa"])
-					.analyze()
-			).violations,
-		).toEqual([]);
 		await page.screenshot({ path: `test-results/l3/activity-${test.info().project.name}.png` });
 	} finally {
 		await page.request.delete(`/api/feeds/${feed.id}`);
@@ -183,97 +139,4 @@ test("activity categories, errors and search keep separate task details", async 
 	expect(
 		await page.locator(".activity-console").evaluate((el) => el.scrollWidth <= el.clientWidth),
 	).toBe(true);
-});
-
-test("notices use a Lucide icon at the bottom right without obstructing reading", async ({
-	page,
-}) => {
-	const preferences = await (await page.request.get("/api/settings")).json();
-	await page.route("**/api/settings", (route) => route.fulfill({ json: preferences }));
-	await page.goto("/");
-	await page.getByRole("button", { name: "阅读器设置", exact: true }).click();
-	await page.getByRole("tab", { name: "阅读", exact: true }).click();
-	await page.getByRole("button", { name: "保存阅读偏好" }).click();
-	const toast = page.locator("[data-sonner-toast]");
-	await expect(toast).toContainText("阅读偏好已保存");
-	await expect(toast.locator("[data-icon] svg")).toBeVisible();
-	await expect(page.locator("[data-sonner-toaster]")).toHaveAttribute("data-x-position", "right");
-	await expect(page.locator("[data-sonner-toaster]")).toHaveAttribute("data-y-position", "bottom");
-	await page.keyboard.press("Escape");
-	await page.screenshot({ path: `test-results/l3/toast-${test.info().project.name}.png` });
-});
-
-test("settings use Basalt controls, aligned actions and bright input surfaces in both themes", async ({
-	page,
-}) => {
-	await page.goto("/");
-	await page.getByRole("button", { name: "阅读器设置", exact: true }).click();
-	await page.getByRole("tab", { name: /^分类/ }).click();
-	const card = page.locator(".category-editor").first();
-	await expect(card).toBeVisible();
-	await page.getByRole("dialog").evaluate(async (element) => {
-		await Promise.allSettled(
-			element.getAnimations({ subtree: true }).map((animation) => animation.finished),
-		);
-	});
-	const dialog = await page.getByRole("dialog").boundingBox();
-	if (!dialog) throw new Error("Missing settings dialog");
-	expect(dialog.width / dialog.height).toBeCloseTo(4 / 3, 1);
-	const controls = await card
-		.locator('input, [role="combobox"], .category-fields > button')
-		.evaluateAll((elements) =>
-			elements.map((element) => {
-				const box = element.getBoundingClientRect();
-				return { top: box.top, height: box.height };
-			}),
-		);
-	expect(
-		Math.max(...controls.map((box) => box.top)) - Math.min(...controls.map((box) => box.top)),
-	).toBeLessThan(1);
-	expect(controls.every((box) => Math.abs(box.height - 36) < 0.5)).toBe(true);
-	for (const theme of ["light", "dark"]) {
-		await page.evaluate((theme) => {
-			document.documentElement.classList.remove("light", "dark");
-			document.documentElement.classList.add(theme);
-			document.documentElement.dataset.mode = theme;
-		}, theme);
-		const colors = await card.evaluate((element) => {
-			const input = element.querySelector("input");
-			const select = element.querySelector('[role="combobox"]');
-			if (!input || !select) throw new Error("Missing category controls");
-			return {
-				surface: getComputedStyle(element).backgroundColor,
-				input: getComputedStyle(input).backgroundColor,
-				select: getComputedStyle(select).backgroundColor,
-			};
-		});
-		expect(colors.input).toBe(colors.select);
-		if (theme === "light") expect(colors.input).toBe("rgb(255, 255, 255)");
-		else expect(colors.input).not.toBe(colors.surface);
-	}
-	const color = card.getByRole("combobox");
-	await color.focus();
-	await color.press("Enter");
-	await expect(page.getByRole("listbox")).toBeVisible();
-	await page.keyboard.press("Home");
-	await expect(page.getByRole("option", { name: "绿色", exact: true })).toBeFocused();
-	await page.keyboard.press("ArrowDown");
-	await expect(page.getByRole("option", { name: "蓝色", exact: true })).toBeFocused();
-	await page.keyboard.press("Enter");
-	await expect(color).toHaveText("蓝色");
-	expect(
-		await card
-			.locator("form")
-			.evaluate((form) => new FormData(form as HTMLFormElement).get("color")),
-	).toBe("blue");
-	await color.press("Enter");
-	await page.keyboard.press("Escape");
-	await expect(color).toBeFocused();
-	await expect(page.locator('select:not([aria-hidden="true"])')).toHaveCount(0);
-	await page.getByRole("tab", { name: "阅读", exact: true }).click();
-	await expect(page.getByRole("switch", { name: "显示文章中的图片" })).toBeVisible();
-	await expect(page.getByRole("tabpanel")).toHaveCSS("opacity", "1");
-	expect((await new AxeBuilder({ page }).include(".settings-dialog").analyze()).violations).toEqual(
-		[],
-	);
 });

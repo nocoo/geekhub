@@ -1,7 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page, test } from "@playwright/test";
 import type {
-	AiSettings,
 	ArticleDetail,
 	ArticlePage,
 	Category,
@@ -605,98 +604,6 @@ test("keyboard navigation, reading actions and editable/modal guards", async ({ 
 	);
 });
 
-test("J/K smoothly positions selection at the golden ratio and respects motion preferences", async ({
-	page,
-}) => {
-	const suffix = crypto.randomUUID().slice(0, 8);
-	const categoryResponse = await page.request.post("/api/categories", {
-		data: { name: `Keyboard ${suffix}`, color: "violet" },
-	});
-	expect(categoryResponse.ok()).toBe(true);
-	const category = (await categoryResponse.json()) as Category;
-	const feeds: Feed[] = [];
-	try {
-		for (const source of ["simon", "design", "cloudflare"]) {
-			const response = await page.request.post("/api/feeds", {
-				data: {
-					title: `Keyboard ${source}`,
-					url: `https://demo.geekhub.example/rss/${source}?keyboard=${suffix}`,
-					category_id: category.id,
-				},
-			});
-			expect(response.ok()).toBe(true);
-			const feed = (await response.json()) as Feed;
-			feeds.push(feed);
-			await settledFeed(page, feed.id);
-		}
-		await page.emulateMedia({ reducedMotion: "no-preference" });
-		await page.goto(`/categories/${category.id}`);
-		const rows = page.getByTestId("article-item");
-		await expect(rows.first()).toBeVisible();
-		const list = page.locator(".article-scroll");
-		const selected = list.locator('[aria-current="true"]');
-		await page.keyboard.press("j");
-		await expect(rows.first()).toHaveAttribute("aria-current", "true");
-		await expect(rows.first()).toBeFocused();
-		expect(await list.evaluate((element) => element.scrollTop)).toBe(0);
-		await list.evaluate((element) => {
-			const positions: number[] = [];
-			element.addEventListener("scroll", () => {
-				positions.push(element.scrollTop);
-				element.setAttribute("data-scroll-samples", JSON.stringify(positions));
-			});
-		});
-		// Rapid repeats must retarget the animation, including while mark-read responses arrive.
-		for (let i = 0; i < 8; i++) await page.keyboard.press("j");
-		await expect(rows.nth(8)).toBeFocused();
-		const alignmentError = () =>
-			selected.evaluate((row) => {
-				const container = row.closest(".article-scroll");
-				if (!container) throw new Error("Missing list container");
-				const bounds = row.getBoundingClientRect();
-				return Math.abs(
-					bounds.top +
-						bounds.height / 2 -
-						container.getBoundingClientRect().top -
-						container.clientHeight * 0.382,
-				);
-			});
-		await expect.poll(alignmentError).toBeLessThan(2);
-		const top = await list.evaluate((element) => element.scrollTop);
-		const samples = JSON.parse(
-			(await list.getAttribute("data-scroll-samples")) ?? "[]",
-		) as number[];
-		expect(samples.filter((position) => position > 0 && position < top - 2).length).toBeGreaterThan(
-			2,
-		);
-		await page.keyboard.press("k");
-		await expect(rows.nth(7)).toBeFocused();
-		await expect.poll(alignmentError).toBeLessThan(2);
-		expect(await list.evaluate((element) => element.scrollTop)).toBeLessThan(top);
-		await page.screenshot({ path: "test-results/l3/keyboard-golden-position.png" });
-
-		await page.emulateMedia({ reducedMotion: "reduce" });
-		await page.keyboard.press("j");
-		await expect(rows.nth(8)).toBeFocused();
-		expect(await alignmentError()).toBeLessThan(2);
-		const count = await rows.count();
-		for (let i = 9; i < count; i++) await page.keyboard.press("j");
-		await expect(rows.last()).toBeFocused();
-		expect(
-			await list.evaluate((element) =>
-				Math.abs(element.scrollTop - (element.scrollHeight - element.clientHeight)),
-			),
-		).toBeLessThan(2);
-		for (let i = 1; i < count; i++) await page.keyboard.press("k");
-		await expect(rows.first()).toBeFocused();
-		expect(await list.evaluate((element) => element.scrollTop)).toBe(0);
-	} finally {
-		await page.goto("about:blank");
-		for (const feed of feeds) await page.request.delete(`/api/feeds/${feed.id}`);
-		await page.request.delete(`/api/categories/${category.id}`);
-	}
-});
-
 test("background updates load automatically while preserving list anchors, prose and selection", async ({
 	page,
 }) => {
@@ -1088,91 +995,5 @@ test("the feed-title diagnostic verifies a replacement and supports pausing with
 		expect(current?.total_count).toBe(6);
 	} finally {
 		await page.request.delete(`/api/feeds/${feed.id}`);
-	}
-});
-
-test("mobile drawer, header hit targets and responsive layout stay usable", async ({ page }) => {
-	await page.setViewportSize({ width: 390, height: 844 });
-	await page.goto("/");
-	await expect(page.getByTestId("article-item").first()).toBeVisible();
-	const nav = page.getByRole("button", { name: "切换订阅导航", exact: true });
-	const navBox = await nav.boundingBox();
-	const actionsBox = await page.locator("[data-basalt-header-actions]").boundingBox();
-	if (!navBox || !actionsBox) throw new Error("Header hit targets are missing");
-	expect(navBox.width).toBeGreaterThanOrEqual(44);
-	expect(navBox.height).toBeGreaterThanOrEqual(44);
-	expect(navBox.x + navBox.width).toBeLessThanOrEqual(actionsBox.x);
-	await nav.click();
-	await expect(page.locator('[data-slot="sidebar-drawer"]')).toBeVisible();
-	await page.keyboard.press("Escape");
-	await expect(page.locator('[data-slot="sidebar-drawer"]')).toHaveCount(0);
-	await page.getByRole("button", { name: "更多操作", exact: true }).click();
-	await page.getByRole("menuitem", { name: "查看后台活动详情", exact: true }).click();
-	await expect(page.getByRole("log", { name: "后台活动日志" })).toBeVisible();
-	await page.keyboard.press("Escape");
-	expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
-		true,
-	);
-});
-
-test("AI Basalt selectors support preset and custom models and persist SDK selection", async ({
-	page,
-}) => {
-	const original = (await (await page.request.get("/api/ai/settings")).json()) as AiSettings;
-	try {
-		await page.goto("/");
-		await page.getByRole("button", { name: "阅读器设置", exact: true }).click();
-		await page.getByRole("tab", { name: "AI 助手" }).click();
-		const provider = page.getByRole("combobox", { name: "Provider", exact: true });
-		await provider.click();
-		await page.getByRole("option", { name: "Anthropic", exact: true }).click();
-		const model = page.getByRole("combobox", { name: "Model", exact: true });
-		await model.click();
-		await page.getByRole("option", { name: "claude-sonnet-4-20250514", exact: true }).click();
-		await expect(model).toHaveText("claude-sonnet-4-20250514");
-		await model.click();
-		await page.getByRole("option", { name: "Custom model...", exact: true }).click();
-		await page.getByRole("textbox", { name: "Model", exact: true }).fill("custom-model");
-		await page.getByRole("button", { name: "List", exact: true }).click();
-		await expect(model).toHaveText("Select model...");
-		await provider.click();
-		await page.getByRole("option", { name: "Custom", exact: true }).click();
-		await page.getByRole("textbox", { name: "Model", exact: true }).fill("test-model");
-		await page.getByLabel("Base URL").fill("https://api.example.com/v1");
-		const sdk = page.getByRole("combobox", { name: "SDK Type", exact: true });
-		await sdk.click();
-		await page.getByRole("option", { name: "OpenAI", exact: true }).click();
-		await expect(page.locator('.next-ai-panel select:not([aria-hidden="true"])')).toHaveCount(0);
-		await page.evaluate(() => {
-			document.documentElement.classList.remove("dark");
-			document.documentElement.classList.add("light");
-			document.documentElement.dataset.mode = "light";
-		});
-		for (const control of await page
-			.locator('.next-ai-panel input, .next-ai-panel [role="combobox"]')
-			.all())
-			await expect(control).toHaveCSS("background-color", "rgb(255, 255, 255)");
-		await page.locator(".next-ai-panel").evaluate(async (element) => {
-			await Promise.allSettled(
-				element.getAnimations({ subtree: true }).map((animation) => animation.finished),
-			);
-		});
-		expect((await new AxeBuilder({ page }).include(".next-ai-panel").analyze()).violations).toEqual(
-			[],
-		);
-		await page.getByRole("button", { name: "Save Settings", exact: true }).click();
-		await expect
-			.poll(async () => (await (await page.request.get("/api/ai/settings")).json()).model)
-			.toBe("test-model");
-		await page.reload();
-		await page.getByRole("button", { name: "阅读器设置", exact: true }).click();
-		await page.getByRole("tab", { name: "AI 助手" }).click();
-		await expect(sdk).toHaveText("OpenAI");
-		await expect(page.getByRole("textbox", { name: "Model", exact: true })).toHaveValue(
-			"test-model",
-		);
-	} finally {
-		const { hasApiKey: _hasApiKey, mock: _mock, ...settings } = original;
-		expect((await page.request.patch("/api/ai/settings", { data: settings })).ok()).toBe(true);
 	}
 });

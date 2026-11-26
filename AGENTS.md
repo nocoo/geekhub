@@ -41,7 +41,7 @@ bun run quality        # Full local gate sequence
 Follows `system1-quality`; CI slots and pinned `base-ci` revision live in `.github/workflows/quality-slots.yml` (`quality / Z1: Gate` required on `main` and `.github/workflows/release.yml`). Status vocabulary: `enforced`, `planned`, `manual`, `N/A`. Never lower coverage, use `.skip`/`.only`, suppress security failures, or bypass hooks.
 
 - **Coverage & scripts**: `L1` (`enforced`) gates v8 >= 95% on `src/shared/**`, `src/worker/**`, `src/web/lib/**`. `test:l2` runs CI `L3: Integration` (all `src/worker/index.ts` routes); `test:l3` runs CI `L4: E2E`.
-- **Slot exceptions**: `L2 Runtime` is `N/A` (Worker/D1/Queue covered by `L3`/`L4`); `P1 Package` is `N/A` (private Worker, not published to npm).
+- **Slot exceptions**: `L2 Runtime` is `N/A` (Worker/D1/Queue covered by `L3`/`L4`); `P1 Package` verifies Worker bundling via `wrangler deploy --dry-run` reusing `B1` (`b1-dist`).
 - **Security scan**: `gate:security` (`G1`/`G2`) requires `gitleaks` + `osv-scanner` on PATH (fails if missing), disables inline allow comments, and scans tracked + unignored files including `docs/archieve/`.
 - **Pre-commit (`.husky/`)**: Installed via `bun run prepare`; checks lockfile match, runs `S1`/`S2`/`L1` in parallel in a `git checkout-index` snapshot, then cleans up (`G1` staged scan is `planned`).
 - **Pre-push (`.husky/`)**: Runs `bun scripts/hooks.ts push` (`test:l2` + `gate:security` in parallel) on the working tree; stdin pushed-ref scoping and `B1`/`L4` gating are `planned`.
