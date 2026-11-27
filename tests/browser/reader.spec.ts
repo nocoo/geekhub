@@ -98,151 +98,6 @@ test.describe
 			await expect(page.getByRole("dialog")).toContainText("没有找到匹配的订阅源");
 		});
 
-		test("Markdown reading keeps images, typography and responsive reading space", async ({
-			page,
-		}) => {
-			const errors: string[] = [];
-			const remoteImages: string[] = [];
-			page.on("pageerror", (error) => errors.push(error.message));
-			page.on("request", (request) => {
-				if (
-					request.resourceType() === "image" &&
-					new URL(request.url()).hostname === "demo.geekhub.example"
-				)
-					remoteImages.push(request.url());
-			});
-			// Only the image bytes are a browser fixture; articles are served by the isolated Worker / D1.
-			await page.route("**/api/images?url=*reading.png", async (route) => {
-				const response = await page.request.get("/logo-256.png");
-				await route.fulfill({ response });
-			});
-			const result = (await (
-				await page.request.get("/api/articles?feedId=design")
-			).json()) as ArticlePage;
-			const article = result.articles.find(
-				(article) => article.title === "Less noise. More room to think.",
-			);
-			if (!article) throw new Error("Missing local Markdown reading fixture");
-			await page.goto(`/feeds/design/articles/${article.id}`);
-			const prose = page.locator(".prose");
-			await expect(prose).toBeVisible();
-			const fonts = await page.evaluate(async () => {
-				const faces = await document.fonts.load('18px "TsangerJinKai02"', "中文阅读");
-				return faces.map((face) => face.status);
-			});
-			expect(fonts.length).toBeGreaterThan(0);
-			expect(fonts.every((status) => status === "loaded")).toBe(true);
-			await expect(prose).toHaveCSS("font-family", /TsangerJinKai02/);
-			await page.setViewportSize({ width: 1920, height: 1000 });
-			const context = await page.locator(".article-context").boundingBox();
-			const body = await page.locator(".article-body").boundingBox();
-			if (!context || !body) throw new Error("Missing article layout");
-			expect(body.x).toBeGreaterThan(context.x + context.width);
-			expect(body.y).toBe(context.y);
-			expect(body.width).toBeGreaterThanOrEqual(600);
-			await expect(prose.getByRole("heading", { name: "让内容决定顺序" })).toBeVisible();
-			await expect(prose.getByRole("table")).toHaveCount(1);
-			await expect(prose.getByRole("cell", { name: "read | think | remember" })).toHaveText(
-				"read | think | remember",
-			);
-			const picture = prose.getByRole("img", { name: "阅读示例插图" });
-			await picture.scrollIntoViewIfNeeded();
-			await expect
-				.poll(() => picture.evaluate((image) => (image as HTMLImageElement).naturalWidth))
-				.toBe(256);
-			await expect(picture).toHaveAttribute("src", /^\/api\/images\?/);
-			await expect(prose.getByRole("link", { name: "进一步阅读" })).toHaveAttribute(
-				"href",
-				"https://example.com/reading#notes",
-			);
-			await expect(prose.locator("[style], [class=original-layout], iframe, script")).toHaveCount(
-				0,
-			);
-			expect(
-				await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
-			).toBe(true);
-			const accessibility = await new AxeBuilder({ page })
-				.withTags(["wcag2a", "wcag2aa", "wcag21aa"])
-				.analyze();
-			expect(accessibility.violations).toEqual([]);
-			await page.screenshot({
-				path: `test-results/l3/markdown-reader-${test.info().project.name}.png`,
-			});
-			expect(remoteImages).toEqual([]);
-			expect(errors).toEqual([]);
-		});
-
-		test("feed/category paths, browser history, search and article positions survive reloads", async ({
-			page,
-		}) => {
-			await page.goto("/");
-			await expect(page.getByTestId("article-item").first()).toBeVisible();
-			await chooseSidebar(page, "Cloudflare Blog");
-			await expect(page).toHaveURL(/\/feeds\/cloudflare$/);
-			const row = page.getByTestId("article-item").last();
-			await row.scrollIntoViewIfNeeded();
-			const id = await row.getAttribute("data-article-id");
-			const listTop = await page
-				.locator(".article-scroll")
-				.evaluate((element) => element.scrollTop);
-			await row.click();
-			await expect(page).toHaveURL(new RegExp(`/feeds/cloudflare/articles/${id}$`));
-			await expect(page.locator(".prose")).toBeVisible();
-			await page.locator(".reader-scroll").evaluate((element) => {
-				element.scrollTop = 240;
-			});
-			await expect
-				.poll(() => page.locator(".reader-scroll").evaluate((element) => element.scrollTop))
-				.toBe(240);
-			await page.reload();
-			await expect(page.locator(".reader-source-label")).toHaveText("Cloudflare Blog");
-			await expect(page.locator(`[data-article-id="${id}"]`)).toHaveAttribute(
-				"aria-current",
-				"true",
-			);
-			await expect
-				.poll(() => page.locator(".reader-scroll").evaluate((element) => element.scrollTop))
-				.toBe(240);
-			await page.goBack();
-			await expect(page).toHaveURL(/\/feeds\/cloudflare$/);
-			await expect(page.locator(".article-scroll")).toBeVisible();
-			await expect
-				.poll(() => page.locator(".article-scroll").evaluate((element) => element.scrollTop))
-				.toBe(listTop);
-			await page.goForward();
-			await expect(page).toHaveURL(new RegExp(`/feeds/cloudflare/articles/${id}$`));
-			await expect
-				.poll(() => page.locator(".reader-scroll").evaluate((element) => element.scrollTop))
-				.toBe(240);
-			await chooseSidebar(page, "Simon Willison");
-			await expect(page).toHaveURL(/\/feeds\/simon$/);
-			await page.goBack();
-			await expect(page).toHaveURL(new RegExp(`/feeds/cloudflare/articles/${id}$`));
-			await expect(page.locator(".reader-source-label")).toHaveText("Cloudflare Blog");
-			await chooseSidebar(page, "分类 技术与工程");
-			await expect(page).toHaveURL(/\/categories\/engineering$/);
-			await page.keyboard.press("/");
-			await page.getByRole("textbox", { name: "搜索文章", exact: true }).fill("quiet craft");
-			await page.getByRole("textbox", { name: "搜索文章", exact: true }).press("Enter");
-			await expect(page).toHaveURL(/\/categories\/engineering\?q=quiet\+craft$/);
-			await page.getByTestId("article-item").first().click();
-			await expect(page.locator(".prose")).toBeVisible();
-			const searched = page.url();
-			await page.reload();
-			await expect(page).toHaveURL(searched);
-			await expect(page.locator(".article-context h1")).toContainText("quiet craft");
-			await page.getByRole("button", { name: "返回文章列表" }).click();
-			await expect(page).toHaveURL(/\/categories\/engineering\?q=quiet\+craft$/);
-			await expect(page.getByTestId("article-item")).toHaveCount(1);
-			await page.goto(`/?article=${id}`);
-			await expect(page).toHaveURL(new RegExp(`/articles/${id}$`));
-			await expect(page.locator(".prose")).toBeVisible();
-			await page.goto("/feeds/cloudflare/articles/missing-article");
-			await expect(page.getByRole("alert")).toContainText("文章不存在");
-			await page.getByRole("button", { name: "返回", exact: true }).click();
-			await expect(page).toHaveURL(/\/feeds\/cloudflare$/);
-		});
-
 		test("diagnostic scoring recommends a verified replacement for an unavailable feed", async ({
 			page,
 		}) => {
@@ -539,6 +394,151 @@ test.describe
 				"href",
 				"https://github.com/nocoo/geekhub",
 			);
+		});
+
+		test("Markdown reading keeps images, typography and responsive reading space", async ({
+			page,
+		}) => {
+			const errors: string[] = [];
+			const remoteImages: string[] = [];
+			page.on("pageerror", (error) => errors.push(error.message));
+			page.on("request", (request) => {
+				if (
+					request.resourceType() === "image" &&
+					new URL(request.url()).hostname === "demo.geekhub.example"
+				)
+					remoteImages.push(request.url());
+			});
+			// Only the image bytes are a browser fixture; articles are served by the isolated Worker / D1.
+			await page.route("**/api/images?url=*reading.png", async (route) => {
+				const response = await page.request.get("/logo-256.png");
+				await route.fulfill({ response });
+			});
+			const result = (await (
+				await page.request.get("/api/articles?feedId=design")
+			).json()) as ArticlePage;
+			const article = result.articles.find(
+				(article) => article.title === "Less noise. More room to think.",
+			);
+			if (!article) throw new Error("Missing local Markdown reading fixture");
+			await page.goto(`/feeds/design/articles/${article.id}`);
+			const prose = page.locator(".prose");
+			await expect(prose).toBeVisible();
+			const fonts = await page.evaluate(async () => {
+				const faces = await document.fonts.load('18px "TsangerJinKai02"', "中文阅读");
+				return faces.map((face) => face.status);
+			});
+			expect(fonts.length).toBeGreaterThan(0);
+			expect(fonts.every((status) => status === "loaded")).toBe(true);
+			await expect(prose).toHaveCSS("font-family", /TsangerJinKai02/);
+			await page.setViewportSize({ width: 1920, height: 1000 });
+			const context = await page.locator(".article-context").boundingBox();
+			const body = await page.locator(".article-body").boundingBox();
+			if (!context || !body) throw new Error("Missing article layout");
+			expect(body.x).toBeGreaterThan(context.x + context.width);
+			expect(body.y).toBe(context.y);
+			expect(body.width).toBeGreaterThanOrEqual(600);
+			await expect(prose.getByRole("heading", { name: "让内容决定顺序" })).toBeVisible();
+			await expect(prose.getByRole("table")).toHaveCount(1);
+			await expect(prose.getByRole("cell", { name: "read | think | remember" })).toHaveText(
+				"read | think | remember",
+			);
+			const picture = prose.getByRole("img", { name: "阅读示例插图" });
+			await picture.scrollIntoViewIfNeeded();
+			await expect
+				.poll(() => picture.evaluate((image) => (image as HTMLImageElement).naturalWidth))
+				.toBe(256);
+			await expect(picture).toHaveAttribute("src", /^\/api\/images\?/);
+			await expect(prose.getByRole("link", { name: "进一步阅读" })).toHaveAttribute(
+				"href",
+				"https://example.com/reading#notes",
+			);
+			await expect(prose.locator("[style], [class=original-layout], iframe, script")).toHaveCount(
+				0,
+			);
+			expect(
+				await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+			).toBe(true);
+			const accessibility = await new AxeBuilder({ page })
+				.withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+				.analyze();
+			expect(accessibility.violations).toEqual([]);
+			await page.screenshot({
+				path: `test-results/l3/markdown-reader-${test.info().project.name}.png`,
+			});
+			expect(remoteImages).toEqual([]);
+			expect(errors).toEqual([]);
+		});
+
+		test("feed/category paths, browser history, search and article positions survive reloads", async ({
+			page,
+		}) => {
+			await page.goto("/");
+			await expect(page.getByTestId("article-item").first()).toBeVisible();
+			await chooseSidebar(page, "Cloudflare Blog");
+			await expect(page).toHaveURL(/\/feeds\/cloudflare$/);
+			const row = page.getByTestId("article-item").last();
+			await row.scrollIntoViewIfNeeded();
+			const id = await row.getAttribute("data-article-id");
+			const listTop = await page
+				.locator(".article-scroll")
+				.evaluate((element) => element.scrollTop);
+			await row.click();
+			await expect(page).toHaveURL(new RegExp(`/feeds/cloudflare/articles/${id}$`));
+			await expect(page.locator(".prose")).toBeVisible();
+			await page.locator(".reader-scroll").evaluate((element) => {
+				element.scrollTop = 240;
+			});
+			await expect
+				.poll(() => page.locator(".reader-scroll").evaluate((element) => element.scrollTop))
+				.toBe(240);
+			await page.reload();
+			await expect(page.locator(".reader-source-label")).toHaveText("Cloudflare Blog");
+			await expect(page.locator(`[data-article-id="${id}"]`)).toHaveAttribute(
+				"aria-current",
+				"true",
+			);
+			await expect
+				.poll(() => page.locator(".reader-scroll").evaluate((element) => element.scrollTop))
+				.toBe(240);
+			await page.goBack();
+			await expect(page).toHaveURL(/\/feeds\/cloudflare$/);
+			await expect(page.locator(".article-scroll")).toBeVisible();
+			await expect
+				.poll(() => page.locator(".article-scroll").evaluate((element) => element.scrollTop))
+				.toBe(listTop);
+			await page.goForward();
+			await expect(page).toHaveURL(new RegExp(`/feeds/cloudflare/articles/${id}$`));
+			await expect
+				.poll(() => page.locator(".reader-scroll").evaluate((element) => element.scrollTop))
+				.toBe(240);
+			await chooseSidebar(page, "Simon Willison");
+			await expect(page).toHaveURL(/\/feeds\/simon$/);
+			await page.goBack();
+			await expect(page).toHaveURL(new RegExp(`/feeds/cloudflare/articles/${id}$`));
+			await expect(page.locator(".reader-source-label")).toHaveText("Cloudflare Blog");
+			await chooseSidebar(page, "分类 技术与工程");
+			await expect(page).toHaveURL(/\/categories\/engineering$/);
+			await page.keyboard.press("/");
+			await page.getByRole("textbox", { name: "搜索文章", exact: true }).fill("quiet craft");
+			await page.getByRole("textbox", { name: "搜索文章", exact: true }).press("Enter");
+			await expect(page).toHaveURL(/\/categories\/engineering\?q=quiet\+craft$/);
+			await page.getByTestId("article-item").first().click();
+			await expect(page.locator(".prose")).toBeVisible();
+			const searched = page.url();
+			await page.reload();
+			await expect(page).toHaveURL(searched);
+			await expect(page.locator(".article-context h1")).toContainText("quiet craft");
+			await page.getByRole("button", { name: "返回文章列表" }).click();
+			await expect(page).toHaveURL(/\/categories\/engineering\?q=quiet\+craft$/);
+			await expect(page.getByTestId("article-item")).toHaveCount(1);
+			await page.goto(`/?article=${id}`);
+			await expect(page).toHaveURL(new RegExp(`/articles/${id}$`));
+			await expect(page.locator(".prose")).toBeVisible();
+			await page.goto("/feeds/cloudflare/articles/missing-article");
+			await expect(page.getByRole("alert")).toContainText("文章不存在");
+			await page.getByRole("button", { name: "返回", exact: true }).click();
+			await expect(page).toHaveURL(/\/feeds\/cloudflare$/);
 		});
 	});
 
