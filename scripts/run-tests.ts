@@ -67,8 +67,18 @@ try {
 		await Bun.sleep(200);
 	}
 	console.log(`${tier.toUpperCase()}: local Worker at ${base}, isolated SQLite at ${state}`);
+	const extraArgs = process.argv.slice(3).filter((arg) => arg !== "--");
+	if (
+		tier === "l3" &&
+		process.env.PLAYWRIGHT_SHARD &&
+		!extraArgs.some((arg) => arg.startsWith("--shard"))
+	) {
+		extraArgs.push(`--shard=${process.env.PLAYWRIGHT_SHARD}`);
+	}
 	const test = Bun.spawn(
-		tier === "l2" ? ["bun", "tests/http/reader.ts"] : ["bun", "x", "playwright", "test"],
+		tier === "l2"
+			? ["bun", "tests/http/reader.ts"]
+			: ["bun", "x", "playwright", "test", ...extraArgs],
 		{ env, stdout: "inherit", stderr: "inherit" },
 	);
 	const code = await test.exited;

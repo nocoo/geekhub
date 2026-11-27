@@ -184,8 +184,8 @@ jobs:
         if: always()
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
-  l4-e2e:
-    name: "L4: E2E"
+  l4-e2e-1:
+    name: "L4: E2E (1/2)"
     runs-on: ubuntu-latest
     outputs:
       tested-sha: ${{ steps.record-sha.outputs.sha }}
@@ -201,11 +201,42 @@ jobs:
         with:
           package-manager: bun
           browsers: chromium
-      - run: bun run test:l3
+      - run: bun run test:l3 --shard=1/2
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
-          name: l3-evidence
+          name: l3-evidence-1
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 14
+      - name: Record tested SHA
+        id: record-sha
+        if: always()
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  l4-e2e-2:
+    name: "L4: E2E (2/2)"
+    runs-on: ubuntu-latest
+    outputs:
+      tested-sha: ${{ steps.record-sha.outputs.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: nocoo/base-ci/.github/actions/setup-js@e5876a604547b1ddb0916f16dd841a4f832609a0 # v2026.20
+        with:
+          package-manager: bun
+          runtime-version: ${{ env.BUN_VERSION }}
+          node-version: ${{ env.NODE_VERSION }}
+          install-policy: trusted
+      - uses: nocoo/base-ci/.github/actions/setup-playwright@e5876a604547b1ddb0916f16dd841a4f832609a0 # v2026.20
+        with:
+          package-manager: bun
+          browsers: chromium
+      - run: bun run test:l3 --shard=2/2
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: l3-evidence-2
           path: |
             test-results/
             playwright-report/
@@ -255,7 +286,8 @@ jobs:
       - l1-unit
       - l2-runtime
       - l3-integration
-      - l4-e2e
+      - l4-e2e-1
+      - l4-e2e-2
       - p1-package
     outputs:
       tested-sha: ${{ steps.gate.outputs.tested-sha }}
@@ -275,7 +307,8 @@ jobs:
             b1-build=B1: Build
             l1-unit=L1: Unit
             l3-integration=L3: Integration
-            l4-e2e=L4: E2E
+            l4-e2e-1=L4: E2E (1/2)
+            l4-e2e-2=L4: E2E (2/2)
             p1-package=P1: Package
           skipped-jobs: |
             l2-runtime=L2: Runtime
