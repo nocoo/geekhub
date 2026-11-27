@@ -38,7 +38,7 @@ bun run quality        # Full local gate sequence
 
 ## Quality & Local Gates
 
-Follows `system1-quality`; CI slots and pinned `base-ci` revision live in `.github/workflows/quality-slots.yml` (`quality / Z1: Gate` required on `main` and `.github/workflows/release.yml`). Status vocabulary: `enforced`, `planned`, `manual`, `N/A`. Never lower coverage, use `.skip`/`.only`, suppress security failures, or bypass hooks.
+Follows `system1-quality`; CI runs `.github/workflows/pipeline.yml` calling `.github/workflows/quality-slots.yml` (`quality / Z1: Gate` required on `main`, pinned to `nocoo/base-ci` `v2026.24`), and CD runs `deploy` (D1–D5 via `nocoo/base-ci/.github/workflows/deploy-worker.yml`) on `main` push or `workflow_dispatch` (`deploy=true`), consuming `b1-dist` without rebuilding, applying remote D1 migrations to `geekhub-db`, deploying the Worker, and verifying `https://geekhub.hexly.ai/api/live`. Status vocabulary: `enforced`, `planned`, `manual`, `N/A`. Never lower coverage, use `.skip`/`.only`, suppress security failures, or bypass hooks.
 
 - **Coverage & scripts**: `L1` (`enforced`) gates v8 >= 95% on `src/shared/**`, `src/worker/**`, `src/web/lib/**`. `test:l2` runs CI `L3: Integration` (all `src/worker/index.ts` routes); `test:l3` runs CI `L4: E2E`.
 - **Slot exceptions**: `L2 Runtime` is `N/A` (Worker/D1/Queue covered by `L3`/`L4`); `P1 Package` verifies Worker bundling via `wrangler deploy --dry-run` reusing `B1` (`b1-dist`).
