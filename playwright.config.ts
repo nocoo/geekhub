@@ -5,8 +5,9 @@ if (!baseURL || process.env.RESOURCE_ENV !== "test" || new URL(baseURL).hostname
 	throw new Error("Run Playwright through bun run test:l3; isolated local Worker required.");
 export default defineConfig({
 	testDir: "tests/browser",
-	fullyParallel: true,
-	workers: process.env.CI ? 2 : 4,
+	// scripts/run-tests.ts shares one isolated SQLite DB per shard across workers.
+	fullyParallel: false,
+	workers: 1,
 	retries: 0,
 	reporter: [["list"], ["html", { outputFolder: "playwright-report", open: "never" }]],
 	outputDir: "test-results/l3/browser",
