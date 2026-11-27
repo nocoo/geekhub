@@ -6,7 +6,7 @@ if (!baseURL || process.env.RESOURCE_ENV !== "test" || new URL(baseURL).hostname
 export default defineConfig({
 	testDir: "tests/browser",
 	fullyParallel: true,
-	workers: 4,
+	workers: process.env.CI ? 2 : 4,
 	retries: 0,
 	reporter: [["list"], ["html", { outputFolder: "playwright-report", open: "never" }]],
 	outputDir: "test-results/l3/browser",

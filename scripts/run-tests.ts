@@ -35,13 +35,14 @@ delete env.FORCE_COLOR;
 let server: ReturnType<typeof Bun.spawn> | undefined;
 let marked = false;
 try {
-	for (const file of readdirSync("migrations")
+	const migrationSql = readdirSync("migrations")
 		.filter((file) => file.endsWith(".sql"))
-		.sort())
-		await executeLocalSql(state, readFileSync(`migrations/${file}`, "utf8"));
+		.sort()
+		.map((file) => readFileSync(`migrations/${file}`, "utf8"))
+		.join("\n");
 	await executeLocalSql(
 		state,
-		"CREATE TABLE _test_marker(key TEXT PRIMARY KEY, value TEXT); INSERT INTO _test_marker VALUES ('env','test');",
+		`${migrationSql}\nCREATE TABLE _test_marker(key TEXT PRIMARY KEY, value TEXT); INSERT INTO _test_marker VALUES ('env','test');`,
 	);
 	marked = true;
 	await assertMarker(state);
