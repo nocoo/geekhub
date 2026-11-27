@@ -26,7 +26,7 @@ async function settledFeed(page: Page, id: string) {
 }
 
 test.describe
-	.serial("reader read-only views", () => {
+	.serial("reader read-only, sidebar and scoring", () => {
 		test("list header shows scoped totals, unread filters and subscription settings", async ({
 			page,
 		}) => {
@@ -171,10 +171,200 @@ test.describe
 			expect(remoteImages).toEqual([]);
 			expect(errors).toEqual([]);
 		});
+
+		test("feed/category paths, browser history, search and article positions survive reloads", async ({
+			page,
+		}) => {
+			await page.goto("/");
+			await expect(page.getByTestId("article-item").first()).toBeVisible();
+			await chooseSidebar(page, "Cloudflare Blog");
+			await expect(page).toHaveURL(/\/feeds\/cloudflare$/);
+			const row = page.getByTestId("article-item").last();
+			await row.scrollIntoViewIfNeeded();
+			const id = await row.getAttribute("data-article-id");
+			const listTop = await page
+				.locator(".article-scroll")
+				.evaluate((element) => element.scrollTop);
+			await row.click();
+			await expect(page).toHaveURL(new RegExp(`/feeds/cloudflare/articles/${id}$`));
+			await expect(page.locator(".prose")).toBeVisible();
+			await page.locator(".reader-scroll").evaluate((element) => {
+				element.scrollTop = 240;
+			});
+			await expect
+				.poll(() => page.locator(".reader-scroll").evaluate((element) => element.scrollTop))
+				.toBe(240);
+			await page.reload();
+			await expect(page.locator(".reader-source-label")).toHaveText("Cloudflare Blog");
+			await expect(page.locator(`[data-article-id="${id}"]`)).toHaveAttribute(
+				"aria-current",
+				"true",
+			);
+			await expect
+				.poll(() => page.locator(".reader-scroll").evaluate((element) => element.scrollTop))
+				.toBe(240);
+			await page.goBack();
+			await expect(page).toHaveURL(/\/feeds\/cloudflare$/);
+			await expect(page.locator(".article-scroll")).toBeVisible();
+			await expect
+				.poll(() => page.locator(".article-scroll").evaluate((element) => element.scrollTop))
+				.toBe(listTop);
+			await page.goForward();
+			await expect(page).toHaveURL(new RegExp(`/feeds/cloudflare/articles/${id}$`));
+			await expect
+				.poll(() => page.locator(".reader-scroll").evaluate((element) => element.scrollTop))
+				.toBe(240);
+			await chooseSidebar(page, "Simon Willison");
+			await expect(page).toHaveURL(/\/feeds\/simon$/);
+			await page.goBack();
+			await expect(page).toHaveURL(new RegExp(`/feeds/cloudflare/articles/${id}$`));
+			await expect(page.locator(".reader-source-label")).toHaveText("Cloudflare Blog");
+			await chooseSidebar(page, "分类 技术与工程");
+			await expect(page).toHaveURL(/\/categories\/engineering$/);
+			await page.keyboard.press("/");
+			await page.getByRole("textbox", { name: "搜索文章", exact: true }).fill("quiet craft");
+			await page.getByRole("textbox", { name: "搜索文章", exact: true }).press("Enter");
+			await expect(page).toHaveURL(/\/categories\/engineering\?q=quiet\+craft$/);
+			await page.getByTestId("article-item").first().click();
+			await expect(page.locator(".prose")).toBeVisible();
+			const searched = page.url();
+			await page.reload();
+			await expect(page).toHaveURL(searched);
+			await expect(page.locator(".article-context h1")).toContainText("quiet craft");
+			await page.getByRole("button", { name: "返回文章列表" }).click();
+			await expect(page).toHaveURL(/\/categories\/engineering\?q=quiet\+craft$/);
+			await expect(page.getByTestId("article-item")).toHaveCount(1);
+			await page.goto(`/?article=${id}`);
+			await expect(page).toHaveURL(new RegExp(`/articles/${id}$`));
+			await expect(page.locator(".prose")).toBeVisible();
+			await page.goto("/feeds/cloudflare/articles/missing-article");
+			await expect(page.getByRole("alert")).toContainText("文章不存在");
+			await page.getByRole("button", { name: "返回", exact: true }).click();
+			await expect(page).toHaveURL(/\/feeds\/cloudflare$/);
+		});
+
+		test("diagnostic scoring recommends a verified replacement for an unavailable feed", async ({
+			page,
+		}) => {
+			const suffix = crypto.randomUUID().slice(0, 8);
+			const created = await page.request.post("/api/feeds", {
+				data: {
+					title: `Retired ${suffix}`,
+					url: `https://demo.geekhub.example/rss/retired?score=${suffix}`,
+				},
+			});
+			expect(created.status()).toBe(201);
+			const feed = (await created.json()) as Feed;
+			try {
+				const updated = await page.request.patch(`/api/feeds/${feed.id}`, {
+					data: { site_url: "https://demo.geekhub.example/site/simon" },
+				});
+				expect(updated.ok()).toBe(true);
+				await page.goto("/");
+				await expect(page.getByTestId("article-item").first()).toBeVisible();
+				await chooseSidebar(page, feed.title);
+				await page.getByRole("button", { name: `诊断 ${feed.title}`, exact: true }).click();
+				const dialog = page.getByRole("dialog", { name: "订阅源诊断", exact: true });
+				await expect(dialog.getByTestId("diagnostic-total")).toHaveText("25/ 100", {
+					timeout: 15000,
+				});
+				await expect(dialog.locator(".diagnostic-score")).toHaveAttribute(
+					"data-recommendation",
+					"replace",
+				);
+				await expect(dialog.locator(".score-total")).toContainText("暂定评分");
+				await expect(
+					dialog.locator(".score-dimensions").getByText("未知", { exact: true }),
+				).toHaveCount(3);
+				await expect(dialog.locator(".score-radar-point")).toHaveCount(2);
+				await expect(dialog.locator(".score-radar-area")).toHaveCount(0);
+				await expect(dialog.locator(".diagnostic-score")).toContainText("总分上限为 39 分");
+				await dialog.getByRole("button", { name: "查看推荐地址", exact: true }).click();
+				const replacement = dialog.locator(`#recommended-${feed.id}`);
+				await expect(replacement).toBeFocused();
+				await expect(replacement).toBeInViewport();
+				await expect(replacement).toContainText("推荐核对后替换");
+				await expect(replacement).toContainText("discovered=1");
+				await replacement.getByRole("button", { name: "使用此地址", exact: true }).click();
+				await expect(dialog).toHaveCount(0);
+				const feeds = (await (await page.request.get("/api/feeds")).json()) as Feed[];
+				expect(feeds.find((item) => item.id === feed.id)?.url).toContain("discovered=1");
+				await settledFeed(page, feed.id);
+			} finally {
+				await page.request.delete(`/api/feeds/${feed.id}`);
+			}
+		});
+
+		test("sidebar menu edits grouped and ungrouped feeds and confirms deletion", async ({
+			page,
+		}) => {
+			const name = `Sidebar menu ${crypto.randomUUID().slice(0, 8)}`;
+			const response = await page.request.post("/api/feeds", {
+				data: {
+					url: `https://demo.geekhub.example/rss/simon?menu=${crypto.randomUUID()}`,
+					title: name,
+				},
+			});
+			expect(response.ok()).toBe(true);
+			const feed = (await response.json()) as Feed;
+			await page.goto("/");
+			const sidebar = page.locator(".reader-sidebar");
+			let firstMenu = true;
+			const openMenu = async (title: string) => {
+				const trigger = sidebar.getByRole("button", { name: title, exact: true });
+				await expect(trigger).toBeVisible();
+				await trigger.scrollIntoViewIfNeeded();
+				if (firstMenu) {
+					await trigger.click({ button: "right" });
+				} else {
+					await trigger.focus();
+					await trigger.press("Shift+F10");
+				}
+				firstMenu = false;
+				await expect(page.getByRole("menu")).toBeVisible();
+			};
+			await expect(page.getByTestId("article-item").first()).toBeVisible();
+			const before = page.url();
+			await openMenu(name);
+			expect(page.url()).toBe(before);
+			await page.getByRole("menuitem", { name: "编辑订阅" }).click();
+			await expect(page.getByRole("dialog", { name: "编辑订阅", exact: true })).toBeVisible();
+			const renamed = `${name} updated`;
+			await page.getByLabel("订阅名称").fill(renamed);
+			const categories = (await (await page.request.get("/api/categories")).json()) as Category[];
+			const category = categories[0];
+			if (!category) throw new Error("Missing local category fixture");
+			await page.getByRole("combobox", { name: "分类", exact: true }).click();
+			await page.getByRole("option", { name: category.name, exact: true }).click();
+			await page.getByRole("button", { name: "保存订阅", exact: true }).click();
+			await expect(page.getByRole("dialog", { name: "编辑订阅", exact: true })).toHaveCount(0);
+			await page.reload();
+			await expect(page.getByTestId("article-item").first()).toBeVisible();
+			await openMenu(renamed);
+			await page.getByRole("menuitem", { name: "删除订阅" }).click();
+			const confirm = page.getByRole("alertdialog");
+			await expect(confirm).toContainText(renamed);
+			await expect(confirm).toContainText("文章、收藏和稍后阅读记录将一并删除");
+			await confirm.getByRole("button", { name: "保留", exact: true }).click();
+			await expect(confirm).toHaveCount(0);
+			const remaining = (await (await page.request.get("/api/feeds")).json()) as Feed[];
+			expect(
+				remaining.some((item) => item.id === feed.id && item.category_id === category.id),
+			).toBe(true);
+			await sidebar.getByRole("button", { name: renamed, exact: true }).click();
+			await expect(page).toHaveURL(new RegExp(`/feeds/${feed.id}$`));
+			await openMenu(renamed);
+			await page.getByRole("menuitem", { name: "删除订阅" }).click();
+			await confirm.getByRole("button", { name: "确认删除", exact: true }).click();
+			await expect(confirm).toHaveCount(0);
+			await expect(sidebar.getByRole("button", { name: renamed, exact: true })).toHaveCount(0);
+			const after = (await (await page.request.get("/api/feeds")).json()) as Feed[];
+			expect(after.some((item) => item.id === feed.id)).toBe(false);
+		});
 	});
 
 test.describe
-	.serial("reader navigation, preferences and actions", () => {
+	.serial("reader preferences, states and keyboard", () => {
 		test("reading, persistent states, AI summary, translation and original article", async ({
 			page,
 		}) => {
@@ -259,77 +449,6 @@ test.describe
 			await page.keyboard.press("Escape");
 			await expect(page.locator(".app-dialog")).toHaveCount(0);
 			await page.screenshot({ path: `test-results/l3/light-${test.info().project.name}.png` });
-		});
-
-		test("feed/category paths, browser history, search and article positions survive reloads", async ({
-			page,
-		}) => {
-			await page.goto("/");
-			await expect(page.getByTestId("article-item").first()).toBeVisible();
-			await chooseSidebar(page, "Cloudflare Blog");
-			await expect(page).toHaveURL(/\/feeds\/cloudflare$/);
-			const row = page.getByTestId("article-item").last();
-			await row.scrollIntoViewIfNeeded();
-			const id = await row.getAttribute("data-article-id");
-			const listTop = await page
-				.locator(".article-scroll")
-				.evaluate((element) => element.scrollTop);
-			await row.click();
-			await expect(page).toHaveURL(new RegExp(`/feeds/cloudflare/articles/${id}$`));
-			await expect(page.locator(".prose")).toBeVisible();
-			await page.locator(".reader-scroll").evaluate((element) => {
-				element.scrollTop = 320;
-			});
-			await expect
-				.poll(() => page.locator(".reader-scroll").evaluate((element) => element.scrollTop))
-				.toBe(320);
-			await page.reload();
-			await expect(page.locator(".reader-source-label")).toHaveText("Cloudflare Blog");
-			await expect(page.locator(`[data-article-id="${id}"]`)).toHaveAttribute(
-				"aria-current",
-				"true",
-			);
-			await expect
-				.poll(() => page.locator(".reader-scroll").evaluate((element) => element.scrollTop))
-				.toBe(320);
-			await page.goBack();
-			await expect(page).toHaveURL(/\/feeds\/cloudflare$/);
-			await expect(page.locator(".article-scroll")).toBeVisible();
-			await expect
-				.poll(() => page.locator(".article-scroll").evaluate((element) => element.scrollTop))
-				.toBe(listTop);
-			await page.goForward();
-			await expect(page).toHaveURL(new RegExp(`/feeds/cloudflare/articles/${id}$`));
-			await expect
-				.poll(() => page.locator(".reader-scroll").evaluate((element) => element.scrollTop))
-				.toBe(320);
-			await chooseSidebar(page, "Simon Willison");
-			await expect(page).toHaveURL(/\/feeds\/simon$/);
-			await page.goBack();
-			await expect(page).toHaveURL(new RegExp(`/feeds/cloudflare/articles/${id}$`));
-			await expect(page.locator(".reader-source-label")).toHaveText("Cloudflare Blog");
-			await chooseSidebar(page, "分类 技术与工程");
-			await expect(page).toHaveURL(/\/categories\/engineering$/);
-			await page.keyboard.press("/");
-			await page.getByRole("textbox", { name: "搜索文章", exact: true }).fill("quiet craft");
-			await page.getByRole("textbox", { name: "搜索文章", exact: true }).press("Enter");
-			await expect(page).toHaveURL(/\/categories\/engineering\?q=quiet\+craft$/);
-			await page.getByTestId("article-item").first().click();
-			await expect(page.locator(".prose")).toBeVisible();
-			const searched = page.url();
-			await page.reload();
-			await expect(page).toHaveURL(searched);
-			await expect(page.locator(".article-context h1")).toContainText("quiet craft");
-			await page.getByRole("button", { name: "返回文章列表" }).click();
-			await expect(page).toHaveURL(/\/categories\/engineering\?q=quiet\+craft$/);
-			await expect(page.getByTestId("article-item")).toHaveCount(1);
-			await page.goto(`/?article=${id}`);
-			await expect(page).toHaveURL(new RegExp(`/articles/${id}$`));
-			await expect(page.locator(".prose")).toBeVisible();
-			await page.goto("/feeds/cloudflare/articles/missing-article");
-			await expect(page.getByRole("alert")).toContainText("文章不存在");
-			await page.getByRole("button", { name: "返回", exact: true }).click();
-			await expect(page).toHaveURL(/\/feeds\/cloudflare$/);
 		});
 
 		test("keyboard navigation, reading actions and editable/modal guards", async ({ page }) => {
@@ -421,129 +540,10 @@ test.describe
 				"https://github.com/nocoo/geekhub",
 			);
 		});
-
-		test("diagnostic scoring recommends a verified replacement for an unavailable feed", async ({
-			page,
-		}) => {
-			const suffix = crypto.randomUUID().slice(0, 8);
-			const created = await page.request.post("/api/feeds", {
-				data: {
-					title: `Retired ${suffix}`,
-					url: `https://demo.geekhub.example/rss/retired?score=${suffix}`,
-				},
-			});
-			expect(created.status()).toBe(201);
-			const feed = (await created.json()) as Feed;
-			try {
-				const updated = await page.request.patch(`/api/feeds/${feed.id}`, {
-					data: { site_url: "https://demo.geekhub.example/site/simon" },
-				});
-				expect(updated.ok()).toBe(true);
-				await page.goto("/");
-				await expect(page.getByTestId("article-item").first()).toBeVisible();
-				await chooseSidebar(page, feed.title);
-				await page.getByRole("button", { name: `诊断 ${feed.title}`, exact: true }).click();
-				const dialog = page.getByRole("dialog", { name: "订阅源诊断", exact: true });
-				await expect(dialog.getByTestId("diagnostic-total")).toHaveText("25/ 100", {
-					timeout: 15000,
-				});
-				await expect(dialog.locator(".diagnostic-score")).toHaveAttribute(
-					"data-recommendation",
-					"replace",
-				);
-				await expect(dialog.locator(".score-total")).toContainText("暂定评分");
-				await expect(
-					dialog.locator(".score-dimensions").getByText("未知", { exact: true }),
-				).toHaveCount(3);
-				await expect(dialog.locator(".score-radar-point")).toHaveCount(2);
-				await expect(dialog.locator(".score-radar-area")).toHaveCount(0);
-				await expect(dialog.locator(".diagnostic-score")).toContainText("总分上限为 39 分");
-				await dialog.getByRole("button", { name: "查看推荐地址", exact: true }).click();
-				const replacement = dialog.locator(`#recommended-${feed.id}`);
-				await expect(replacement).toBeFocused();
-				await expect(replacement).toBeInViewport();
-				await expect(replacement).toContainText("推荐核对后替换");
-				await expect(replacement).toContainText("discovered=1");
-				await replacement.getByRole("button", { name: "使用此地址", exact: true }).click();
-				await expect(dialog).toHaveCount(0);
-				const feeds = (await (await page.request.get("/api/feeds")).json()) as Feed[];
-				expect(feeds.find((item) => item.id === feed.id)?.url).toContain("discovered=1");
-				await settledFeed(page, feed.id);
-			} finally {
-				await page.request.delete(`/api/feeds/${feed.id}`);
-			}
-		});
 	});
 
 test.describe
 	.serial("reader feed mutations, pagination and diagnostics", () => {
-		test("sidebar menu edits grouped and ungrouped feeds and confirms deletion", async ({
-			page,
-		}) => {
-			const name = `Sidebar menu ${crypto.randomUUID().slice(0, 8)}`;
-			const response = await page.request.post("/api/feeds", {
-				data: {
-					url: `https://demo.geekhub.example/rss/simon?menu=${crypto.randomUUID()}`,
-					title: name,
-				},
-			});
-			expect(response.ok()).toBe(true);
-			const feed = (await response.json()) as Feed;
-			await page.goto("/");
-			const sidebar = page.locator(".reader-sidebar");
-			let firstMenu = true;
-			const openMenu = async (title: string) => {
-				const trigger = sidebar.getByRole("button", { name: title, exact: true });
-				await expect(trigger).toBeVisible();
-				await trigger.scrollIntoViewIfNeeded();
-				if (firstMenu) {
-					await trigger.click({ button: "right" });
-				} else {
-					await trigger.focus();
-					await trigger.press("Shift+F10");
-				}
-				firstMenu = false;
-				await expect(page.getByRole("menu")).toBeVisible();
-			};
-			await expect(page.getByTestId("article-item").first()).toBeVisible();
-			const before = page.url();
-			await openMenu(name);
-			expect(page.url()).toBe(before);
-			await page.getByRole("menuitem", { name: "编辑订阅" }).click();
-			await expect(page.getByRole("dialog", { name: "编辑订阅", exact: true })).toBeVisible();
-			const renamed = `${name} updated`;
-			await page.getByLabel("订阅名称").fill(renamed);
-			const categories = (await (await page.request.get("/api/categories")).json()) as Category[];
-			const category = categories[0];
-			if (!category) throw new Error("Missing local category fixture");
-			await page.getByRole("combobox", { name: "分类", exact: true }).click();
-			await page.getByRole("option", { name: category.name, exact: true }).click();
-			await page.getByRole("button", { name: "保存订阅", exact: true }).click();
-			await expect(page.getByRole("dialog", { name: "编辑订阅", exact: true })).toHaveCount(0);
-			await page.reload();
-			await expect(page.getByTestId("article-item").first()).toBeVisible();
-			await openMenu(renamed);
-			await page.getByRole("menuitem", { name: "删除订阅" }).click();
-			const confirm = page.getByRole("alertdialog");
-			await expect(confirm).toContainText(renamed);
-			await expect(confirm).toContainText("文章、收藏和稍后阅读记录将一并删除");
-			await confirm.getByRole("button", { name: "保留", exact: true }).click();
-			await expect(confirm).toHaveCount(0);
-			const remaining = (await (await page.request.get("/api/feeds")).json()) as Feed[];
-			expect(
-				remaining.some((item) => item.id === feed.id && item.category_id === category.id),
-			).toBe(true);
-			await sidebar.getByRole("button", { name: renamed, exact: true }).click();
-			await expect(page).toHaveURL(new RegExp(`/feeds/${feed.id}$`));
-			await openMenu(renamed);
-			await page.getByRole("menuitem", { name: "删除订阅" }).click();
-			await confirm.getByRole("button", { name: "确认删除", exact: true }).click();
-			await expect(confirm).toHaveCount(0);
-			await expect(sidebar.getByRole("button", { name: renamed, exact: true })).toHaveCount(0);
-			const after = (await (await page.request.get("/api/feeds")).json()) as Feed[];
-			expect(after.some((item) => item.id === feed.id)).toBe(false);
-		});
-
 		test("search, navigation and feed/category CRUD", async ({ page }) => {
 			await page.goto("/");
 			await expect(page.getByTestId("article-item").first()).toBeVisible();
@@ -868,6 +868,7 @@ test.describe
 							elements.map((element) => element.getAttribute("data-feed-id")),
 						);
 				await expect(group).toBeVisible();
+				await group.scrollIntoViewIfNeeded();
 				await group
 					.getByRole("button", { name: `拖动排序 ${second.title}`, exact: true })
 					.dragTo(group.locator(`[data-feed-id="${first.id}"]`), {
