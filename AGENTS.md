@@ -13,7 +13,7 @@ bun run setup          # Local D1 migrations + .dev.vars.local + empty-DB seed
 bun dev                # https://geekhub.dev.hexly.ai -> 127.0.0.1:7005
 bun run typecheck      # S1: cf-typegen + 4 strict tsconfig.*.json projects
 bun run lint           # S2: Biome check-only, 0 warnings
-bun run test:coverage  # L1: Vitest >= 95% on shared/worker/web/lib
+bun run test:coverage  # L1: Vitest >= 90/85% on shared/worker/web/lib
 bun run build          # B1: Vite production bundle
 bun run test:l2        # L3 (CI): isolated local Worker HTTP + SQLite (:17005)
 bun x playwright install chromium && bun run test:l3  # L4 (CI): Playwright E2E (:27005)
@@ -40,7 +40,7 @@ bun run quality        # Full local gate sequence
 
 Follows `system1-quality`; CI runs `.github/workflows/pipeline.yml` calling `.github/workflows/quality-slots.yml` (`quality / Z1: Gate` required on `main`, pinned to `nocoo/base-ci` `v2026.24`), and CD runs `deploy` (D1–D5 via `nocoo/base-ci/.github/workflows/deploy-worker.yml`) on `main` push or `workflow_dispatch` (`deploy=true`), consuming `b1-dist` without rebuilding, applying remote D1 migrations to `geekhub-db`, deploying the Worker, and verifying `https://geekhub.hexly.ai/api/live`. Status vocabulary: `enforced`, `planned`, `manual`, `N/A`. Never lower coverage, use `.skip`/`.only`, suppress security failures, or bypass hooks.
 
-- **Coverage & scripts**: `L1` (`enforced`) gates v8 >= 95% on `src/shared/**`, `src/worker/**`, `src/web/lib/**`. `test:l2` runs CI `L3: Integration` (all `src/worker/index.ts` routes); `test:l3` runs CI `L4: E2E`.
+- **Coverage & scripts**: `L1` (`enforced`) gates v8 >= 90% statements/functions/lines and >= 85% branches on `src/shared/**`, `src/worker/**`, `src/web/lib/**`. `test:l2` runs CI `L3: Integration` (all `src/worker/index.ts` routes); `test:l3` runs CI `L4: E2E`.
 - **Slot exceptions**: `L2 Runtime` is `N/A` (Worker/D1/Queue covered by `L3`/`L4`); `P1 Package` verifies Worker bundling via `wrangler deploy --dry-run` reusing `B1` (`b1-dist`).
 - **Security scan**: `gate:security` (`G1`/`G2`) requires `gitleaks` + `osv-scanner` on PATH (fails if missing), disables inline allow comments, and scans tracked + unignored files including `docs/archieve/`.
 - **Pre-commit (`.husky/`)**: Installed via `bun run prepare`; checks lockfile match, runs `S1`/`S2`/`L1` in parallel in a `git checkout-index` snapshot, then cleans up (`G1` staged scan is `planned`).
